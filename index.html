@@ -2997,8 +2997,8 @@ function renderQTSubmit() {
               <p class="text-xs text-gray-400">${formatDate(v.createdAt)}</p>
             </div>
           </div>
-          ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:'<p class="text-xs text-gray-400 italic">내용 없음</p>'}
-          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?`<p class="text-xs text-gray-400 mt-1">📷 이미지 (동기화 필요)</p>`:`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+          ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
+          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
           ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
@@ -3156,7 +3156,7 @@ function renderQTDayView() {
         <span class="text-green-700 font-bold">✓ 큐티 완료</span>
         <span class="text-xs text-gray-400">${formatDate(entry.createdAt)}</span>
       </div>
-      ${entry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${entry.content}</p>` : '<p class="text-xs text-gray-400">내용 없음</p>'}
+      ${entry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${entry.content}</p>` : ''}
       ${entry.imageKey && qtImages[entry.imageKey] ? `<img src="${qtImages[entry.imageKey]}" class="w-full rounded-xl mt-3 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : ''}
       ${!locked ? `<div class="flex gap-2 mt-3">
         <button onclick="startEditQTDay('${dateStr}')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white border border-purple-300 text-purple-700 active:bg-purple-50">수정</button>
@@ -3222,8 +3222,8 @@ function renderQTDayView() {
                 </div>
                 <span class="text-xs text-gray-400">${formatDate(v.createdAt)}</span>
               </div>
-              ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : '<p class="text-xs text-gray-400 italic mt-1">내용 없음</p>'}
-              ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?`<p class="text-xs text-gray-400 mt-1">📷 이미지 (동기화 필요)</p>`:`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+              ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : ''}
+              ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
             </div>`;
           }).join('')}
         </div>
