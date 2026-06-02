@@ -1197,9 +1197,13 @@ function saveQTImageToFirestore(imageKey, base64) {
     .catch(e => console.warn('QT 이미지 Firestore 저장 실패:', e));
 }
 
+const _qtImagesAttempted = new Set();
+
 async function loadMissingQTImages(imageKeys) {
-  const missing = imageKeys.filter(k => k && !qtImages[k]);
-  if (!missing.length) return false;
+  const missing = imageKeys.filter(k => k && !qtImages[k] && !_qtImagesAttempted.has(k));
+  const alreadyAttempted = imageKeys.filter(k => k && !qtImages[k] && _qtImagesAttempted.has(k));
+  if (!missing.length) return alreadyAttempted.length > 0 ? 'retry' : false;
+  missing.forEach(k => _qtImagesAttempted.add(k));
   let loaded = false;
   await Promise.all(missing.map(async key => {
     try {
@@ -2994,7 +2998,7 @@ function renderQTSubmit() {
             </div>
           </div>
           ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:'<p class="text-xs text-gray-400 italic">내용 없음</p>'}
-          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-16"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>` : ''}
+          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?`<p class="text-xs text-gray-400 mt-1">📷 이미지 (동기화 필요)</p>`:`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
           ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
@@ -3103,8 +3107,9 @@ function renderQTSubmit() {
   // 피드 이미지 Firestore에서 비동기 로드 (다른 학생 이미지)
   const weekImgKeys = allWeekEntries.map(e => e.v.imageKey).filter(Boolean);
   if (weekImgKeys.length) {
-    loadMissingQTImages(weekImgKeys).then(loaded => {
-      if (loaded && !qtOpenDay) renderQTSubmit();
+    loadMissingQTImages(weekImgKeys).then(result => {
+      // 이미지 로드 여부와 관계없이 재렌더 — "로딩 중" → "동기화 필요" 또는 실제 이미지로 교체
+      if (result !== false && !qtOpenDay) renderQTSubmit();
     });
   }
 }
@@ -3218,7 +3223,7 @@ function renderQTDayView() {
                 <span class="text-xs text-gray-400">${formatDate(v.createdAt)}</span>
               </div>
               ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : '<p class="text-xs text-gray-400 italic mt-1">내용 없음</p>'}
-              ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-16"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>` : ''}
+              ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?`<p class="text-xs text-gray-400 mt-1">📷 이미지 (동기화 필요)</p>`:`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
             </div>`;
           }).join('')}
         </div>
@@ -3250,8 +3255,8 @@ function renderQTDayView() {
   // 이 날 기록 이미지 Firestore에서 비동기 로드
   const dayImgKeys = allEntries.map(e => e.v.imageKey).filter(Boolean);
   if (dayImgKeys.length) {
-    loadMissingQTImages(dayImgKeys).then(loaded => {
-      if (loaded && qtOpenDay) renderQTDayView();
+    loadMissingQTImages(dayImgKeys).then(result => {
+      if (result !== false && qtOpenDay) renderQTDayView();
     });
   }
 }
