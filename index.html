@@ -1217,7 +1217,7 @@ async function loadMissingQTImages(imageKeys) {
   if (loaded) {
     try { localStorage.setItem('radi_qt_images', JSON.stringify(qtImages)); } catch(e) {}
   }
-  return loaded;
+  return loaded ? true : 'attempted'; // 'attempted': 시도했지만 미발견 (≠ 'retry': 이미 시도한 키)
 }
 
 // 로컬 qtImages를 Firestore에 업로드 (이전에 localStorage에만 저장된 이미지 복구)
@@ -3108,8 +3108,8 @@ function renderQTSubmit() {
   const weekImgKeys = allWeekEntries.map(e => e.v.imageKey).filter(Boolean);
   if (weekImgKeys.length) {
     loadMissingQTImages(weekImgKeys).then(result => {
-      // 이미지 로드 여부와 관계없이 재렌더 — "로딩 중" → "동기화 필요" 또는 실제 이미지로 교체
-      if (result !== false && !qtOpenDay) renderQTSubmit();
+      // result=true: 이미지 로드됨 / result='attempted': 첫 시도(플레이스홀더 교체) / result='retry': 이미 시도, 재렌더 불필요
+      if ((result === true || result === 'attempted') && !qtOpenDay) renderQTSubmit();
     });
   }
 }
@@ -3256,7 +3256,7 @@ function renderQTDayView() {
   const dayImgKeys = allEntries.map(e => e.v.imageKey).filter(Boolean);
   if (dayImgKeys.length) {
     loadMissingQTImages(dayImgKeys).then(result => {
-      if (result !== false && qtOpenDay) renderQTDayView();
+      if ((result === true || result === 'attempted') && qtOpenDay) renderQTDayView();
     });
   }
 }
