@@ -951,37 +951,42 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem('radi_v4', JSON.stringify({
-    students: state.students,
-    checks: state.checks,
-    lineups: state.lineups,
-    memos: state.memos,
-    pins: state.pins,
-    currentUser: state.currentUser,
-    qtPosts: state.qtPosts,
-    qtComments: state.qtComments,
-    qtDayChecks: state.qtDayChecks,
-    _gateMigrated: state._gateMigrated,
-    _roleMigrated: state._roleMigrated,
-    _adminLevelMigrated: state._adminLevelMigrated,
-    pastoralApprovals: state.pastoralApprovals,
-    adminRestrictions: state.adminRestrictions,
-    editLogs: state.editLogs,
-    loveMeetings: state.loveMeetings,
-    loveMeetingRecords: state.loveMeetingRecords,
-    qrUsage: state.qrUsage,
-    lineupConfirmed: state.lineupConfirmed,
-    qtPassageTexts: state.qtPassageTexts,
-    _may2026Attendance: state._may2026Attendance,
-    _phoneMigrated2026: state._phoneMigrated2026,
-    _birthMigrated2026: state._birthMigrated2026,
-    _r11BirthFixed: state._r11BirthFixed,
-    _r11BirthFixed2: state._r11BirthFixed2,
-    _sat5w4Fixed: state._sat5w4Fixed,
-    weeklyFiles: state.weeklyFiles,
-    feedbacks: state.feedbacks,
-    page: state.page,
-  }));
+  try {
+    localStorage.setItem('radi_v4', JSON.stringify({
+      students: state.students,
+      checks: state.checks,
+      lineups: state.lineups,
+      memos: state.memos,
+      pins: state.pins,
+      currentUser: state.currentUser,
+      qtPosts: state.qtPosts,
+      qtComments: state.qtComments,
+      qtDayChecks: state.qtDayChecks,
+      _gateMigrated: state._gateMigrated,
+      _roleMigrated: state._roleMigrated,
+      _adminLevelMigrated: state._adminLevelMigrated,
+      pastoralApprovals: state.pastoralApprovals,
+      adminRestrictions: state.adminRestrictions,
+      editLogs: state.editLogs,
+      loveMeetings: state.loveMeetings,
+      loveMeetingRecords: state.loveMeetingRecords,
+      qrUsage: state.qrUsage,
+      lineupConfirmed: state.lineupConfirmed,
+      qtPassageTexts: state.qtPassageTexts,
+      _may2026Attendance: state._may2026Attendance,
+      _phoneMigrated2026: state._phoneMigrated2026,
+      _birthMigrated2026: state._birthMigrated2026,
+      _r11BirthFixed: state._r11BirthFixed,
+      _r11BirthFixed2: state._r11BirthFixed2,
+      _sat5w4Fixed: state._sat5w4Fixed,
+      weeklyFiles: state.weeklyFiles,
+      feedbacks: state.feedbacks,
+      page: state.page,
+    }));
+  } catch(e) {
+    // localStorage 용량 초과 시 무시 — Firestore에는 정상 저장
+    console.warn('localStorage 저장 실패 (용량 초과):', e);
+  }
   _fsSaveDebounced();
 }
 
@@ -1045,11 +1050,29 @@ function _applyFsData(fsData) {
   const localUser = state.currentUser;
   const localMonth = state.month;
   const localPage = state.page;
+  // 현재 사용자의 로컬 QT 기록 보호 — debounce 창에서 다른 학생 스냅샷에 의해 덮어쓰이지 않도록
+  const myLocal = {};
+  if (localUser && state.qtDayChecks) {
+    const prefix = localUser + '_';
+    Object.entries(state.qtDayChecks).forEach(([k, v]) => {
+      if (k.startsWith(prefix)) myLocal[k] = v;
+    });
+  }
   Object.assign(state, fsData);
+  // Firestore 버전보다 로컬이 더 최신인 항목만 복원
+  if (Object.keys(myLocal).length) {
+    if (!state.qtDayChecks) state.qtDayChecks = {};
+    Object.entries(myLocal).forEach(([k, v]) => {
+      const fs = state.qtDayChecks[k];
+      if (!fs || (v.createdAt && v.createdAt > (fs.createdAt || 0))) {
+        state.qtDayChecks[k] = v;
+      }
+    });
+  }
   state.currentUser = localUser;
   state.month = (localMonth === '2026-05' ? '2026-06' : localMonth) || state.month || '2026-06';
   state.page = localPage || 'dashboard';
-  localStorage.setItem('radi_v4', JSON.stringify({...fsData, currentUser: localUser, page: state.page}));
+  try { localStorage.setItem('radi_v4', JSON.stringify({...fsData, currentUser: localUser, page: state.page})); } catch(e) {}
 }
 
 function _renderCurrentPage() {
@@ -1122,8 +1145,16 @@ function initFirestore() {
       if (_ignoreSnapshot) { _ignoreSnapshot = false; return; }
       if (!doc.exists) return;
       _applyFsData(doc.data());
-      if (state.currentUser) _renderCurrentPage();
+      if (state.currentUser) {
+        // QT 폼 작성 중이면 다시 렌더링 안 함 — 텍스트/이미지 날아가지 않도록
+        const qtTextarea = document.getElementById('qt-day-text');
+        const formActive = qtTextarea && (qtTextarea.value.trim() || _qtDayPendingImg);
+        if (!formActive) _renderCurrentPage();
+      }
     });
+
+    // 기존 로컬 QT 이미지를 Firestore로 마이그레이션 (학생 기기에서만 의미 있음)
+    setTimeout(() => _migrateLocalQTImages(), 3000);
   }).catch(e => console.warn('Firestore 연결 실패, 로컬 모드로 실행:', e));
 }
 
@@ -1149,7 +1180,42 @@ function loadQTImages() {
 
 function saveQTImages() {
   try { localStorage.setItem('radi_qt_images', JSON.stringify(qtImages)); }
-  catch(e) { alert('저장 공간이 부족해요. 이전 이미지를 삭제해 주세요.'); }
+  catch(e) { console.warn('qtImages localStorage 저장 실패 (용량 초과):', e); }
+}
+
+function saveQTImageToFirestore(imageKey, base64) {
+  _db.collection('qtImages').doc(imageKey).set({ data: base64 })
+    .catch(e => console.warn('QT 이미지 Firestore 저장 실패:', e));
+}
+
+async function loadMissingQTImages(imageKeys) {
+  const missing = imageKeys.filter(k => k && !qtImages[k]);
+  if (!missing.length) return false;
+  let loaded = false;
+  await Promise.all(missing.map(async key => {
+    try {
+      const doc = await _db.collection('qtImages').doc(key).get();
+      if (doc.exists && doc.data().data) {
+        qtImages[key] = doc.data().data;
+        loaded = true;
+      }
+    } catch(e) {}
+  }));
+  if (loaded) {
+    try { localStorage.setItem('radi_qt_images', JSON.stringify(qtImages)); } catch(e) {}
+  }
+  return loaded;
+}
+
+// 로컬 qtImages를 Firestore에 업로드 (이전에 localStorage에만 저장된 이미지 복구)
+function _migrateLocalQTImages() {
+  if (!state.qtDayChecks || !Object.keys(qtImages).length) return;
+  Object.entries(qtImages).forEach(([key, base64]) => {
+    if (!base64) return;
+    _db.collection('qtImages').doc(key).get().then(doc => {
+      if (!doc.exists) saveQTImageToFirestore(key, base64);
+    }).catch(() => {});
+  });
 }
 
 function loadQTPassageImages() {
@@ -2084,7 +2150,7 @@ function openWeeklyFileEditAll(month, wk) {
           <p class="font-bold text-gray-800">${month.split('-')[1]}월 ${wk}주차 파일 편집</p>
           <button onclick="document.getElementById('weekly-file-modal').remove()" class="text-gray-400 text-xl font-bold">×</button>
         </div>
-        <div class="text-xs text-gray-400 mb-2">파일을 GitHub에 올린 후 경로를 입력하세요.<br>예: <span class="font-mono bg-gray-100 px-1 rounded">files/2026-06/1주-콘티.pdf</span></div>
+        <div class="text-xs text-gray-400 mb-2">파일을 GitHub 루트에 올린 후 파일명 그대로 입력하세요.<br>예: <span class="font-mono bg-gray-100 px-1 rounded">260607(주일) 고등부 예배 콘티 .pdf</span></div>
         ${[['conti','📄 콘티 (PDF)'],['sat','🎵 토요일 리허설 MP3'],['sun1','🎶 주일 1부 MP3'],['sun2','🎶 주일 2부 MP3'],['live','🎬 주일 2부 실황']].map(([key, label]) => `
           <div>
             <label class="text-xs text-gray-500 font-semibold">${label}</label>
@@ -2106,6 +2172,9 @@ function saveWeeklyFiles(month, wk) {
     sun2:  document.getElementById('wf-sun2').value.trim(),
     live:  document.getElementById('wf-live').value.trim(),
   };
+  // debounce 없이 즉시 Firestore에 저장 — debounce 창에서 스냅샷에 의해 덮어씌워지는 걸 방지
+  _ignoreSnapshot = true;
+  _stateRef.update({ weeklyFiles: state.weeklyFiles }).catch(e => console.warn('weeklyFiles 저장 실패:', e));
   saveState();
   document.getElementById('weekly-file-modal').remove();
   renderDashboard();
@@ -2888,8 +2957,8 @@ function renderQTSubmit() {
               <p class="text-xs text-gray-400">${formatDate(v.createdAt)}</p>
             </div>
           </div>
-          ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
-          ${v.imageKey&&qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : ''}
+          ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:'<p class="text-xs text-gray-400 italic">내용 없음</p>'}
+          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-16"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>` : ''}
           ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
@@ -2991,6 +3060,14 @@ function renderQTSubmit() {
         <div class="space-y-3">${feed}</div>
       </div>
     </div>`;
+
+  // 피드 이미지 Firestore에서 비동기 로드 (다른 학생 이미지)
+  const weekImgKeys = allWeekEntries.map(e => e.v.imageKey).filter(Boolean);
+  if (weekImgKeys.length) {
+    loadMissingQTImages(weekImgKeys).then(loaded => {
+      if (loaded && !qtOpenDay) renderQTSubmit();
+    });
+  }
 }
 
 function openQTDay(dateStr) {
@@ -3101,8 +3178,8 @@ function renderQTDayView() {
                 </div>
                 <span class="text-xs text-gray-400">${formatDate(v.createdAt)}</span>
               </div>
-              ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : ''}
-              ${v.imageKey && qtImages[v.imageKey] ? `<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : ''}
+              ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : '<p class="text-xs text-gray-400 italic mt-1">내용 없음</p>'}
+              ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-16"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>` : ''}
             </div>`;
           }).join('')}
         </div>
@@ -3130,6 +3207,14 @@ function renderQTDayView() {
       </div>
       ${entriesHtml}
     </div>`;
+
+  // 이 날 기록 이미지 Firestore에서 비동기 로드
+  const dayImgKeys = allEntries.map(e => e.v.imageKey).filter(Boolean);
+  if (dayImgKeys.length) {
+    loadMissingQTImages(dayImgKeys).then(loaded => {
+      if (loaded && qtOpenDay) renderQTDayView();
+    });
+  }
 }
 
 let _passageEditDate = null;
@@ -3291,6 +3376,7 @@ function submitQTDay(dateStr) {
     imageKey = `${state.currentUser}_${dateStr}_qt`;
     qtImages[imageKey] = _qtDayPendingImg;
     saveQTImages();
+    saveQTImageToFirestore(imageKey, _qtDayPendingImg);
     _qtDayPendingImg = null;
   } else if (document.getElementById('qt-day-img-preview')?.innerHTML === '') {
     // Preview was cleared → remove old image
@@ -3607,7 +3693,9 @@ function getLineupRestrictions(studentId, month, weekIdx, svc) {
 function renderLineupSelection() {
   const month = state.month;
   const weeks = getMonthWeeks(month);
-  const weekIdx = weeks.length - 1;
+  // 오늘 날짜 기준으로 이번 주 또는 가장 가까운 다음 주 선택
+  let weekIdx = weeks.findIndex(w => w.sunDate >= TODAY_STR);
+  if (weekIdx < 0) weekIdx = weeks.length - 1;
   const week = weeks[weekIdx];
   if (!week) { document.getElementById('lineup-weeks').innerHTML = '<p class="text-center text-gray-400 py-8">주차 정보 없음</p>'; return; }
 
