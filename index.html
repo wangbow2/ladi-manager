@@ -85,7 +85,7 @@
       <h1 class="text-lg font-bold cursor-pointer active:opacity-70" onclick="navigate('dashboard')">수영로 LADI</h1>
     </div>
     <div class="flex items-center gap-2">
-      <div id="header-month" class="text-sm bg-purple-600 px-3 py-1 rounded-full cursor-pointer" onclick="showMonthPicker()">2026-05</div>
+      <div id="header-month" class="text-sm bg-purple-600 px-3 py-1 rounded-full cursor-pointer" onclick="showMonthPicker()">2026-06</div>
       <button id="header-user-btn" onclick="showUserMenu()" class="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
         <div class="header-user-icon w-5 h-5 rounded-full bg-purple-400 overflow-hidden flex items-center justify-center text-xs font-bold" id="header-user-icon"></div>
         <span id="header-user-name" class="text-xs max-w-16 truncate"></span>
@@ -124,8 +124,8 @@
         <button onclick="selectCheckMonth('2026-02')" data-cm="2026-02" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">2월</button>
         <button onclick="selectCheckMonth('2026-03')" data-cm="2026-03" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">3월</button>
         <button onclick="selectCheckMonth('2026-04')" data-cm="2026-04" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">4월</button>
-        <button onclick="selectCheckMonth('2026-05')" data-cm="2026-05" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-purple-600 text-white">5월</button>
-        <button onclick="selectCheckMonth('2026-06')" data-cm="2026-06" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">6월</button>
+        <button onclick="selectCheckMonth('2026-05')" data-cm="2026-05" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">5월</button>
+        <button onclick="selectCheckMonth('2026-06')" data-cm="2026-06" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-purple-600 text-white">6월</button>
         <button onclick="selectCheckMonth('2026-07')" data-cm="2026-07" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">7월</button>
         <button onclick="selectCheckMonth('2026-08')" data-cm="2026-08" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">8월</button>
         <button onclick="selectCheckMonth('2026-09')" data-cm="2026-09" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">9월</button>
@@ -818,7 +818,7 @@ const GATE_OPTIONS = ['O','X',''];
 // ==========================================
 let state = {
   page: 'dashboard',
-  month: '2026-05',
+  month: '2026-06',
   students: [],
   checks: {},
   lineups: {},
@@ -1047,7 +1047,7 @@ function _applyFsData(fsData) {
   const localPage = state.page;
   Object.assign(state, fsData);
   state.currentUser = localUser;
-  state.month = localMonth || state.month || '2026-05';
+  state.month = (localMonth === '2026-05' ? '2026-06' : localMonth) || state.month || '2026-06';
   state.page = localPage || 'dashboard';
   localStorage.setItem('radi_v4', JSON.stringify({...fsData, currentUser: localUser, page: state.page}));
 }
@@ -4708,7 +4708,7 @@ loadQTImages();
 loadQTPassageImages();
 loadProfiles();
 initKakaoBanner();
-state.month = state.month || '2026-05';
+if (!state.month || state.month === '2026-05') state.month = '2026-06';
 document.getElementById('header-month').textContent = state.month;
 initFirestore();
 
