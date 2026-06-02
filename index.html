@@ -1153,28 +1153,30 @@ function saveQTImages() {
 }
 
 function loadQTPassageImages() {
+  // localStorage 캐시는 보조용 — 메인 소스는 항상 Firestore
   try { const d = localStorage.getItem('radi_qt_passage_images'); if (d) qtPassageImages = JSON.parse(d); } catch(e) { qtPassageImages = {}; }
 }
 
 function saveQTPassageImageLocal() {
-  try { localStorage.setItem('radi_qt_passage_images', JSON.stringify(qtPassageImages)); }
-  catch(e) {}
+  try { localStorage.setItem('radi_qt_passage_images', JSON.stringify(qtPassageImages)); } catch(e) {}
 }
 
 function saveQTPassageImageToFirestore(dateStr) {
   if (!isAdmin()) return;
   const imgs = qtPassageImages[dateStr] || {};
-  _db.collection('passageImages').doc(dateStr).set(imgs).catch(e => console.warn('이미지 저장 실패:', e));
-  saveQTPassageImageLocal();
+  _db.collection('passageImages').doc(dateStr).set(imgs)
+    .then(() => saveQTPassageImageLocal())
+    .catch(e => console.warn('이미지 저장 실패:', e));
 }
 
-async function loadQTPassageImageForDay(dateStr) {
-  if (qtPassageImages[dateStr] !== undefined) return;
+async function loadQTPassageImageForDay(dateStr, forceRefresh) {
+  // forceRefresh=true 이거나 캐시 없을 때 Firestore에서 로드
+  if (!forceRefresh && qtPassageImages[dateStr] !== undefined) return;
   try {
     const doc = await _db.collection('passageImages').doc(dateStr).get();
     qtPassageImages[dateStr] = doc.exists ? doc.data() : {};
     saveQTPassageImageLocal();
-  } catch(e) { qtPassageImages[dateStr] = {}; }
+  } catch(e) { if (qtPassageImages[dateStr] === undefined) qtPassageImages[dateStr] = {}; }
 }
 
 function compressImage(file, callback) {
@@ -2911,15 +2913,12 @@ function renderQTSubmit() {
   const todayLocked = isDayLocked(TODAY_STR);
   const todayEntry = getQTDayEntry(TODAY_STR);
 
-  let todayImgHtml = '';
-  if (todayImgsData === undefined) {
-    loadQTPassageImageForDay(TODAY_STR).then(() => {
-      const el = document.getElementById('qt-today-imgs');
-      if (el) el.innerHTML = _renderPassageImgSection(TODAY_STR);
-    });
-  } else {
-    todayImgHtml = _renderPassageImgSection(TODAY_STR);
-  }
+  let todayImgHtml = todayImgsData ? _renderPassageImgSection(TODAY_STR) : '';
+  // 항상 Firestore에서 최신 이미지 강제 로드
+  loadQTPassageImageForDay(TODAY_STR, true).then(() => {
+    const el = document.getElementById('qt-today-imgs');
+    if (el) el.innerHTML = _renderPassageImgSection(TODAY_STR);
+  });
 
   let todayForm = '';
   if (todayEntry?.done && !qtEditMode) {
@@ -3016,13 +3015,11 @@ function renderQTDayView() {
   const dateStr = qtOpenDay;
   const passage = QT_SCHEDULE[dateStr] || '';
 
-  // 이미지가 아직 로드 안 됐으면 Firestore에서 가져와 재렌더
-  if (qtPassageImages[dateStr] === undefined) {
-    loadQTPassageImageForDay(dateStr).then(() => {
-      const el = document.getElementById(`qt-passage-imgs-${dateStr}`);
-      if (el) el.innerHTML = _renderPassageImgSection(dateStr);
-    });
-  }
+  // 항상 Firestore에서 최신 이미지 로드
+  loadQTPassageImageForDay(dateStr, true).then(() => {
+    const el = document.getElementById(`qt-passage-imgs-${dateStr}`);
+    if (el) el.innerHTML = _renderPassageImgSection(dateStr);
+  });
 
   const d = new Date(dateStr + 'T00:00:00');
   const DAYS = ['일','월','화','수','목','금','토'];
