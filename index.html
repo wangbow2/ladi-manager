@@ -3041,6 +3041,7 @@ function renderCheckCards(month, weeks) {
 // ==========================================
 let qtOpenDay = null;
 let qtEditMode = false;
+let qtFeedFilter = null;
 
 function formatDate(ts) {
   const d = new Date(ts);
@@ -3280,20 +3281,65 @@ function renderQTSubmit() {
     }
   }
 
-  // 큐티 달성 횟수 강조 — allWeekEntries에서 제출 횟수 누적 (이번 주 기준)
-  const qtFeedItems = allWeekEntries.map(({ s, v, dateStr }) => {
+  // 이번 주 학생별 제출 횟수 맵
+  const weekCountMap = {};
+  activeStudents().forEach(s => {
+    weekCountMap[s.id] = thisWeekDays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+  });
+
+  // 팀별 이름 필터 헤더
+  const GROUP_ORDER = ['팀장','솔라디','라디스','액기스'];
+  const filterHeader = (() => {
+    const groups = GROUP_ORDER.map(g => {
+      const members = activeStudents().filter(s => (s.group||'솔라디') === g);
+      if (!members.length) return '';
+      const chips = members.map(s => {
+        const cnt = weekCountMap[s.id] || 0;
+        const isActive = qtFeedFilter === s.id;
+        const trophy = cnt >= 5 ? '🏆' : '';
+        return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
+          class="text-xs px-2.5 py-1 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'badge-'+g+' opacity-80'}"
+          style="white-space:nowrap">${s.name}(${cnt})${trophy}</button>`;
+      }).join('');
+      return `<div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-[10px] text-gray-400 font-bold w-8 flex-shrink-0">${g[0]}</span>
+        ${chips}
+      </div>`;
+    }).filter(Boolean).join('');
+    return `<div class="bg-gray-50 rounded-xl p-3 space-y-2">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs font-semibold text-gray-500">이번 주 큐티 피드 (${allWeekEntries.length}개)</p>
+        ${qtFeedFilter ? `<button onclick="qtFeedFilter=null;renderQTSubmit()" class="text-xs text-purple-500 underline">전체 보기</button>` : ''}
+        ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1 rounded-full font-semibold" style="min-height:32px">🔄</button>` : ''}
+      </div>
+      ${groups}
+    </div>`;
+  })();
+
+  // 피드 아이템
+  const filteredEntries = qtFeedFilter ? allWeekEntries.filter(e => e.s.id === qtFeedFilter) : allWeekEntries;
+  const qtFeedItems = filteredEntries.map(({ s, v, dateStr }) => {
     const isMe = s.id === state.currentUser;
     const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
     const passage = QT_SCHEDULE[dateStr] || '';
-    // 이번 주 해당 학생의 총 제출 횟수
-    const weekCount = thisWeekDays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+    const weekCount = weekCountMap[s.id] || 0;
     const trophy = weekCount >= 5 ? ' 🏆' : '';
+    const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
+    const imgHtml = v.imageKey
+      ? imgSrc
+        ? `<img src="${imgSrc}" class="w-full rounded-xl mt-2 object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">`
+        : _qtImagesAttempted.has(v.imageKey) ? ''
+        : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`
+      : '';
     return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-purple-400':''}">
       <div class="flex items-start justify-between mb-2 gap-2">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
-          <span class="font-semibold text-gray-800 text-sm">${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}${trophy}</span>
-          <span class="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">${weekCount}회</span>
+          <button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
+            class="font-semibold text-gray-800 text-sm hover:text-purple-600 transition-colors">
+            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}${trophy}
+            <span class="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full ml-0.5">(${weekCount})</span>
+          </button>
         </div>
         <div class="text-right flex-shrink-0">
           <p class="text-xs font-semibold text-blue-600">${dayName} · ${passage.replace('고린도전서','고전')}</p>
@@ -3301,12 +3347,12 @@ function renderQTSubmit() {
         </div>
       </div>
       ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
-      ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+      ${imgHtml}
       ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
     </div>`;
   }).join('') || `<div class="text-center py-8 text-gray-400 bg-white rounded-xl shadow-sm">
       <p class="text-2xl mb-1">✏️</p>
-      <p class="text-sm">이번 주 큐티 기록이 없어요</p>
+      <p class="text-sm">${qtFeedFilter ? '이번 주 큐티 기록이 없어요' : '이번 주 큐티 기록이 없어요'}</p>
       <p class="text-xs mt-1 text-gray-300">달력에서 날짜를 탭해 올리세요</p>
     </div>`;
 
@@ -3326,11 +3372,8 @@ function renderQTSubmit() {
       </div>
       ${passageCard}
       ${myQTCard}
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <p class="text-xs font-semibold text-gray-500">이번 주 큐티 피드 (${allWeekEntries.length}개)</p>
-          ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1 rounded-full font-semibold" style="min-height:32px">🔄 이미지 동기화</button>` : ''}
-        </div>
+      <div class="space-y-3">
+        ${filterHeader}
         ${unsubmittedSection}
         <div class="space-y-3">${qtFeedItems}</div>
       </div>
@@ -3547,6 +3590,33 @@ function _renderPassageImgSection(dateStr) {
     </div>` : '';
 
   return `<p class="text-xs font-semibold text-amber-600 mt-3 mb-1">📸 말씀 이미지</p>${carouselHtml}${uploadBtns}`;
+}
+
+function openSrcFullscreen(imageKey) {
+  const src = qtImages[imageKey];
+  if (!src) return;
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  const img = document.createElement('img');
+  img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-select:none;';
+  img.src = src;
+  el.appendChild(img);
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '×';
+  closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;color:#fff;font-size:2.5rem;line-height:1;background:none;border:none;cursor:pointer;padding:0 8px;';
+  closeBtn.onclick = cleanup;
+  el.appendChild(closeBtn);
+  function cleanup() { document.removeEventListener('keydown', onKey); el.remove(); }
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); cleanup(); } };
+  document.addEventListener('keydown', onKey);
+  el.onclick = e => { if (e.target === el) cleanup(); };
+  let tx = 0, ty = 0, tt = 0;
+  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now(); }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+    if (Math.sqrt(dx*dx+dy*dy) < 15 && Date.now()-tt < 300) cleanup();
+  }, { passive: true });
+  document.body.appendChild(el);
 }
 
 function openImgFullscreen(dateStr, imgKey) {
