@@ -728,12 +728,12 @@
 // ==========================================
 const INITIAL_STUDENTS = [
   // 팀장
-  { id:'t1', name:'황영환', group:'팀장', birthDate:'1989-04-03', gender:'남', grade:'교역자', lineupService:'1부', instrument:'', role:'인도자 / 목사', phone:'010-3997-9109', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'t2', name:'김희원', group:'팀장', birthDate:'1992-05-29', gender:'여', grade:'교역자', lineupService:'1부', instrument:'건반', role:'팀장', phone:'010-3360-9326', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'t3', name:'김예찬', group:'팀장', birthDate:'1996-11-18', gender:'남', grade:'교사', lineupService:'1부', instrument:'베이스', role:'인도자', phone:'010-9462-0164', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'t4', name:'정민지', group:'팀장', birthDate:'1998-02-20', gender:'여', grade:'교사', lineupService:'2부', instrument:'건반', role:'팀장', phone:'010-2412-2504', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'t5', name:'정여명', group:'팀장', birthDate:'1999-08-14', gender:'여', grade:'교사', lineupService:'2부', instrument:'', role:'워십 / 팀장', phone:'010-7626-3246', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'t6', name:'손민수', group:'팀장', birthDate:'', gender:'남', grade:'교사', lineupService:'1부', instrument:'일렉기타', role:'팀장', phone:'010-6711-9482', parentPhone:'', teacher:'', status:'군복무', memo:'군복무 중' },
+  { id:'t1', name:'황영환', group:'팀장', birthDate:'1989-04-03', gender:'남', grade:'목사', lineupService:'1부', instrument:'', role:'인도자 / 목사', phone:'010-3997-9109', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'t2', name:'김희원', group:'팀장', birthDate:'1992-05-29', gender:'여', grade:'팀장', lineupService:'1부', instrument:'건반', role:'팀장', phone:'010-3360-9326', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'t3', name:'김예찬', group:'팀장', birthDate:'1996-11-18', gender:'남', grade:'팀장', lineupService:'1부', instrument:'베이스', role:'인도자', phone:'010-9462-0164', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'t4', name:'정민지', group:'팀장', birthDate:'1998-02-20', gender:'여', grade:'팀장', lineupService:'2부', instrument:'건반', role:'팀장', phone:'010-2412-2504', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'t5', name:'정여명', group:'팀장', birthDate:'1999-08-14', gender:'여', grade:'팀장', lineupService:'2부', instrument:'', role:'워십 / 팀장', phone:'010-7626-3246', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'t6', name:'손민수', group:'팀장', birthDate:'', gender:'남', grade:'팀장', lineupService:'1부', instrument:'일렉기타', role:'팀장', phone:'010-6711-9482', parentPhone:'', teacher:'', status:'군복무', memo:'군복무 중' },
   // 솔라디 (김기쁨 제외) — 08년생:고3, 09년생:고2, 10년생:고1
   { id:'s1', name:'김유니스', group:'솔라디', birthDate:'2009-06-01', gender:'여', grade:'고2', lineupService:'1부', phone:'010-4412-7889', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'s2', name:'김주하', group:'솔라디', birthDate:'2008-04-29', gender:'남', grade:'고3', lineupService:'1부', phone:'010-4849-5104', parentPhone:'', teacher:'', status:'활동중', memo:'' },
@@ -1005,6 +1005,13 @@ function loadState() {
     state.students.forEach(s => { if (roleFixes[s.id]) Object.assign(s, roleFixes[s.id]); });
     state._roleMigrated = true;
   }
+  if (!state._gradeMigrated) {
+    state.students.forEach(s => {
+      if (s.id === 't1') s.grade = '목사';
+      else if (s.group === '팀장' && (s.grade === '교사' || s.grade === '교역자')) s.grade = '팀장';
+    });
+    state._gradeMigrated = true;
+  }
   // migrate adminLevel (3-tier: admin / leader / member)
   if (!state._adminLevelMigrated) {
     state.students.forEach(s => {
@@ -1065,6 +1072,7 @@ function saveState() {
       qtDayChecks: state.qtDayChecks,
       _gateMigrated: state._gateMigrated,
       _roleMigrated: state._roleMigrated,
+      _gradeMigrated: state._gradeMigrated,
       _adminLevelMigrated: state._adminLevelMigrated,
       pastoralApprovals: state.pastoralApprovals,
       adminRestrictions: state.adminRestrictions,
