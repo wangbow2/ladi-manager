@@ -3082,45 +3082,55 @@ function renderQTSubmit() {
   }
   const [y, m] = qtMonth.split('-').map(Number);
 
-  // ── Full monthly calendar ──
+  // ── Full monthly calendar (주~토 7열) ──
+  const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const calWeeks = [];
   let cur = new Date(y, m-1, 1);
-  const firstDow = cur.getDay();
-  cur.setDate(cur.getDate() - (firstDow === 0 ? 6 : firstDow - 1));
+  cur.setDate(cur.getDate() - cur.getDay()); // 해당 주 일요일로 이동
   const endOfMonth = new Date(y, m, 0);
   while (cur <= endOfMonth) {
-    const sat = new Date(cur); sat.setDate(cur.getDate() + 5);
-    const satStr = `${sat.getFullYear()}-${String(sat.getMonth()+1).padStart(2,'0')}-${String(sat.getDate()).padStart(2,'0')}`;
-    const fri = new Date(sat); fri.setDate(sat.getDate() - 1); fri.setHours(23,59,59,999);
-    const locked = TODAY > fri;
+    const fri = new Date(cur); fri.setDate(cur.getDate() + 5); fri.setHours(23,59,59,999);
     const weekDays = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       const c = new Date(cur); c.setDate(cur.getDate() + i);
-      const ds = `${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')}`;
-      weekDays.push({ dateStr: ds, passage: QT_SCHEDULE[ds]||null, inMonth: c.getMonth()+1===m, isToday: ds===TODAY_STR, locked, entry: getQTDayEntry(ds) });
+      const ds = _ds(c);
+      const dow = c.getDay(); // 0=일, 6=토
+      const isWeekend = dow === 0 || dow === 6;
+      // 주말은 해당 날이 지나면 잠김, 평일은 금요일 자정 기준
+      const locked = isWeekend ? (TODAY_STR > ds) : (TODAY > fri);
+      weekDays.push({ dateStr: ds, passage: QT_SCHEDULE[ds]||null,
+        inMonth: c.getMonth()+1===m, isToday: ds===TODAY_STR,
+        locked, entry: getQTDayEntry(ds), noCount: isWeekend });
     }
-    calWeeks.push({ weekDays, locked });
+    calWeeks.push({ weekDays, locked: TODAY > fri });
     cur.setDate(cur.getDate() + 7);
   }
 
   const calRows = calWeeks.map(w => {
     const cells = w.weekDays.map(day => {
-      if (!day.inMonth) {
-        return `<div class="flex-1 min-w-0 py-1.5 text-center"></div>`;
-      }
+      if (!day.inMonth) return `<div class="flex-1 min-w-0 py-1 text-center"></div>`;
       const done = !!day.entry?.done;
       const short = day.passage ? day.passage.replace('고린도전서','고전').replace('고린도후서','고후') : '';
-      const bg = done?'bg-green-100':day.isToday?'bg-blue-50 ring-2 ring-blue-400':day.locked?'bg-gray-50':'bg-white';
-      const txt = done?'text-green-700':day.isToday?'text-blue-700':day.locked?'text-gray-400':'text-gray-700';
-      const ptxt = done?'text-green-500':day.locked?'text-gray-300':'text-blue-500';
-      return `<div class="flex-1 min-w-0 py-1.5 px-0.5 rounded-lg text-center ${bg} ${!day.locked?'cursor-pointer active:scale-95':''} transition-all"
+      const isWE = day.noCount;
+      const bg = done
+        ? (isWE ? 'bg-amber-50' : 'bg-green-100')
+        : day.isToday ? 'bg-blue-50 ring-2 ring-blue-400'
+        : day.locked ? 'bg-gray-50'
+        : isWE ? 'bg-orange-50' : 'bg-white';
+      const txt = done
+        ? (isWE ? 'text-amber-700' : 'text-green-700')
+        : day.isToday ? 'text-blue-700'
+        : day.locked ? 'text-gray-400'
+        : isWE ? 'text-orange-700' : 'text-gray-700';
+      const ptxt = done ? (isWE?'text-amber-400':'text-green-500') : day.locked ? 'text-gray-300' : isWE ? 'text-orange-400' : 'text-blue-500';
+      return `<div class="flex-1 min-w-0 py-1 px-0.5 rounded-lg text-center ${bg} ${!day.locked?'cursor-pointer active:scale-95':''} transition-all"
         ${!day.locked?`onclick="openQTDay('${day.dateStr}')"`:''}>
-        <p class="text-xs font-bold ${txt}">${new Date(day.dateStr+'T00:00:00').getDate()}</p>
-        ${short?`<p class="text-[9px] leading-tight mt-0.5 ${ptxt}">${short}</p>`:''}
-        ${done?'<p class="text-[10px] text-green-600">✓</p>':''}
+        <p class="text-[10px] font-bold ${txt}">${new Date(day.dateStr+'T00:00:00').getDate()}</p>
+        ${short?`<p class="text-[8px] leading-tight mt-0.5 ${ptxt}">${short}</p>`:''}
+        ${done?`<p class="text-[9px] ${isWE?'text-amber-500':'text-green-600'}">✓</p>`:''}
       </div>`;
     }).join('');
-    return `<div class="flex gap-1 mb-1.5">${cells}<div class="flex items-center pl-0.5 w-4">${w.locked?'<span class="text-[9px] text-gray-300">🔒</span>':''}</div></div>`;
+    return `<div class="flex gap-0.5 mb-1">${cells}</div>`;
   }).join('');
 
   // ── This week feed ──
@@ -3342,12 +3352,13 @@ function renderQTSubmit() {
         <span class="text-xs text-gray-500">내 진도 <span class="font-bold text-purple-600">${doneCount}</span>/${totalDays}일</span>
       </div>
       <div class="bg-gray-50 rounded-xl p-3 shadow-sm">
-        <div class="flex gap-1 mb-2 px-0.5">
-          ${['월','화','수','목','금'].map(d=>`<div class="flex-1 text-center text-xs font-semibold text-gray-400">${d}</div>`).join('')}
-          <div class="w-4"></div>
+        <div class="flex gap-0.5 mb-1 px-0.5">
+          <div class="flex-1 text-center text-[10px] font-semibold text-orange-400">주</div>
+          ${['월','화','수','목','금'].map(d=>`<div class="flex-1 text-center text-[10px] font-semibold text-gray-400">${d}</div>`).join('')}
+          <div class="flex-1 text-center text-[10px] font-semibold text-orange-400">토</div>
         </div>
         ${calRows}
-        <p class="text-[10px] text-gray-400 text-center mt-1">날짜 탭 → 큐티 올리기 · 금요일 자정 마감</p>
+        <p class="text-[9px] text-gray-400 text-center mt-1">주/토(주황)는 경건생활 · 평일 금요일 자정 마감</p>
       </div>
       ${passageCard}
       ${myQTCard}
