@@ -2419,18 +2419,18 @@ function renderDashboard() {
     .sort((a,b)=>parseInt(a.birthDate.split('-')[2])-parseInt(b.birthDate.split('-')[2]));
 
   const html = `
-    <div class="space-y-3">
+    <div class="space-y-2">
       <!-- 빠른 메뉴 -->
-      <div class="bg-white rounded-xl px-4 py-3 shadow-sm">
-        <p class="text-xs text-gray-400 font-semibold mb-2">빠른 메뉴</p>
-        <div class="grid grid-cols-4 gap-2">
-          <button onclick="navigate('check')" class="bg-blue-50 text-blue-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📋<span>체크표</span></button>
-          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📖<span>큐티</span></button>
-          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">⭐<span>라인업</span></button>
-          <button onclick="navigate('students')" class="bg-orange-50 text-orange-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">👥<span>학생</span></button>
-          <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">💛<span>사랑모임</span></button>
-          <button onclick="navigate('qr')" class="bg-gray-50 text-gray-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📷<span>QR출석</span></button>
-          <button onclick="navigate('birthday')" class="bg-yellow-50 text-yellow-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">🎂<span>생일</span></button>
+      <div class="bg-white rounded-xl px-3 py-2 shadow-sm">
+        <p class="text-[10px] text-gray-400 font-semibold mb-1.5">빠른 메뉴</p>
+        <div class="grid grid-cols-4 gap-1.5">
+          <button onclick="navigate('check')" class="bg-blue-50 text-blue-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">📋<span>체크표</span></button>
+          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">📖<span>큐티</span></button>
+          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">⭐<span>라인업</span></button>
+          <button onclick="navigate('students')" class="bg-orange-50 text-orange-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">👥<span>학생</span></button>
+          <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">💛<span>사랑모임</span></button>
+          <button onclick="navigate('qr')" class="bg-gray-50 text-gray-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">📷<span>QR출석</span></button>
+          <button onclick="navigate('birthday')" class="bg-yellow-50 text-yellow-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">🎂<span>생일</span></button>
         </div>
       </div>
 
@@ -2438,16 +2438,16 @@ function renderDashboard() {
       ${renderAdminStats()}
 
       <!-- 생일자 -->
-      <div class="bg-white rounded-xl px-4 py-3 shadow-sm">
-        <div class="flex items-center justify-between mb-2">
+      <div class="bg-white rounded-xl px-3 py-2 shadow-sm">
+        <div class="flex items-center justify-between mb-1">
           <p class="text-xs text-gray-500 font-semibold">🎂 ${getMonthStr(month)} 생일자</p>
-          <button onclick="navigate('birthday')" class="text-xs text-purple-500 font-semibold" style="min-height:unset">전체 보기</button>
+          <button onclick="navigate('birthday')" class="text-xs text-purple-500 font-semibold" style="min-height:unset">전체</button>
         </div>
         ${monthBirthdays.length ? `
-          <div class="flex flex-wrap gap-1.5">
+          <div class="flex flex-wrap gap-1">
             ${monthBirthdays.map(s=>`
-              <span class="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full badge-${s.group} ${isToday(s.birthDate)?'ring-2 ring-pink-400':''}">
-                ${s.name} <span class="opacity-60">${formatBirthDate(s.birthDate)}</span>${isToday(s.birthDate)?'🎂':''}
+              <span class="flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full badge-${s.group} ${isToday(s.birthDate)?'ring-2 ring-pink-400':''}">
+                ${s.name}${isToday(s.birthDate)?'🎂':''}
               </span>`).join('')}
           </div>` : '<p class="text-xs text-gray-400">이번 달 생일자 없음</p>'}
       </div>
@@ -2481,20 +2481,20 @@ function renderAdminStats() {
   const qtAvg = qtCount ? (qtSum / qtCount).toFixed(1) : '-';
 
   return `
-    <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
-      <p class="text-xs text-gray-500 font-semibold mb-2">📊 ${getMonthStr(month)} 통계</p>
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-blue-50 rounded-xl py-2">
-          <p class="text-lg font-bold text-blue-700">${satTotal ? Math.round(satOk/satTotal*100) : '-'}%</p>
-          <p class="text-xs text-gray-500">토요일</p>
+    <div class="bg-white rounded-xl px-3 py-2 shadow-sm">
+      <p class="text-[10px] text-gray-500 font-semibold mb-1">📊 ${getMonthStr(month)} 통계</p>
+      <div class="grid grid-cols-3 gap-1.5 text-center">
+        <div class="bg-blue-50 rounded-lg py-1.5">
+          <p class="text-sm font-bold text-blue-700">${satTotal ? Math.round(satOk/satTotal*100) : '-'}%</p>
+          <p class="text-[10px] text-gray-500">토요일</p>
         </div>
-        <div class="bg-purple-50 rounded-xl py-2">
-          <p class="text-lg font-bold text-purple-700">${sunTotal ? Math.round(sunOk/sunTotal*100) : '-'}%</p>
-          <p class="text-xs text-gray-500">주일</p>
+        <div class="bg-purple-50 rounded-lg py-1.5">
+          <p class="text-sm font-bold text-purple-700">${sunTotal ? Math.round(sunOk/sunTotal*100) : '-'}%</p>
+          <p class="text-[10px] text-gray-500">주일</p>
         </div>
-        <div class="bg-green-50 rounded-xl py-2">
-          <p class="text-lg font-bold text-green-700">${qtAvg}</p>
-          <p class="text-xs text-gray-500">QT 평균</p>
+        <div class="bg-green-50 rounded-lg py-1.5">
+          <p class="text-sm font-bold text-green-700">${qtAvg}</p>
+          <p class="text-[10px] text-gray-500">QT 평균</p>
         </div>
       </div>
     </div>`;
