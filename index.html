@@ -3389,11 +3389,15 @@ function renderQTSubmit() {
     }
   }
 
-  // 이번 주 학생별 제출 횟수 맵
+  // 이번 주 학생별 제출 횟수 맵 (평일/주말 분리)
   const allWeekAllDays = getQTCurrentWeekAllDays();
+  const allWeekWeekdays = getQTCurrentWeekDays();
+  const allWeekWeekends = allWeekAllDays.filter(d => !allWeekWeekdays.includes(d));
   const weekCountMap = {};
   activeStudents().forEach(s => {
-    weekCountMap[s.id] = allWeekAllDays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+    const wd = allWeekWeekdays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+    const we = allWeekWeekends.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+    weekCountMap[s.id] = {wd, we, total: wd + we};
   });
 
   // 팀별 이름 필터 헤더
@@ -3403,12 +3407,13 @@ function renderQTSubmit() {
       const members = activeStudents().filter(s => (s.group||'솔라디') === g);
       if (!members.length) return '';
       const chips = members.map(s => {
-        const cnt = weekCountMap[s.id] || 0;
+        const wc = weekCountMap[s.id] || {wd:0, we:0, total:0};
         const isActive = qtFeedFilter === s.id;
-        const medal = qtMedal(cnt);
+        const medal = qtMedal(wc.total);
+        const cntLabel = wc.total > 0 ? (wc.we > 0 ? ` (${wc.wd})+(${wc.we})` : ` (${wc.wd})`) : '';
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
           class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
-          style="min-height:unset;line-height:1.4">${s.name}${medal}</button>`;
+          style="min-height:unset;line-height:1.4">${s.name}${cntLabel}${medal}</button>`;
       }).join('');
       return `<div class="flex items-center gap-0.5 flex-wrap">
         <span class="text-[11px] text-gray-400 font-bold flex-shrink-0 w-4">${g[0]}</span>
@@ -3433,8 +3438,9 @@ function renderQTSubmit() {
     const isMe = s.id === state.currentUser;
     const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
     const passage = QT_SCHEDULE[dateStr] || '';
-    const weekCount = weekCountMap[s.id] || 0;
-    const medal = qtMedal(weekCount);
+    const wc = weekCountMap[s.id] || {wd:0, we:0, total:0};
+    const medal = qtMedal(wc.total);
+    const cntLabel = wc.total > 0 ? (wc.we > 0 ? ` (${wc.wd})+(${wc.we})` : ` (${wc.wd})`) : '';
     const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
     const imgHtml = v.imageKey
       ? imgSrc
@@ -3448,7 +3454,7 @@ function renderQTSubmit() {
           <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
           <button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
             class="font-semibold text-gray-800 text-sm hover:text-purple-600 transition-colors">
-            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''} ${medal}
+            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}${cntLabel} ${medal}
           </button>
         </div>
         <div class="text-right flex-shrink-0">
