@@ -3400,85 +3400,71 @@ function renderQTSubmit() {
     weekCountMap[s.id] = {wd, we, total: wd + we};
   });
 
-  // 팀별 이름 필터 헤더
-  const GROUP_ORDER = ['팀장','솔라디','라디스','액기스'];
+  // 횟수별 이름 요약 목록
+  const countSummaryMap = {};
+  activeStudents().forEach(s => {
+    const total = (weekCountMap[s.id] || {total:0}).total;
+    if (!countSummaryMap[total]) countSummaryMap[total] = [];
+    countSummaryMap[total].push(s);
+  });
   const filterHeader = (() => {
-    const groups = GROUP_ORDER.map(g => {
-      const members = activeStudents().filter(s => (s.group||'솔라디') === g);
-      if (!members.length) return '';
+    const rows = Object.keys(countSummaryMap).map(Number).sort((a,b)=>b-a).map(count => {
+      const members = countSummaryMap[count];
+      const medal = qtMedal(count);
       const chips = members.map(s => {
-        const wc = weekCountMap[s.id] || {wd:0, we:0, total:0};
         const isActive = qtFeedFilter === s.id;
-        const medal = qtMedal(wc.total);
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
-          class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
-          style="min-height:unset;line-height:1.4">${s.name}${medal}</button>`;
+          class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-100 text-gray-600'}"
+          style="min-height:unset;line-height:1.4">${s.name}</button>`;
       }).join('');
-      return `<div class="flex items-center gap-0.5 flex-wrap">
-        <span class="text-[11px] text-gray-400 font-bold flex-shrink-0 w-4">${g[0]}</span>
+      return `<div class="flex items-center gap-1 flex-wrap">
+        <span class="text-[11px] font-bold text-gray-500 flex-shrink-0">${count}회${medal}</span>
         ${chips}
       </div>`;
-    }).filter(Boolean).join('');
+    }).join('');
     return `<div class="bg-gray-50 rounded-xl px-2 py-1.5 space-y-1">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between mb-0.5">
         <p class="text-xs font-semibold text-gray-500">이번 주 큐티 피드 (${allWeekEntries.length}개)</p>
         <div class="flex gap-1.5">
           ${qtFeedFilter ? `<button onclick="qtFeedFilter=null;renderQTSubmit()" class="text-xs text-purple-500 underline">전체</button>` : ''}
           ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-semibold">🔄</button>` : ''}
         </div>
       </div>
-      ${groups}
+      ${rows}
     </div>`;
   })();
 
-  // 피드 아이템 (횟수별 그룹)
+  // 피드 아이템 (시간순)
   const filteredEntries = qtFeedFilter ? allWeekEntries.filter(e => e.s.id === qtFeedFilter) : allWeekEntries;
-  const countGroupMap = {};
-  filteredEntries.forEach(e => {
-    const total = (weekCountMap[e.s.id] || {total:0}).total;
-    if (!countGroupMap[total]) countGroupMap[total] = [];
-    countGroupMap[total].push(e);
-  });
-  const qtFeedItems = Object.keys(countGroupMap).map(Number).sort((a,b)=>b-a).map(count => {
-    const entries = countGroupMap[count];
-    entries.sort((a,b) => a.s.name.localeCompare(b.s.name,'ko') || a.dateStr.localeCompare(b.dateStr));
-    const medal = qtMedal(count);
-    const uniqueCount = new Set(entries.map(e=>e.s.id)).size;
-    const sectionHead = `<div class="flex items-center gap-1.5 px-1 pt-2 pb-0.5 border-b border-gray-100 mb-1">
-      <span class="text-xs font-bold text-gray-600">${count}회 ${medal}</span>
-      <span class="text-[10px] text-gray-400">${uniqueCount}명 · ${entries.length}개</span>
-    </div>`;
-    const itemsHtml = entries.map(({s, v, dateStr}) => {
-      const isMe = s.id === state.currentUser;
-      const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
-      const passage = QT_SCHEDULE[dateStr] || '';
-      const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
-      const imgHtml = v.imageKey
-        ? imgSrc
-          ? `<img src="${imgSrc}" class="w-full rounded-xl mt-2 object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">`
-          : _qtImagesAttempted.has(v.imageKey) ? ''
-          : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`
-        : '';
-      return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-purple-400':''}">
-        <div class="flex items-start justify-between mb-2 gap-2">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
-            <button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
-              class="font-semibold text-gray-800 text-sm hover:text-purple-600 transition-colors">
-              ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}
-            </button>
-          </div>
-          <div class="text-right flex-shrink-0">
-            <p class="text-xs font-semibold text-blue-600">${dayName} · ${passage.replace('고린도전서','고전')}</p>
-            <p class="text-xs text-gray-400">${formatDate(v.createdAt)}</p>
-          </div>
+  const qtFeedItems = filteredEntries.map(({ s, v, dateStr }) => {
+    const isMe = s.id === state.currentUser;
+    const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
+    const passage = QT_SCHEDULE[dateStr] || '';
+    const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
+    const imgHtml = v.imageKey
+      ? imgSrc
+        ? `<img src="${imgSrc}" class="w-full rounded-xl mt-2 object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">`
+        : _qtImagesAttempted.has(v.imageKey) ? ''
+        : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`
+      : '';
+    return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-purple-400':''}">
+      <div class="flex items-start justify-between mb-2 gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
+          <button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
+            class="font-semibold text-gray-800 text-sm hover:text-purple-600 transition-colors">
+            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}
+          </button>
         </div>
-        ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
-        ${imgHtml}
-        ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
-      </div>`;
-    }).join('');
-    return sectionHead + itemsHtml;
+        <div class="text-right flex-shrink-0">
+          <p class="text-xs font-semibold text-blue-600">${dayName} · ${passage.replace('고린도전서','고전')}</p>
+          <p class="text-xs text-gray-400">${formatDate(v.createdAt)}</p>
+        </div>
+      </div>
+      ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
+      ${imgHtml}
+      ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
+    </div>`;
   }).join('') || `<div class="text-center py-8 text-gray-400 bg-white rounded-xl shadow-sm">
     <p class="text-2xl mb-1">✏️</p>
     <p class="text-sm">이번 주 큐티 기록이 없어요</p>
