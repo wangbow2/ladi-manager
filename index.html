@@ -1569,6 +1569,17 @@ function getMonthWeeks(ym) {
   return weeks;
 }
 
+function setAllColumn(field, weekIdx) {
+  if (!isLeader()) return;
+  const students = state.students.filter(s => s.status === '활동중');
+  students.forEach(s => {
+    if (field === 'gate' && s.group === '팀장') return;
+    const c = getCheck(s.id, state.month, weekIdx);
+    setCheck(s.id, state.month, weekIdx, {...c, [field]: 'O'});
+  });
+  renderCheckTable();
+}
+
 function toggleGate(studentId, weekIdx) {
   if (!isLeader()) return;
   const c = getCheck(studentId, state.month, weekIdx);
@@ -2885,13 +2896,16 @@ function renderCheckTableView(month, weeks) {
     <th colspan="5" class="px-1 py-1 text-xs font-semibold text-purple-700 border-l border-gray-200">${w.label} (토 ${w.satDate.slice(5)} / 주 ${w.sunDate.slice(5)})</th>
   </tr>`;
 
+  const allBtn = (field) => isLeader()
+    ? `<button onclick="setAllColumn('${field}',${wi})" class="block w-full text-[9px] text-gray-400 hover:text-green-600 leading-none mt-0.5">전체O</button>`
+    : '';
   const subhead = `<tr class="bg-gray-50">
     <th class="sticky left-0 bg-gray-50 px-1 py-0.5"></th>
     <th class="px-0.5 py-0.5"></th>
     <th class="px-0.5 py-0.5 text-[10px] text-blue-600 font-medium border-l border-gray-200">QT</th>
-    <th class="px-0.5 py-0.5 text-[10px] text-green-600 font-medium">가테</th>
-    <th class="px-0.5 py-0.5 text-[10px] text-purple-600 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}</th>
-    <th class="px-0.5 py-0.5 text-[10px] text-orange-600 font-medium">주${sunRateTxt?`<span class='text-gray-400 font-normal'>${sunRateTxt}</span>`:''}</th>
+    <th class="px-0.5 py-0.5 text-[10px] text-green-600 font-medium">가테${allBtn('gate')}</th>
+    <th class="px-0.5 py-0.5 text-[10px] text-purple-600 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}${allBtn('sat')}</th>
+    <th class="px-0.5 py-0.5 text-[10px] text-orange-600 font-medium">주${sunRateTxt?`<span class='text-gray-400 font-normal'>${sunRateTxt}</span>`:''}${allBtn('sun')}</th>
     <th class="px-0.5 py-0.5 text-[10px] text-gray-400 font-medium">🚦</th>
   </tr>`;
 
