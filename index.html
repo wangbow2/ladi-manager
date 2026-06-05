@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>수영로고 LADI 찬양팀</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="LADI">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icons/icon-152x152.png">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -38,32 +45,113 @@
   .lineup-제외 { background:#FEE2E2; color:#DC2626; font-weight:700; }
   .lineup-무단 { background:#FEE2E2; color:#7C2D12; font-weight:700; }
   .lineup-확인필요 { background:#F3E8FF; color:#7C3AED; font-weight:700; }
+
+  /* ── 네비게이션 활성 상태 ── */
   .nav-btn.active { color: #7C3AED; }
+  .nav-btn.active svg { stroke: #7C3AED; }
+  .nav-btn.active span { color: #7C3AED; }
+  .nav-btn span { font-size: 12px; }
+
+  /* ── 라인업 흐림 처리 ── */
   .restricted-chip { filter: grayscale(1); opacity: 0.45; }
+  .lineup-chip-excluded { opacity: 0.4; }
+
   .love-photo-thumb { width:72px; height:72px; object-fit:cover; border-radius:8px; }
   #qr-video { width:100%; max-width:340px; border-radius:12px; }
   #qr-scan-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:200px; height:200px; border:3px solid #7C3AED; border-radius:12px; pointer-events:none; }
   nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .nav-btn.active svg { stroke: #7C3AED; }
-  .check-cell { min-width: 48px; text-align: center; padding: 4px 2px; font-size: 12px; border-radius: 4px; cursor: pointer; user-select: none; }
+
+  /* ── 체크셀 터치 영역 확대 ── */
+  .check-cell {
+    min-width: 56px;
+    min-height: 44px;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .scroll-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table th, table td { white-space: nowrap; }
-  .birthday-today { border: 2px solid #EC4899; animation: pulse 2s infinite; }
+
+  /* ── 생일 배너 ── */
+  .birthday-today { border: 2px solid #EC4899; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+  .birthday-banner-pulse { animation: pulse 2s infinite; }
+
+  /* ── 카카오 배너 ── */
   #kakao-banner { display:none; background:#FEF3C7; border-bottom:1px solid #FDE68A; padding:10px 16px; font-size:13px; color:#92400E; text-align:center; position:fixed; top:0; left:0; right:0; z-index:200; }
   #kakao-banner.show { display:block; }
   body.has-kakao-banner header { top: 48px; }
   body.has-kakao-banner main { padding-top: calc(3.5rem + 48px); }
+
   #login-screen { display:flex; }
   .pin-input { letter-spacing: 0.5em; font-size: 1.5rem; text-align:center; }
   .no-edit { pointer-events:none; }
+
   .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
   .modal.open { display:flex; }
+
   input[type="text"], input[type="date"], select, textarea {
     border:1px solid #D1D5DB; border-radius:8px; padding:8px 12px;
     font-size:14px; width:100%; outline:none;
   }
   input:focus, select:focus, textarea:focus { border-color:#7C3AED; box-shadow:0 0 0 2px rgba(124,58,237,0.2); }
+
+  /* ── 버튼 최소 높이 44px ── */
+  button, .btn { min-height: 44px; }
+  .nav-btn { min-height: unset; }
+
+  /* ── 카드 통일 디자인 ── */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+    padding: 16px;
+  }
+
+  /* ── 학생 카드 패딩 강화 ── */
+  .student-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+
+  /* ── 큐티 미제출 상단 표시 ── */
+  .qt-unsubmitted-badge {
+    background: #FEE2E2;
+    color: #DC2626;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  /* ── 오늘 생일 배너 ── */
+  #today-birthday-banner {
+    display: none;
+    background: linear-gradient(90deg, #EC4899 0%, #7C3AED 100%);
+    color: #fff;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 49;
+  }
+  #today-birthday-banner.show { display: block; }
+  body.has-birthday-banner main { padding-top: calc(3.5rem + 36px); }
+  body.has-birthday-banner.has-kakao-banner main { padding-top: calc(3.5rem + 48px + 36px); }
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -74,6 +162,9 @@
   <button onclick="openExternalBrowser()" style="margin-left:8px;background:#D97706;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:bold;cursor:pointer;">외부 브라우저로 열기</button>
   <button onclick="dismissKakaoBanner()" style="margin-left:4px;background:none;border:none;font-size:16px;cursor:pointer;color:#92400E;vertical-align:middle;">×</button>
 </div>
+
+<!-- 오늘 생일자 배너 -->
+<div id="today-birthday-banner"></div>
 
 <!-- Header -->
 <header class="bg-purple-700 text-white px-4 py-3 fixed top-0 left-0 right-0 z-50 shadow-md">
@@ -103,16 +194,23 @@
   </div>
 
   <!-- ==================== STUDENTS ==================== -->
-  <div id="page-students" class="page p-4">
-    <div class="flex gap-2 mb-4 flex-wrap">
-      <button onclick="filterGroup('전체')" id="grp-전체" class="grp-btn text-xs px-3 py-1 rounded-full bg-purple-100 text-purple-800 font-semibold border border-purple-300">전체</button>
-      <button onclick="filterGroup('팀장')" id="grp-팀장" class="grp-btn text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-semibold border border-blue-300">팀장</button>
-      <button onclick="filterGroup('솔라디')" id="grp-솔라디" class="grp-btn text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold border border-yellow-300">솔라디</button>
-      <button onclick="filterGroup('라디스')" id="grp-라디스" class="grp-btn text-xs px-3 py-1 rounded-full bg-orange-100 text-orange-800 font-semibold border border-orange-300">라디스</button>
-      <button onclick="filterGroup('액기스')" id="grp-액기스" class="grp-btn text-xs px-3 py-1 rounded-full bg-green-100 text-green-800 font-semibold border border-green-300">액기스</button>
-      <button onclick="openAddStudent()" id="btn-add-student" class="ml-auto text-xs px-3 py-1 rounded-full bg-purple-600 text-white font-semibold">+ 추가</button>
+  <div id="page-students" class="page">
+    <!-- 상단 고정 검색 + 필터 영역 -->
+    <div class="sticky top-14 z-40 bg-gray-50 px-4 pt-3 pb-2 border-b border-gray-100">
+      <div class="relative mb-2">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="student-search" placeholder="이름으로 검색..." class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-purple-400" oninput="filterStudentSearch(this.value)">
+      </div>
+      <div class="flex gap-2 flex-wrap items-center">
+        <button onclick="filterGroup('전체')" id="grp-전체" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-purple-100 text-purple-800 font-semibold border border-purple-300" style="min-height:32px">전체</button>
+        <button onclick="filterGroup('팀장')" id="grp-팀장" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 font-semibold border border-blue-300" style="min-height:32px">팀장</button>
+        <button onclick="filterGroup('솔라디')" id="grp-솔라디" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-800 font-semibold border border-yellow-300" style="min-height:32px">솔라디</button>
+        <button onclick="filterGroup('라디스')" id="grp-라디스" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-orange-100 text-orange-800 font-semibold border border-orange-300" style="min-height:32px">라디스</button>
+        <button onclick="filterGroup('액기스')" id="grp-액기스" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-green-100 text-green-800 font-semibold border border-green-300" style="min-height:32px">액기스</button>
+        <button onclick="openAddStudent()" id="btn-add-student" class="ml-auto text-xs px-3 py-1.5 rounded-full bg-purple-600 text-white font-semibold" style="min-height:32px">+ 추가</button>
+      </div>
     </div>
-    <div id="student-list"></div>
+    <div id="student-list" class="p-4"></div>
   </div>
 
   <!-- ==================== CHECK TABLE ==================== -->
@@ -135,10 +233,13 @@
       </div>
     </div>
     <div class="flex items-center justify-between mb-2 px-2">
-      <h2 class="font-bold text-gray-800" id="check-title">5월 OT 체크표</h2>
+      <div>
+        <h2 class="font-bold text-gray-800" id="check-title">5월 OT 체크표</h2>
+        <p class="text-xs text-gray-400 mt-0.5" id="check-rate-summary"></p>
+      </div>
       <div class="flex gap-2">
-        <button onclick="toggleView()" id="view-toggle" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold">카드뷰</button>
-        <button onclick="exportCSV()" class="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-semibold">내보내기</button>
+        <button onclick="toggleView()" id="view-toggle" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">카드뷰</button>
+        <button onclick="exportCSV()" class="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">내보내기</button>
       </div>
     </div>
     <div id="check-week-tabs" class="flex gap-1.5 overflow-x-auto pb-2 px-2 mb-2"></div>
@@ -2286,44 +2387,92 @@ function renderFeedbackSection() {
     </div>`;
 }
 
+function _initTodayBirthdayBanner() {
+  const allStudents = activeStudents();
+  const todayBirthdays = allStudents.filter(s => isToday(s.birthDate));
+  const banner = document.getElementById('today-birthday-banner');
+  if (!banner) return;
+  if (todayBirthdays.length) {
+    banner.textContent = '🎂 오늘 생일: ' + todayBirthdays.map(s => s.name).join(', ') + ' 🎉';
+    banner.classList.add('show');
+    document.body.classList.add('has-birthday-banner');
+  } else {
+    banner.classList.remove('show');
+    document.body.classList.remove('has-birthday-banner');
+  }
+}
+
 function renderDashboard() {
+  _initTodayBirthdayBanner();
   if (isMember()) { renderMemberDashboard(); return; }
   const allStudents = activeStudents();
-  const todayBirthdays = allStudents.filter(s=>isToday(s.birthDate));
   const month = state.month;
   const monthBirthdays = allStudents.filter(s=>isBirthdayThisMonth(s.birthDate, month))
     .sort((a,b)=>parseInt(a.birthDate.split('-')[2])-parseInt(b.birthDate.split('-')[2]));
 
   const html = `
     <div class="space-y-3">
-      <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
+      <!-- 핵심 기능 카드 그리드 -->
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="navigate('check')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-blue-50" style="min-height:80px">
+          <span class="text-2xl">📋</span>
+          <div>
+            <p class="font-bold text-gray-800 text-sm">출석 체크표</p>
+            <p class="text-xs text-gray-400">주차별 출석 관리</p>
+          </div>
+        </button>
+        <button onclick="navigate('qt')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-purple-50" style="min-height:80px">
+          <span class="text-2xl">📖</span>
+          <div>
+            <p class="font-bold text-gray-800 text-sm">큐티 관리</p>
+            <p class="text-xs text-gray-400">말씀 묵상 기록</p>
+          </div>
+        </button>
+        <button onclick="navigate('lineup')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-green-50" style="min-height:80px">
+          <span class="text-2xl">⭐</span>
+          <div>
+            <p class="font-bold text-gray-800 text-sm">라인업</p>
+            <p class="text-xs text-gray-400">이번 주 세워질 팀원</p>
+          </div>
+        </button>
+        <button onclick="navigate('students')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-orange-50" style="min-height:80px">
+          <span class="text-2xl">👥</span>
+          <div>
+            <p class="font-bold text-gray-800 text-sm">학생 관리</p>
+            <p class="text-xs text-gray-400">팀원 정보 조회</p>
+          </div>
+        </button>
+      </div>
+
+      <!-- 이번 주/월 요약 통계 -->
+      ${renderAdminStats()}
+
+      <!-- 생일자 -->
+      <div class="bg-white rounded-xl px-4 py-3 shadow-md">
         <div class="flex items-center justify-between mb-2">
           <p class="text-xs text-gray-500 font-semibold">🎂 ${getMonthStr(month)} 생일자</p>
-          ${todayBirthdays.length ? `<span class="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full font-bold">오늘: ${todayBirthdays.map(s=>s.name).join(', ')} 🎂</span>` : ''}
+          <button onclick="navigate('birthday')" class="text-xs text-purple-500 font-semibold" style="min-height:unset">전체 보기</button>
         </div>
         ${monthBirthdays.length ? `
           <div class="flex flex-wrap gap-1.5">
             ${monthBirthdays.map(s=>`
-              <span class="flex items-center gap-1 text-xs px-2 py-1 rounded-full badge-${s.group} ${isToday(s.birthDate)?'ring-2 ring-pink-400':''}">
+              <span class="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full badge-${s.group} ${isToday(s.birthDate)?'ring-2 ring-pink-400':''}">
                 ${s.name} <span class="opacity-60">${formatBirthDate(s.birthDate)}</span>${isToday(s.birthDate)?'🎂':''}
               </span>`).join('')}
           </div>` : '<p class="text-xs text-gray-400">이번 달 생일자 없음</p>'}
       </div>
 
-      ${renderAdminStats()}
-
       ${renderWeeklyFiles()}
 
       ${renderFeedbackSection()}
 
-      <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
-        <p class="text-xs text-gray-500 font-semibold mb-2">빠른 메뉴</p>
-        <div class="grid grid-cols-5 gap-2">
-          <button onclick="navigate('check')" class="bg-blue-50 text-blue-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📋<span>체크표</span></button>
-          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📖<span>큐티</span></button>
-          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">⭐<span>라인업</span></button>
-          <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">💛<span>사랑모임</span></button>
-          <button onclick="navigate('qr')" class="bg-gray-50 text-gray-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📷<span>QR</span></button>
+      <!-- 기타 메뉴 -->
+      <div class="bg-white rounded-xl px-4 py-3 shadow-md">
+        <p class="text-xs text-gray-500 font-semibold mb-2">기타 메뉴</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1" style="min-height:56px">💛<span>사랑모임</span></button>
+          <button onclick="navigate('qr')" class="bg-gray-50 text-gray-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1" style="min-height:56px">📷<span>QR출석</span></button>
+          <button onclick="navigate('birthday')" class="bg-yellow-50 text-yellow-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1" style="min-height:56px">🎂<span>생일</span></button>
         </div>
       </div>
     </div>
@@ -2466,24 +2615,72 @@ function renderMemberDashboard() {
 
       ${renderFeedbackSection()}
 
-      <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
+      <div class="bg-white rounded-xl px-4 py-3 shadow-md">
         <p class="text-xs text-gray-500 font-semibold mb-2">빠른 메뉴</p>
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-xl py-2.5 font-semibold text-sm">📖 말씀 큐티</button>
-          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-2.5 font-semibold text-sm">⭐ 라인업</button>
-          <button onclick="navigate('birthday')" class="bg-pink-50 text-pink-700 rounded-xl py-2.5 font-semibold text-sm">🎂 생일</button>
-          <button onclick="navigate('mypage')" class="bg-blue-50 text-blue-700 rounded-xl py-2.5 font-semibold text-sm">👤 마이페이지</button>
+          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">📖 말씀 큐티</button>
+          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">⭐ 라인업</button>
+          <button onclick="navigate('birthday')" class="bg-pink-50 text-pink-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">🎂 생일</button>
+          <button onclick="navigate('mypage')" class="bg-blue-50 text-blue-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">👤 마이페이지</button>
         </div>
       </div>
     </div>
   `;
   document.getElementById('dashboard-content').innerHTML = html;
+  _initTodayBirthdayBanner();
   renderFeedbackList();
 }
 
 // ==========================================
 // STUDENTS
 // ==========================================
+let _studentSearchQuery = '';
+
+function filterStudentSearch(q) {
+  _studentSearchQuery = (q || '').trim();
+  renderStudents();
+}
+
+function _renderStudentCard(s) {
+  const stats = calcStats(s.id, state.month);
+  const bdayFlag = isToday(s.birthDate) ? '🎂 ' : '';
+  const g = s.group;
+  // 출석/QT 상태 뱃지 색상 즉시 표시
+  const satBadge = stats.satRate !== null
+    ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${stats.satRate >= 90 ? 'bg-blue-100 text-blue-700' : stats.satRate >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">토 ${stats.satRate}%</span>` : '';
+  const sunBadge = stats.sunRate !== null
+    ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${stats.sunRate >= 90 ? 'bg-purple-100 text-purple-700' : stats.sunRate >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">주일 ${stats.sunRate}%</span>` : '';
+  const qtBadge = stats.qtAvg !== null
+    ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${parseFloat(stats.qtAvg) >= 4 ? 'bg-green-100 text-green-700' : parseFloat(stats.qtAvg) >= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">QT ${stats.qtAvg}</span>` : '';
+  const ph = profiles[s.id]?.photo;
+  const avatarStyle = ph ? `background-image:url(${ph});background-size:cover;background-position:center` : '';
+  const avatarInner = ph ? '' : `<span class="font-bold text-sm text-purple-700">${s.name[0]}</span>`;
+  return `
+    <div class="student-card group-${g} border border-transparent active:border-purple-200 mb-2"
+         onclick="navigate('detail',{currentStudentId:'${s.id}'})">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 overflow-hidden" style="${avatarStyle}">${avatarInner}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-bold text-gray-800 text-sm">${bdayFlag}${s.name}</p>
+            <span class="text-xs text-gray-500">${s.gender}</span>
+            ${s.grade ? `<span class="text-xs text-gray-400">${s.grade}</span>` : ''}
+            ${s.instrument ? `<span class="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full">${s.instrument}</span>` : ''}
+            ${s.role ? s.role.split(' / ').map(r=>roleBadge(r)).join('') : ''}
+            ${s.status==='군복무' ? `<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🪖군복무</span>` : ''}
+          </div>
+          <p class="text-xs text-gray-400 mt-0.5">${formatBirthDate(s.birthDate)}</p>
+          ${g!=='팀장' ? `<div class="flex gap-1.5 mt-1.5 flex-wrap">${satBadge}${sunBadge}${qtBadge}</div>` : ''}
+        </div>
+        <div class="flex flex-col gap-1.5 flex-shrink-0">
+          ${(isLeader() && s.phone) ? `<button onclick="event.stopPropagation();callPhone('${s.phone}')" class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg" style="min-height:36px">📞</button>` : ''}
+          ${isAdmin() ? `<button onclick="event.stopPropagation();openEditStudent('${s.id}')" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1.5 rounded-lg" style="min-height:36px">수정</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderStudents() {
   if (isMember()) {
     document.getElementById('student-list').innerHTML = '<p class="text-center text-gray-400 py-8">접근 권한이 없습니다</p>';
@@ -2491,8 +2688,10 @@ function renderStudents() {
     return;
   }
   const group = state.currentGroup || '전체';
+  const query = _studentSearchQuery.toLowerCase();
   let filtered = state.students;
   if (group !== '전체') filtered = filtered.filter(s=>s.group===group);
+  if (query) filtered = filtered.filter(s => s.name.toLowerCase().includes(query));
 
   const html = GROUP_ORDER.filter(g=> group==='전체'||g===group).map(g=>{
     const gs = filtered.filter(s=>s.group===g)
@@ -2506,45 +2705,12 @@ function renderStudents() {
           <span class="badge-${g} text-xs font-bold px-3 py-1 rounded-full">${g}</span>
           <span class="text-xs text-gray-400">${gs.length}명</span>
         </div>
-        <div class="space-y-2">
-          ${gs.map(s=>{
-            const stats = calcStats(s.id, state.month);
-            const bdayFlag = isToday(s.birthDate) ? '🎂 ' : '';
-            return `
-              <div class="bg-white rounded-xl p-3 shadow-sm group-${g} border border-transparent hover:border-purple-200 cursor-pointer"
-                   onclick="navigate('detail',{currentStudentId:'${s.id}'})">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-800 font-bold text-sm flex-shrink-0">${s.name[0]}</div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <p class="font-bold text-gray-800 text-sm">${bdayFlag}${s.name}</p>
-                      <span class="text-xs text-gray-500">${s.gender}</span>
-                      ${s.grade ? `<span class="text-xs text-gray-400">${s.grade}</span>` : ''}
-                      ${s.instrument ? `<span class="text-xs bg-purple-50 text-purple-600 px-1.5 rounded-full">${s.instrument}</span>` : ''}
-                      ${s.role ? s.role.split(' / ').map(r=>roleBadge(r)).join('') : ''}
-                      ${s.status==='군복무' ? `<span class="text-xs bg-green-100 text-green-700 px-1.5 rounded-full">🪖군복무</span>` : ''}
-                    </div>
-                    <p class="text-xs text-gray-500">${formatBirthDate(s.birthDate)}</p>
-                    ${s.group!=='팀장' ? `<div class="flex gap-2 mt-1">
-                      ${stats.satRate!==null ? `<span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">토 ${stats.satRate}%</span>`:''}
-                      ${stats.sunRate!==null ? `<span class="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">주일 ${stats.sunRate}%</span>`:''}
-                      ${stats.qtAvg!==null ? `<span class="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">QT ${stats.qtAvg}</span>`:''}
-                    </div>` : ''}
-                  </div>
-                  <div class="flex flex-col gap-1">
-                    ${(isLeader() && s.phone) ? `<button onclick="event.stopPropagation();callPhone('${s.phone}')" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg">📞</button>` : ''}
-                    ${isAdmin() ? `<button onclick="event.stopPropagation();openEditStudent('${s.id}')" class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-lg">수정</button>` : ''}
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
+        ${gs.map(s => _renderStudentCard(s)).join('')}
       </div>
     `;
   }).join('');
 
-  document.getElementById('student-list').innerHTML = html || '<p class="text-center text-gray-400 py-8">학생이 없습니다</p>';
+  document.getElementById('student-list').innerHTML = html || '<p class="text-center text-gray-400 py-8">검색 결과가 없습니다</p>';
   document.getElementById('btn-add-student').style.display = isAdmin() ? '' : 'none';
 
   // Update filter buttons
@@ -2723,6 +2889,19 @@ function renderCheckTableView(month, weeks) {
   const wi = checkWeekIdx;
   const w = weeks[wi];
 
+  // 헤더 출석률 계산
+  const weekStudents = students.filter(s => s.group !== '팀장');
+  let satTotal=0, satOk=0, sunTotal=0, sunOk=0;
+  weekStudents.forEach(s => {
+    const c = getCheck(s.id, month, wi);
+    if (c.sat !== '') { satTotal++; if (c.sat==='O') satOk++; }
+    if (c.sun !== '') { sunTotal++; if (c.sun==='O'||c.sun==='지각') sunOk++; }
+  });
+  const satRateTxt = satTotal ? ` ${Math.round(satOk/satTotal*100)}%` : '';
+  const sunRateTxt = sunTotal ? ` ${Math.round(sunOk/sunTotal*100)}%` : '';
+  const rateEl = document.getElementById('check-rate-summary');
+  if (rateEl) rateEl.textContent = (satTotal||sunTotal) ? `이번 주 토${satRateTxt} · 주일${sunRateTxt}` : '';
+
   const thead = `<tr class="bg-gray-100">
     <th class="sticky left-0 bg-gray-100 px-3 py-2 text-left text-xs font-semibold text-gray-600 min-w-16">이름</th>
     <th class="px-1 py-2 text-xs font-semibold text-gray-500 min-w-8">분과</th>
@@ -2734,8 +2913,8 @@ function renderCheckTableView(month, weeks) {
     <th class="px-1 py-1"></th>
     <th class="px-1 py-1 text-xs text-blue-600 font-medium border-l border-gray-200">QT</th>
     <th class="px-1 py-1 text-xs text-green-600 font-medium">가테</th>
-    <th class="px-1 py-1 text-xs text-purple-600 font-medium">토</th>
-    <th class="px-1 py-1 text-xs text-orange-600 font-medium">주일</th>
+    <th class="px-1 py-1 text-xs text-purple-600 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}</th>
+    <th class="px-1 py-1 text-xs text-orange-600 font-medium">주일${sunRateTxt?`<span class='text-gray-400 font-normal'>${sunRateTxt}</span>`:''}</th>
     <th class="px-1 py-1 text-xs text-gray-400 font-medium"></th>
   </tr>`;
 
@@ -3065,11 +3244,11 @@ function renderQTSubmit() {
     </div>`;
   }
 
-  const todayCard = `
+  const passageCard = `
     <div class="bg-white rounded-2xl p-4 shadow-sm">
       <div class="flex items-center justify-between mb-2">
         <p class="text-xs text-gray-400 font-semibold">${todayLabel}</p>
-        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">오늘</span>
+        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">오늘 말씀</span>
       </div>
       ${todayPassage ? `<p class="font-bold text-gray-800 text-sm">${todayPassage}</p>` : ''}
       ${todayText ? `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2">
@@ -3077,17 +3256,67 @@ function renderQTSubmit() {
         <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${todayText}</p>
       </div>` : ''}
       <div id="qt-today-imgs" class="mt-2">${todayImgHtml}</div>
+    </div>`;
+
+  const myQTCard = todayForm ? `
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-500 mb-1">내 큐티</p>
       ${todayForm}
+    </div>` : '';
+
+  // 미제출 학생 상단 노출 (관리자/팀장만)
+  let unsubmittedSection = '';
+  if (isLeader()) {
+    const submittedIds = new Set(allWeekEntries.map(e => e.s.id));
+    const unsubmitted = activeStudents().filter(s => !submittedIds.has(s.id) && s.group !== '팀장');
+    if (unsubmitted.length) {
+      unsubmittedSection = `
+        <div class="bg-red-50 rounded-xl px-4 py-3 border border-red-100">
+          <p class="text-xs font-bold text-red-600 mb-2">미제출 ${unsubmitted.length}명</p>
+          <div class="flex flex-wrap gap-1.5">
+            ${unsubmitted.map(s => `<span class="qt-unsubmitted-badge">${s.name}</span>`).join('')}
+          </div>
+        </div>`;
+    }
+  }
+
+  // 큐티 달성 횟수 강조 — allWeekEntries에서 제출 횟수 누적 (이번 주 기준)
+  const qtFeedItems = allWeekEntries.map(({ s, v, dateStr }) => {
+    const isMe = s.id === state.currentUser;
+    const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
+    const passage = QT_SCHEDULE[dateStr] || '';
+    // 이번 주 해당 학생의 총 제출 횟수
+    const weekCount = thisWeekDays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+    const trophy = weekCount >= 5 ? ' 🏆' : '';
+    return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-purple-400':''}">
+      <div class="flex items-start justify-between mb-2 gap-2">
+        <div class="flex items-center gap-2">
+          <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
+          <span class="font-semibold text-gray-800 text-sm">${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}${trophy}</span>
+          <span class="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">${weekCount}회</span>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <p class="text-xs font-semibold text-blue-600">${dayName} · ${passage.replace('고린도전서','고전')}</p>
+          <p class="text-xs text-gray-400">${formatDate(v.createdAt)}</p>
+        </div>
+      </div>
+      ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
+      ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+      ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
+    </div>`;
+  }).join('') || `<div class="text-center py-8 text-gray-400 bg-white rounded-xl shadow-sm">
+      <p class="text-2xl mb-1">✏️</p>
+      <p class="text-sm">이번 주 큐티 기록이 없어요</p>
+      <p class="text-xs mt-1 text-gray-300">달력에서 날짜를 탭해 올리세요</p>
     </div>`;
 
   document.getElementById('qt-submit-content').innerHTML = `
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="font-bold text-gray-800">6월 말씀 큐티</h2>
-        <span class="text-xs text-gray-500">내 진도 ${doneCount}/${totalDays}일</span>
+        <span class="text-xs text-gray-500">내 진도 <span class="font-bold text-purple-600">${doneCount}</span>/${totalDays}일</span>
       </div>
-      ${todayCard}
-      <div class="bg-gray-50 rounded-2xl p-3 shadow-sm">
+      <div class="bg-gray-50 rounded-xl p-3 shadow-sm">
         <div class="flex gap-1 mb-2 px-0.5">
           ${['월','화','수','목','금'].map(d=>`<div class="flex-1 text-center text-xs font-semibold text-gray-400">${d}</div>`).join('')}
           <div class="w-4"></div>
@@ -3095,12 +3324,15 @@ function renderQTSubmit() {
         ${calRows}
         <p class="text-[10px] text-gray-400 text-center mt-1">날짜 탭 → 큐티 올리기 · 금요일 자정 마감</p>
       </div>
+      ${passageCard}
+      ${myQTCard}
       <div>
         <div class="flex items-center justify-between mb-2">
           <p class="text-xs font-semibold text-gray-500">이번 주 큐티 피드 (${allWeekEntries.length}개)</p>
-          ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1 rounded-full font-semibold">🔄 이미지 동기화</button>` : ''}
+          ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1 rounded-full font-semibold" style="min-height:32px">🔄 이미지 동기화</button>` : ''}
         </div>
-        <div class="space-y-3">${feed}</div>
+        ${unsubmittedSection}
+        <div class="space-y-3">${qtFeedItems}</div>
       </div>
     </div>`;
 
@@ -3288,35 +3520,15 @@ function _renderPassageImgSection(dateStr) {
   // Keep actual slot indices (img0/img1) so delete buttons use correct slot
   const entries = [['img0',0,imgs.img0],['img1',1,imgs.img1]].filter(([,,v])=>v);
 
-  let carouselHtml = '';
-  if (entries.length === 1) {
-    const [,slot,src] = entries[0];
-    carouselHtml = `
-      <div class="relative rounded-xl mt-3">
-        <img src="${src}" class="w-full object-contain rounded-xl cursor-pointer" style="max-height:300px;display:block" onclick="event.stopPropagation();openImgFullscreen('${src}')">
-        ${isAdmin() ? `<button onclick="event.stopPropagation();removePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full z-10">삭제</button>` : ''}
-      </div>`;
-  } else if (entries.length === 2) {
-    const [[,s0,src0],[,s1,src1]] = entries;
-    carouselHtml = `
-      <div id="pcarousel-${dateStr}" data-idx="0" data-date="${dateStr}" tabindex="0" class="outline-none focus:ring-2 focus:ring-purple-400 mt-3 rounded-xl"
-           ontouchstart="pcTouchStart(event,this)" ontouchend="pcTouchEnd(event,this)"
-           onkeydown="pcKeyDown(event,this)">
-        <div id="pslide-0-${dateStr}" class="relative rounded-xl">
-          <img src="${src0}" class="w-full object-contain rounded-xl cursor-pointer" style="max-height:300px;display:block" onclick="event.stopPropagation();openImgFullscreen('${src0}')">
-          ${isAdmin() ? `<button onclick="event.stopPropagation();removePassageImage('${dateStr}',${s0})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full z-10">삭제</button>` : ''}
-        </div>
-        <div id="pslide-1-${dateStr}" class="relative rounded-xl" style="display:none">
-          <img src="${src1}" class="w-full object-contain rounded-xl cursor-pointer" style="max-height:300px;display:block" onclick="event.stopPropagation();openImgFullscreen('${src1}')">
-          ${isAdmin() ? `<button onclick="event.stopPropagation();removePassageImage('${dateStr}',${s1})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full z-10">삭제</button>` : ''}
-        </div>
-        <div class="flex justify-center gap-2 mt-1.5">
-          <div id="pdot-0-${dateStr}" class="w-2 h-2 rounded-full bg-purple-500 transition-all"></div>
-          <div id="pdot-1-${dateStr}" class="w-2 h-2 rounded-full bg-gray-300 transition-all"></div>
-        </div>
-        <p class="text-center text-xs text-gray-300 mt-1">← → 방향키 또는 스와이프</p>
-      </div>`;
-  }
+  const imgItems = entries.map(([key, slot, src]) => `
+    <div class="relative flex-shrink-0 rounded-xl overflow-hidden" style="width:${entries.length>1?'calc(50% - 4px)':'100%'}">
+      <img src="${src}" class="w-full object-cover rounded-xl cursor-pointer active:opacity-80" style="max-height:260px;display:block"
+           onclick="event.stopPropagation();openImgFullscreen('${dateStr}','${key}')">
+      ${isAdmin() ? `<button onclick="event.stopPropagation();removePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full z-10">삭제</button>` : ''}
+    </div>`).join('');
+
+  const carouselHtml = entries.length ? `
+    <div class="flex gap-2 mt-3">${imgItems}</div>` : '';
 
   if (!isAdmin()) return carouselHtml;
 
@@ -3337,11 +3549,55 @@ function _renderPassageImgSection(dateStr) {
   return `<p class="text-xs font-semibold text-amber-600 mt-3 mb-1">📸 말씀 이미지</p>${carouselHtml}${uploadBtns}`;
 }
 
-function openImgFullscreen(src) {
+function openImgFullscreen(dateStr, imgKey) {
+  const imgs = qtPassageImages[dateStr] || {};
+  const keys = ['img0','img1'].filter(k => imgs[k]);
+  let idx = keys.indexOf(imgKey);
+  if (idx < 0) idx = 0;
+  const srcs = keys.map(k => imgs[k]);
+  if (!srcs.length) return;
+
   const el = document.createElement('div');
   el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  el.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;"><button onclick="this.parentElement.remove()" style="position:absolute;top:16px;right:16px;color:#fff;font-size:2rem;line-height:1;background:none;border:none;cursor:pointer;">×</button>`;
-  el.onclick = e => { if (e.target === el) el.remove(); };
+
+  const img = document.createElement('img');
+  img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-select:none;';
+  img.src = srcs[idx];
+  el.appendChild(img);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '×';
+  closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;color:#fff;font-size:2.5rem;line-height:1;background:none;border:none;cursor:pointer;padding:0 8px;';
+  closeBtn.onclick = () => cleanup();
+  el.appendChild(closeBtn);
+
+  const cleanup = () => { document.removeEventListener('keydown', onKey); el.remove(); };
+
+  const go = dir => {
+    const next = idx + dir;
+    if (next >= 0 && next < srcs.length) { idx = next; img.src = srcs[idx]; }
+  };
+
+  const onKey = e => {
+    if (e.key === 'Escape') { e.preventDefault(); cleanup(); }
+    else if (e.key === 'ArrowRight') go(1);
+    else if (e.key === 'ArrowLeft') go(-1);
+  };
+  document.addEventListener('keydown', onKey);
+
+  el.onclick = e => { if (e.target === el) cleanup(); };
+
+  let tx = 0, ty = 0, tt = 0;
+  el.addEventListener('touchstart', e => {
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    const dy = e.changedTouches[0].clientY - ty;
+    if (Math.sqrt(dx*dx + dy*dy) < 15 && Date.now() - tt < 300) { cleanup(); return; }
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
   document.body.appendChild(el);
 }
 
@@ -4859,7 +5115,9 @@ if (location.search.includes('qr=')) {
 
 // Service worker for offline (optional - just register without blocking)
 if ('serviceWorker' in navigator) {
-  // navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
 }
 </script>
 </body>
