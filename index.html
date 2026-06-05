@@ -64,9 +64,9 @@
   /* ── 체크셀 터치 영역 확대 ── */
   .check-cell {
     min-width: 32px;
-    min-height: 34px;
+    min-height: 28px;
     text-align: center;
-    padding: 3px 2px;
+    padding: 2px 2px;
     font-size: 11px;
     border-radius: 6px;
     cursor: pointer;
@@ -120,7 +120,7 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 4px -1px rgba(0,0,0,0.06);
-    padding: 8px 12px;
+    padding: 5px 10px;
     cursor: pointer;
   }
 
@@ -2628,7 +2628,7 @@ function _renderStudentCard(s) {
   const avatarStyle = ph ? `background-image:url(${ph});background-size:cover;background-position:center` : '';
   const avatarInner = ph ? '' : `<span class="font-bold text-sm text-purple-700">${s.name[0]}</span>`;
   return `
-    <div class="student-card group-${g} border border-transparent active:border-purple-200 mb-1.5"
+    <div class="student-card group-${g} border border-transparent active:border-purple-200 mb-1"
          onclick="navigate('detail',{currentStudentId:'${s.id}'})">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 overflow-hidden" style="${avatarStyle}">${avatarInner}</div>
@@ -2902,23 +2902,23 @@ function renderCheckTableView(month, weeks) {
       const clickSat = canEdit ? `onclick="quickToggleAttendance('${s.id}',${wi},'sat')"` : '';
       const clickSun = canEdit ? `onclick="quickToggleAttendance('${s.id}',${wi},'sun')"` : '';
       rows += `<tr class="hover:bg-gray-50 group-${g}" style="opacity:0.95">
-        <td class="sticky left-0 px-2 py-1 font-semibold text-xs text-gray-800 group-${g} cursor-pointer" onclick="openStudentCheckSheet('${s.id}')">${s.name}</td>
-        <td class="px-0.5 py-1"><span class="badge-${g} text-xs px-1 py-0.5 rounded font-semibold">${g[0]}</span></td>
-        <td class="px-0.5 py-1 border-l border-gray-100">
+        <td class="sticky left-0 px-2 py-0.5 font-semibold text-xs text-gray-800 group-${g} cursor-pointer" onclick="openStudentCheckSheet('${s.id}')">${s.name}</td>
+        <td class="px-0.5 py-0.5"><span class="badge-${g} text-xs px-1 py-0.5 rounded font-semibold">${g[0]}</span></td>
+        <td class="px-0.5 py-0.5 border-l border-gray-100">
           <div class="check-cell qt-${c.qt||'빈칸'}" ${clickQT}>${c.qt||'·'}</div>
         </td>
-        <td class="px-0.5 py-1">
+        <td class="px-0.5 py-0.5">
           ${isLeaderGroup
             ? `<div class="check-cell st-빈칸 no-edit text-gray-300">-</div>`
             : `<div class="check-cell ${c.gate==='O'?'st-O':c.gate==='X'?'st-X':'st-빈칸'}" ${clickGate}>${c.gate||'·'}</div>`}
         </td>
-        <td class="px-0.5 py-1">
+        <td class="px-0.5 py-0.5">
           <div class="check-cell ${c.sat?`st-${c.sat}`:'st-빈칸'}" ${clickSat}>${c.sat||'·'}</div>
         </td>
-        <td class="px-0.5 py-1">
+        <td class="px-0.5 py-0.5">
           <div class="check-cell ${c.sun?`st-${c.sun}`:'st-빈칸'}" ${clickSun}>${c.sun||'·'}</div>
         </td>
-        <td class="px-0.5 py-1 text-center" ${canEdit ? `onclick="openCheckModal('${s.id}',${wi},'sat')"` : ''} style="${canEdit?'cursor:pointer':''}">${weekTrafficLightHtml(c)}</td>
+        <td class="px-0.5 py-0.5 text-center" ${canEdit ? `onclick="openCheckModal('${s.id}',${wi},'sat')"` : ''} style="${canEdit?'cursor:pointer':''}">${weekTrafficLightHtml(c)}</td>
       </tr>`;
     });
   });
