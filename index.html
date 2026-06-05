@@ -481,13 +481,13 @@
 
 <!-- Check Cell Edit Modal -->
 <div id="modal-check" class="modal">
-  <div class="bg-white rounded-2xl w-full max-w-sm mx-4">
-    <div class="p-4 border-b flex items-center justify-between">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[85vh] flex flex-col">
+    <div class="p-4 border-b flex items-center justify-between flex-shrink-0">
       <h3 class="font-bold text-gray-800" id="modal-check-title">체크 수정</h3>
       <button onclick="closeModal('modal-check')" class="text-gray-400 text-2xl leading-none">×</button>
     </div>
-    <div class="p-4 space-y-3" id="modal-check-body"></div>
-    <div class="p-4 border-t flex gap-2">
+    <div class="p-4 space-y-3 overflow-y-auto flex-1" id="modal-check-body"></div>
+    <div class="p-4 border-t flex gap-2 flex-shrink-0">
       <button onclick="saveCheck()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
       <button onclick="closeModal('modal-check')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
     </div>
@@ -910,7 +910,7 @@ const QT_SCHEDULE = {
 };
 
 const WEEKS_LABEL = ['1주차','2주차','3주차','4주차','5주차'];
-const ATTENDANCE_OPTIONS = ['O','지각','결석','가족여행','학교행사','대회','자격증시험','기타'];
+const ATTENDANCE_OPTIONS = ['O','지각','결석','기타'];
 const QT_OPTIONS = ['5','4','3','2','1','0','X',''];
 const GATE_OPTIONS = ['O','X',''];
 
@@ -3834,6 +3834,14 @@ let currentCheckWeekIdx = null;
 function buildCheckModalBody() {
   const s = state.students.find(x=>x.id===currentCheckStudentId);
   const isLeaderGroup = s?.group === '팀장';
+  const attOpts = ATTENDANCE_OPTIONS.concat(['']);
+  function attButtons(field) {
+    return attOpts.map(v=>`
+      <button onclick="setTempCheck('${field}','${v}')"
+        class="px-2 py-1 rounded-lg text-xs font-semibold ${v==='O'?'st-O':v==='지각'?'st-지각':v==='결석'?'st-결석':v==='기타'?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-500'} ${tempCheck[field]===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
+        ${v||'빈칸'}
+      </button>`).join('');
+  }
   return `
     <div class="space-y-4">
       <div>
@@ -3858,52 +3866,23 @@ function buildCheckModalBody() {
       </div>`}
       <div>
         <label class="text-xs font-semibold text-gray-600 block mb-2">토요일 출석</label>
-        <div class="flex flex-wrap gap-2">
-          ${ATTENDANCE_OPTIONS.concat(['']).map(v=>`
-            <button onclick="setTempCheck('sat','${v}')"
-              class="px-2 py-1 rounded-lg text-xs font-semibold ${v?`st-${v}`:'bg-gray-100 text-gray-500'} ${tempCheck.sat===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
-              ${v||'빈칸'}
-            </button>`).join('')}
-        </div>
+        <div class="flex flex-wrap gap-2">${attButtons('sat')}</div>
+        ${tempCheck.sat==='기타' ? `<input type="text" id="sat-reason" placeholder="사유 입력" value="${tempCheck.satReason||''}" oninput="tempCheck.satReason=this.value" class="mt-2 w-full border rounded-lg px-3 py-1.5 text-sm">` : ''}
       </div>
       <div>
         <label class="text-xs font-semibold text-gray-600 block mb-2">주일 출석</label>
-        <div class="flex flex-wrap gap-2">
-          ${ATTENDANCE_OPTIONS.concat(['']).map(v=>`
-            <button onclick="setTempCheck('sun','${v}')"
-              class="px-2 py-1 rounded-lg text-xs font-semibold ${v?`st-${v}`:'bg-gray-100 text-gray-500'} ${tempCheck.sun===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
-              ${v||'빈칸'}
-            </button>`).join('')}
-        </div>
+        <div class="flex flex-wrap gap-2">${attButtons('sun')}</div>
+        ${tempCheck.sun==='기타' ? `<input type="text" id="sun-reason" placeholder="사유 입력" value="${tempCheck.sunReason||''}" oninput="tempCheck.sunReason=this.value" class="mt-2 w-full border rounded-lg px-3 py-1.5 text-sm">` : ''}
       </div>
       <div class="bg-gray-50 rounded-xl p-3 space-y-2">
-        <p class="text-xs font-semibold text-gray-600">지각 상세 (주일 지각인 경우)</p>
         <label class="flex items-center gap-2 text-sm">
           <input type="checkbox" id="late-contacted" ${tempCheck.lateContacted?'checked':''} onchange="tempCheck.lateContacted=this.checked">
-          <span>11시 전 연락함</span>
+          <span>11시 전에 연락 했음</span>
         </label>
-        <div class="flex gap-2">
-          <div class="flex-1">
-            <label class="text-xs text-gray-500">연락 시간</label>
-            <input type="time" id="contact-time" value="${tempCheck.contactTime||''}" oninput="tempCheck.contactTime=this.value" class="mt-1">
-          </div>
-          <div class="flex-1">
-            <label class="text-xs text-gray-500">도착 시간</label>
-            <input type="time" id="arrival-time" value="${tempCheck.arrivalTime||''}" oninput="tempCheck.arrivalTime=this.value" class="mt-1">
-          </div>
-        </div>
         <label class="flex items-center gap-2 text-sm">
           <input type="checkbox" id="qt-copied" ${tempCheck.qtCopied?'checked':''} onchange="tempCheck.qtCopied=this.checked">
-          <span>토요일 QT 필사 완료</span>
+          <span>필사완료</span>
         </label>
-        <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" id="leader-confirmed" ${tempCheck.leaderConfirmed?'checked':''} onchange="tempCheck.leaderConfirmed=this.checked">
-          <span>팀장 확인 완료</span>
-        </label>
-      </div>
-      <div>
-        <label class="text-xs font-semibold text-gray-600 block mb-1">메모</label>
-        <textarea id="check-memo" rows="2" placeholder="메모..." oninput="tempCheck.memo=this.value">${tempCheck.memo||''}</textarea>
       </div>
     </div>
   `;
@@ -3929,11 +3908,9 @@ function setTempCheck(field, value) {
 
 function saveCheck() {
   tempCheck.lateContacted = document.getElementById('late-contacted')?.checked || false;
-  tempCheck.contactTime = document.getElementById('contact-time')?.value || '';
-  tempCheck.arrivalTime = document.getElementById('arrival-time')?.value || '';
   tempCheck.qtCopied = document.getElementById('qt-copied')?.checked || false;
-  tempCheck.leaderConfirmed = document.getElementById('leader-confirmed')?.checked || false;
-  tempCheck.memo = document.getElementById('check-memo')?.value || '';
+  if (tempCheck.sat !== '기타') tempCheck.satReason = '';
+  if (tempCheck.sun !== '기타') tempCheck.sunReason = '';
 
   const prev = getCheck(currentCheckStudentId, state.month, currentCheckWeekIdx);
   const fields = ['qt','gate','sat','sun'];
