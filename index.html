@@ -3054,22 +3054,41 @@ function getQTDayEntry(dateStr) {
 }
 
 function getQTCurrentWeekDays() {
-  // Find Mon-Fri of the QT week closest to today
+  // Mon-Fri only (라인업/잠금 기준)
   const qtDates = Object.keys(QT_SCHEDULE).sort();
   if (!qtDates.length) return [];
   const firstQT = new Date(qtDates[0] + 'T00:00:00');
   const lastQT = new Date(qtDates[qtDates.length - 1] + 'T00:00:00');
-  // Clamp today into QT range
   const ref = TODAY < firstQT ? firstQT : TODAY > lastQT ? lastQT : TODAY;
   const dow = ref.getDay();
   const mon = new Date(ref); mon.setDate(ref.getDate() - (dow === 0 ? 6 : dow - 1));
   const days = [];
   for (let i = 0; i < 5; i++) {
     const c = new Date(mon); c.setDate(mon.getDate() + i);
-    const ds = `${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')}`;
-    days.push(ds);
+    days.push(`${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')}`);
   }
   return days;
+}
+
+function getQTCurrentWeekAllDays() {
+  // 일~토 7일 (메달 카운트용)
+  const qtDates = Object.keys(QT_SCHEDULE).sort();
+  if (!qtDates.length) return [];
+  const firstQT = new Date(qtDates[0] + 'T00:00:00');
+  const lastQT = new Date(qtDates[qtDates.length - 1] + 'T00:00:00');
+  const ref = TODAY < firstQT ? firstQT : TODAY > lastQT ? lastQT : TODAY;
+  const dow = ref.getDay();
+  const sun = new Date(ref); sun.setDate(ref.getDate() - dow);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const c = new Date(sun); c.setDate(sun.getDate() + i);
+    days.push(`${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')}`);
+  }
+  return days;
+}
+
+function qtMedal(count) {
+  return ['🍞','🥉','🥈','🥇','🏁','🏆','🔥','👑'][Math.min(count, 7)];
 }
 
 function renderQTSubmit() {
@@ -3270,9 +3289,10 @@ function renderQTSubmit() {
   }
 
   // 이번 주 학생별 제출 횟수 맵
+  const allWeekAllDays = getQTCurrentWeekAllDays();
   const weekCountMap = {};
   activeStudents().forEach(s => {
-    weekCountMap[s.id] = thisWeekDays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
+    weekCountMap[s.id] = allWeekAllDays.filter(ds => (state.qtDayChecks||{})[`${s.id}_${ds}`]?.done).length;
   });
 
   // 팀별 이름 필터 헤더
@@ -3284,7 +3304,7 @@ function renderQTSubmit() {
       const chips = members.map(s => {
         const cnt = weekCountMap[s.id] || 0;
         const isActive = qtFeedFilter === s.id;
-        const medal = cnt >= 5 ? '🥇' : cnt === 4 ? '🥈' : cnt >= 1 ? '🥉' : '🍞';
+        const medal = qtMedal(cnt);
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
           class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
           style="min-height:unset;line-height:1.4">${s.name}${medal}</button>`;
@@ -3313,7 +3333,7 @@ function renderQTSubmit() {
     const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
     const passage = QT_SCHEDULE[dateStr] || '';
     const weekCount = weekCountMap[s.id] || 0;
-    const medal = weekCount >= 5 ? '🥇' : weekCount === 4 ? '🥈' : weekCount >= 1 ? '🥉' : '🍞';
+    const medal = qtMedal(weekCount);
     const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
     const imgHtml = v.imageKey
       ? imgSrc
