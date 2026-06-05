@@ -1827,7 +1827,16 @@ function navigate(page, extra, isBack) {
 
 window.addEventListener('popstate', e => {
   const s = e.state;
-  if (s && s.page) {
+  if (!s) return;
+  if (s.page === 'qt' && s.qtDay && qtOpenDay) {
+    closeQTDay();
+    return;
+  }
+  if (s.page === 'qt' && !s.qtDay && qtOpenDay) {
+    closeQTDay();
+    return;
+  }
+  if (s.page) {
     if (navHistory.length) navHistory.pop();
     navigate(s.page, s.extra, true);
   }
@@ -2445,6 +2454,9 @@ function renderDashboard() {
         </div>
       </div>
 
+      <!-- 목양 알림 -->
+      ${renderPastoralAlerts()}
+
       <!-- 이번 주/월 요약 통계 -->
       ${renderAdminStats()}
 
@@ -2470,6 +2482,81 @@ function renderDashboard() {
   `;
   document.getElementById('dashboard-content').innerHTML = html;
   renderFeedbackList();
+}
+
+function getCurrentWeekRef() {
+  const month = state.month;
+  const weeks = getMonthWeeks(month);
+  const today = new Date();
+  let wi = weeks.findIndex(w => {
+    const sat = new Date(w.satDate + 'T00:00:00');
+    const mon = new Date(sat); mon.setDate(sat.getDate() - 5);
+    return today >= mon && today <= new Date(w.sunDate + 'T23:59:59');
+  });
+  if (wi < 0) wi = weeks.length - 1;
+  return {month, weekIdx: wi};
+}
+
+function getRecentWeeks(n) {
+  const {month: m0, weekIdx: wi0} = getCurrentWeekRef();
+  const result = [];
+  let [y, m] = m0.split('-').map(Number);
+  let wi = wi0;
+  for (let i = 0; i < n; i++) {
+    result.unshift({month: `${y}-${String(m).padStart(2,'0')}`, weekIdx: wi});
+    wi--;
+    if (wi < 0) {
+      m--; if (m < 1) { m = 12; y--; }
+      wi = getMonthWeeks(`${y}-${String(m).padStart(2,'0')}`).length - 1;
+    }
+  }
+  return result;
+}
+
+function renderPastoralAlerts() {
+  if (!isLeader()) return '';
+  const students = activeStudents().filter(s => s.group !== '팀장');
+  const recentWeeks = getRecentWeeks(4);
+  const CONDS = [
+    { label: 'QT미통과', test: c => c.qt !== '' && c.qt !== 'X' && !isNaN(parseInt(c.qt)) && parseInt(c.qt) < 4 },
+    { label: '가테불통',  test: c => c.gate === 'X' },
+    { label: '토요불참',  test: c => c.sat === '결석' },
+    { label: '주일불참',  test: c => c.sun === '결석' },
+  ];
+  const alerts = [];
+  students.forEach(s => {
+    const checks = recentWeeks.map(({month, weekIdx}) => getCheck(s.id, month, weekIdx));
+    let maxStreak = 0;
+    const reasons = [];
+    CONDS.forEach(({label, test}) => {
+      let streak = 0;
+      for (let i = checks.length - 1; i >= 0; i--) {
+        if (test(checks[i])) streak++; else break;
+      }
+      if (streak >= 2) { reasons.push({label, streak}); if (streak > maxStreak) maxStreak = streak; }
+    });
+    if (reasons.length) alerts.push({student: s, reasons, maxStreak});
+  });
+  if (!alerts.length) return '';
+  alerts.sort((a,b) => b.maxStreak - a.maxStreak);
+  return `
+    <div class="bg-white rounded-xl px-3 py-2 shadow-sm">
+      <p class="text-[10px] text-gray-500 font-semibold mb-1.5">🙏 목양이 필요한 친구 (${alerts.length}명)</p>
+      <div class="space-y-1">
+        ${alerts.map(({student, reasons, maxStreak}) => {
+          const bg   = maxStreak >= 4 ? 'bg-red-50 border-red-200'    : maxStreak === 3 ? 'bg-orange-50 border-orange-200'    : 'bg-yellow-50 border-yellow-200';
+          const text = maxStreak >= 4 ? 'text-red-700'                : maxStreak === 3 ? 'text-orange-700'                : 'text-yellow-700';
+          const dot  = maxStreak >= 4 ? 'bg-red-500'                  : maxStreak === 3 ? 'bg-orange-500'                  : 'bg-yellow-400';
+          return `<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg border ${bg} ${text}">
+            <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}"></div>
+            <span class="font-bold text-xs flex-shrink-0">${student.name}</span>
+            <div class="flex flex-wrap gap-1">
+              ${reasons.map(r=>`<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-white/70 font-medium">${r.label} ${r.streak}주</span>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 function renderAdminStats() {
@@ -3416,6 +3503,7 @@ function renderQTSubmit() {
 function openQTDay(dateStr) {
   qtOpenDay = dateStr;
   qtEditMode = false;
+  history.pushState({ page: 'qt', qtDay: dateStr }, '', location.pathname + location.search);
   renderQTDayView();
 }
 
