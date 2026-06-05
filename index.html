@@ -63,10 +63,10 @@
 
   /* ── 체크셀 터치 영역 확대 ── */
   .check-cell {
-    min-width: 32px;
-    min-height: 28px;
+    min-width: 22px;
+    min-height: 26px;
     text-align: center;
-    padding: 2px 2px;
+    padding: 2px 1px;
     font-size: 11px;
     border-radius: 6px;
     cursor: pointer;
@@ -2634,8 +2634,8 @@ function _renderStudentCard(s) {
         <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 overflow-hidden" style="${avatarStyle}">${avatarInner}</div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1.5 flex-wrap">
-            <p class="font-bold text-gray-800 text-sm">${bdayFlag}${s.name}</p>
-            <span class="text-xs text-gray-400">${s.gender}${s.grade?' · '+s.grade:''}</span>
+            <p class="font-semibold text-gray-800 text-xs">${bdayFlag}${s.name}</p>
+            <span class="text-[10px] text-gray-400">${s.gender}${s.grade?' · '+s.grade:''}</span>
             ${s.instrument ? `<span class="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full">${s.instrument}</span>` : ''}
             ${s.role ? s.role.split(' / ').map(r=>roleBadge(r)).join('') : ''}
             ${s.status==='군복무' ? `<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🪖</span>` : ''}
@@ -2873,8 +2873,8 @@ function renderCheckTableView(month, weeks) {
   if (rateEl) rateEl.textContent = (satTotal||sunTotal) ? `이번 주 토${satRateTxt} · 주일${sunRateTxt}` : '';
 
   const thead = `<tr class="bg-gray-100">
-    <th class="sticky left-0 bg-gray-100 px-2 py-2 text-left text-xs font-semibold text-gray-600" style="min-width:52px">이름</th>
-    <th class="px-1 py-2 text-xs font-semibold text-gray-500" style="min-width:20px">분</th>
+    <th class="sticky left-0 bg-gray-100 px-1 py-2 text-left text-xs font-semibold text-gray-600" style="min-width:40px">이름</th>
+    <th class="px-0.5 py-2 text-xs font-semibold text-gray-500" style="min-width:16px">분</th>
     <th colspan="5" class="px-1 py-2 text-xs font-semibold text-purple-700 border-l border-gray-200">${w.label} (토 ${w.satDate.slice(5)} / 주 ${w.sunDate.slice(5)})</th>
   </tr>`;
 
@@ -3012,6 +3012,7 @@ function renderCheckCards(month, weeks) {
 let qtOpenDay = null;
 let qtEditMode = false;
 let qtFeedFilter = null;
+let _qtImgEditDate = null;
 
 function formatDate(ts) {
   const d = new Date(ts);
@@ -3268,19 +3269,21 @@ function renderQTSubmit() {
         const isActive = qtFeedFilter === s.id;
         const trophy = cnt >= 5 ? '🏆' : '';
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
-          class="text-xs px-2.5 py-1 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'badge-'+g+' opacity-80'}"
-          style="white-space:nowrap">${s.name}(${cnt})${trophy}</button>`;
+          class="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
+          >${s.name}(${cnt})${trophy}</button>`;
       }).join('');
-      return `<div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-[10px] text-gray-400 font-bold w-8 flex-shrink-0">${g[0]}</span>
+      return `<div class="flex items-center gap-1 overflow-x-auto" style="-webkit-overflow-scrolling:touch;scrollbar-width:none">
+        <span class="text-[10px] text-gray-400 font-bold flex-shrink-0 w-5">${g[0]}</span>
         ${chips}
       </div>`;
     }).filter(Boolean).join('');
-    return `<div class="bg-gray-50 rounded-xl p-3 space-y-2">
-      <div class="flex items-center justify-between mb-1">
+    return `<div class="bg-gray-50 rounded-xl px-3 py-2 space-y-1.5">
+      <div class="flex items-center justify-between">
         <p class="text-xs font-semibold text-gray-500">이번 주 큐티 피드 (${allWeekEntries.length}개)</p>
-        ${qtFeedFilter ? `<button onclick="qtFeedFilter=null;renderQTSubmit()" class="text-xs text-purple-500 underline">전체 보기</button>` : ''}
-        ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1 rounded-full font-semibold" style="min-height:32px">🔄</button>` : ''}
+        <div class="flex gap-1.5">
+          ${qtFeedFilter ? `<button onclick="qtFeedFilter=null;renderQTSubmit()" class="text-xs text-purple-500 underline">전체</button>` : ''}
+          ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-semibold">🔄</button>` : ''}
+        </div>
       </div>
       ${groups}
     </div>`;
@@ -3528,38 +3531,46 @@ function savePassageText() {
   renderQTDayView();
 }
 
+function _rerenderPassageImgs(dateStr) {
+  const el = document.getElementById(`qt-passage-imgs-${dateStr}`);
+  if (el) { el.innerHTML = _renderPassageImgSection(dateStr); return; }
+  const el2 = document.getElementById('qt-today-imgs');
+  if (el2) el2.innerHTML = _renderPassageImgSection(dateStr);
+}
+
+function confirmDeletePassageImage(dateStr, slot) {
+  if (!isLeader()) return;
+  if (!confirm('이미지를 삭제하시겠습니까?')) return;
+  removePassageImage(dateStr, slot);
+}
+
 function _renderPassageImgSection(dateStr) {
   const imgs = qtPassageImages[dateStr] || {};
-  // Keep actual slot indices (img0/img1) so delete buttons use correct slot
   const entries = [['img0',0,imgs.img0],['img1',1,imgs.img1]].filter(([,,v])=>v);
+  const inEdit = _qtImgEditDate === dateStr;
 
   const imgItems = entries.map(([key, slot, src]) => `
     <div class="relative flex-shrink-0 rounded-xl overflow-hidden" style="width:${entries.length>1?'calc(50% - 4px)':'100%'}">
       <img src="${src}" class="w-full object-cover rounded-xl cursor-pointer active:opacity-80" style="max-height:260px;display:block"
-           onclick="event.stopPropagation();openImgFullscreen('${dateStr}','${key}')">
-      ${isAdmin() ? `<button onclick="event.stopPropagation();removePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full z-10">삭제</button>` : ''}
+           onclick="event.stopPropagation();${inEdit?'':(`openImgFullscreen('${dateStr}','${key}')`)}">
+      ${inEdit && isLeader() ? `<button onclick="event.stopPropagation();confirmDeletePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10 font-semibold">삭제</button>` : ''}
     </div>`).join('');
 
-  const carouselHtml = entries.length ? `
-    <div class="flex gap-2 mt-3">${imgItems}</div>` : '';
+  const carouselHtml = entries.length ? `<div class="flex gap-2 mt-3">${imgItems}</div>` : '';
 
-  if (!isAdmin()) return carouselHtml;
+  if (!isLeader()) return carouselHtml;
 
-  const uploadBtns = (!imgs.img0 || !imgs.img1) ? `
+  const uploadBtns = inEdit && (!imgs.img0 || !imgs.img1) ? `
     <div class="flex gap-2 mt-2">
-      ${!imgs.img0 ? `
-        <label class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-amber-300 rounded-xl p-2 cursor-pointer text-amber-500 text-xs font-semibold active:bg-amber-50">
-          📷 이미지 1 등록
-          <input type="file" accept="image/*" class="hidden" onchange="uploadPassageImage(this,'${dateStr}',0)">
-        </label>` : ''}
-      ${!imgs.img1 ? `
-        <label class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-amber-300 rounded-xl p-2 cursor-pointer text-amber-500 text-xs font-semibold active:bg-amber-50">
-          📷 이미지 2 등록
-          <input type="file" accept="image/*" class="hidden" onchange="uploadPassageImage(this,'${dateStr}',1)">
-        </label>` : ''}
+      ${!imgs.img0 ? `<label class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-amber-300 rounded-xl p-2 cursor-pointer text-amber-500 text-xs font-semibold active:bg-amber-50">📷 이미지 1 등록<input type="file" accept="image/*" class="hidden" onchange="uploadPassageImage(this,'${dateStr}',0)"></label>` : ''}
+      ${!imgs.img1 ? `<label class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-amber-300 rounded-xl p-2 cursor-pointer text-amber-500 text-xs font-semibold active:bg-amber-50">📷 이미지 2 등록<input type="file" accept="image/*" class="hidden" onchange="uploadPassageImage(this,'${dateStr}',1)"></label>` : ''}
     </div>` : '';
 
-  return `<p class="text-xs font-semibold text-amber-600 mt-3 mb-1">📸 말씀 이미지</p>${carouselHtml}${uploadBtns}`;
+  const editBtn = inEdit
+    ? `<button onclick="_qtImgEditDate=null;_rerenderPassageImgs('${dateStr}')" class="mt-2 text-xs bg-green-500 text-white px-3 py-1.5 rounded-full font-semibold">수정완료</button>`
+    : `<button onclick="_qtImgEditDate='${dateStr}';_rerenderPassageImgs('${dateStr}')" class="mt-2 text-xs bg-amber-500 text-white px-3 py-1.5 rounded-full font-semibold">수정</button>`;
+
+  return `<p class="text-xs font-semibold text-amber-600 mt-3 mb-1">📸 말씀 이미지</p>${carouselHtml}${uploadBtns}${editBtn}`;
 }
 
 function _attachSwipeDownClose(el, img, cleanup, onHorizSwipe) {
