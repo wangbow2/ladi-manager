@@ -3274,10 +3274,10 @@ function renderQTSubmit() {
       const chips = members.map(s => {
         const cnt = weekCountMap[s.id] || 0;
         const isActive = qtFeedFilter === s.id;
-        const trophy = cnt >= 5 ? '🏆' : '';
+        const medal = cnt >= 5 ? '🥇' : cnt === 4 ? '🥈' : cnt >= 1 ? '🥉' : '🍞';
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
           class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
-          style="min-height:unset;line-height:1.4">${s.name}(${cnt})${trophy}</button>`;
+          style="min-height:unset;line-height:1.4">${s.name}${medal}</button>`;
       }).join('');
       return `<div class="flex items-center gap-0.5 flex-wrap">
         <span class="text-[11px] text-gray-400 font-bold flex-shrink-0 w-4">${g[0]}</span>
@@ -3303,7 +3303,7 @@ function renderQTSubmit() {
     const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
     const passage = QT_SCHEDULE[dateStr] || '';
     const weekCount = weekCountMap[s.id] || 0;
-    const trophy = weekCount >= 5 ? ' 🏆' : '';
+    const medal = weekCount >= 5 ? '🥇' : weekCount === 4 ? '🥈' : weekCount >= 1 ? '🥉' : '🍞';
     const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
     const imgHtml = v.imageKey
       ? imgSrc
@@ -3317,8 +3317,7 @@ function renderQTSubmit() {
           <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
           <button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
             class="font-semibold text-gray-800 text-sm hover:text-purple-600 transition-colors">
-            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}${trophy}
-            <span class="text-xs font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full ml-0.5">(${weekCount})</span>
+            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''} ${medal}
           </button>
         </div>
         <div class="text-right flex-shrink-0">
