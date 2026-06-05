@@ -63,11 +63,11 @@
 
   /* ── 체크셀 터치 영역 확대 ── */
   .check-cell {
-    min-width: 56px;
-    min-height: 44px;
+    min-width: 32px;
+    min-height: 34px;
     text-align: center;
-    padding: 6px 4px;
-    font-size: 12px;
+    padding: 3px 2px;
+    font-size: 11px;
     border-radius: 6px;
     cursor: pointer;
     user-select: none;
@@ -118,9 +118,9 @@
   /* ── 학생 카드 패딩 강화 ── */
   .student-card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
-    padding: 14px 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px -1px rgba(0,0,0,0.06);
+    padding: 8px 12px;
     cursor: pointer;
   }
 
@@ -2412,43 +2412,25 @@ function renderDashboard() {
 
   const html = `
     <div class="space-y-3">
-      <!-- 핵심 기능 카드 그리드 -->
-      <div class="grid grid-cols-2 gap-3">
-        <button onclick="navigate('check')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-blue-50" style="min-height:80px">
-          <span class="text-2xl">📋</span>
-          <div>
-            <p class="font-bold text-gray-800 text-sm">출석 체크표</p>
-            <p class="text-xs text-gray-400">주차별 출석 관리</p>
-          </div>
-        </button>
-        <button onclick="navigate('qt')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-purple-50" style="min-height:80px">
-          <span class="text-2xl">📖</span>
-          <div>
-            <p class="font-bold text-gray-800 text-sm">큐티 관리</p>
-            <p class="text-xs text-gray-400">말씀 묵상 기록</p>
-          </div>
-        </button>
-        <button onclick="navigate('lineup')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-green-50" style="min-height:80px">
-          <span class="text-2xl">⭐</span>
-          <div>
-            <p class="font-bold text-gray-800 text-sm">라인업</p>
-            <p class="text-xs text-gray-400">이번 주 세워질 팀원</p>
-          </div>
-        </button>
-        <button onclick="navigate('students')" class="bg-white rounded-xl shadow-md p-4 text-left flex flex-col gap-2 active:bg-orange-50" style="min-height:80px">
-          <span class="text-2xl">👥</span>
-          <div>
-            <p class="font-bold text-gray-800 text-sm">학생 관리</p>
-            <p class="text-xs text-gray-400">팀원 정보 조회</p>
-          </div>
-        </button>
+      <!-- 빠른 메뉴 -->
+      <div class="bg-white rounded-xl px-4 py-3 shadow-sm">
+        <p class="text-xs text-gray-400 font-semibold mb-2">빠른 메뉴</p>
+        <div class="grid grid-cols-4 gap-2">
+          <button onclick="navigate('check')" class="bg-blue-50 text-blue-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📋<span>체크표</span></button>
+          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📖<span>큐티</span></button>
+          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">⭐<span>라인업</span></button>
+          <button onclick="navigate('students')" class="bg-orange-50 text-orange-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">👥<span>학생</span></button>
+          <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">💛<span>사랑모임</span></button>
+          <button onclick="navigate('qr')" class="bg-gray-50 text-gray-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">📷<span>QR출석</span></button>
+          <button onclick="navigate('birthday')" class="bg-yellow-50 text-yellow-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1">🎂<span>생일</span></button>
+        </div>
       </div>
 
       <!-- 이번 주/월 요약 통계 -->
       ${renderAdminStats()}
 
       <!-- 생일자 -->
-      <div class="bg-white rounded-xl px-4 py-3 shadow-md">
+      <div class="bg-white rounded-xl px-4 py-3 shadow-sm">
         <div class="flex items-center justify-between mb-2">
           <p class="text-xs text-gray-500 font-semibold">🎂 ${getMonthStr(month)} 생일자</p>
           <button onclick="navigate('birthday')" class="text-xs text-purple-500 font-semibold" style="min-height:unset">전체 보기</button>
@@ -2465,16 +2447,6 @@ function renderDashboard() {
       ${renderWeeklyFiles()}
 
       ${renderFeedbackSection()}
-
-      <!-- 기타 메뉴 -->
-      <div class="bg-white rounded-xl px-4 py-3 shadow-md">
-        <p class="text-xs text-gray-500 font-semibold mb-2">기타 메뉴</p>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1" style="min-height:56px">💛<span>사랑모임</span></button>
-          <button onclick="navigate('qr')" class="bg-gray-50 text-gray-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1" style="min-height:56px">📷<span>QR출석</span></button>
-          <button onclick="navigate('birthday')" class="bg-yellow-50 text-yellow-700 rounded-xl py-2.5 font-semibold text-xs flex flex-col items-center gap-1" style="min-height:56px">🎂<span>생일</span></button>
-        </div>
-      </div>
     </div>
   `;
   document.getElementById('dashboard-content').innerHTML = html;
@@ -2656,25 +2628,23 @@ function _renderStudentCard(s) {
   const avatarStyle = ph ? `background-image:url(${ph});background-size:cover;background-position:center` : '';
   const avatarInner = ph ? '' : `<span class="font-bold text-sm text-purple-700">${s.name[0]}</span>`;
   return `
-    <div class="student-card group-${g} border border-transparent active:border-purple-200 mb-2"
+    <div class="student-card group-${g} border border-transparent active:border-purple-200 mb-1.5"
          onclick="navigate('detail',{currentStudentId:'${s.id}'})">
-      <div class="flex items-center gap-3">
-        <div class="w-11 h-11 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 overflow-hidden" style="${avatarStyle}">${avatarInner}</div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 overflow-hidden" style="${avatarStyle}">${avatarInner}</div>
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <p class="font-bold text-gray-800 text-sm">${bdayFlag}${s.name}</p>
-            <span class="text-xs text-gray-500">${s.gender}</span>
-            ${s.grade ? `<span class="text-xs text-gray-400">${s.grade}</span>` : ''}
+            <span class="text-xs text-gray-400">${s.gender}${s.grade?' · '+s.grade:''}</span>
             ${s.instrument ? `<span class="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-full">${s.instrument}</span>` : ''}
             ${s.role ? s.role.split(' / ').map(r=>roleBadge(r)).join('') : ''}
-            ${s.status==='군복무' ? `<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🪖군복무</span>` : ''}
+            ${s.status==='군복무' ? `<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🪖</span>` : ''}
           </div>
-          <p class="text-xs text-gray-400 mt-0.5">${formatBirthDate(s.birthDate)}</p>
-          ${g!=='팀장' ? `<div class="flex gap-1.5 mt-1.5 flex-wrap">${satBadge}${sunBadge}${qtBadge}</div>` : ''}
+          ${g!=='팀장' ? `<div class="flex gap-1 mt-0.5 flex-wrap">${satBadge}${sunBadge}${qtBadge}</div>` : ''}
         </div>
-        <div class="flex flex-col gap-1.5 flex-shrink-0">
-          ${(isLeader() && s.phone) ? `<button onclick="event.stopPropagation();callPhone('${s.phone}')" class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg" style="min-height:36px">📞</button>` : ''}
-          ${isAdmin() ? `<button onclick="event.stopPropagation();openEditStudent('${s.id}')" class="text-xs bg-purple-100 text-purple-600 px-2.5 py-1.5 rounded-lg" style="min-height:36px">수정</button>` : ''}
+        <div class="flex gap-1 flex-shrink-0">
+          ${(isLeader() && s.phone) ? `<button onclick="event.stopPropagation();callPhone('${s.phone}')" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg">📞</button>` : ''}
+          ${isAdmin() ? `<button onclick="event.stopPropagation();openEditStudent('${s.id}')" class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-lg">수정</button>` : ''}
         </div>
       </div>
     </div>
@@ -2903,19 +2873,19 @@ function renderCheckTableView(month, weeks) {
   if (rateEl) rateEl.textContent = (satTotal||sunTotal) ? `이번 주 토${satRateTxt} · 주일${sunRateTxt}` : '';
 
   const thead = `<tr class="bg-gray-100">
-    <th class="sticky left-0 bg-gray-100 px-3 py-2 text-left text-xs font-semibold text-gray-600 min-w-16">이름</th>
-    <th class="px-1 py-2 text-xs font-semibold text-gray-500 min-w-8">분과</th>
-    <th colspan="5" class="px-2 py-2 text-xs font-semibold text-purple-700 border-l border-gray-200">${w.label} (토 ${w.satDate.slice(5)} / 주 ${w.sunDate.slice(5)})</th>
+    <th class="sticky left-0 bg-gray-100 px-2 py-2 text-left text-xs font-semibold text-gray-600" style="min-width:52px">이름</th>
+    <th class="px-1 py-2 text-xs font-semibold text-gray-500" style="min-width:20px">분</th>
+    <th colspan="5" class="px-1 py-2 text-xs font-semibold text-purple-700 border-l border-gray-200">${w.label} (토 ${w.satDate.slice(5)} / 주 ${w.sunDate.slice(5)})</th>
   </tr>`;
 
   const subhead = `<tr class="bg-gray-50">
-    <th class="sticky left-0 bg-gray-50 px-3 py-1"></th>
-    <th class="px-1 py-1"></th>
-    <th class="px-1 py-1 text-xs text-blue-600 font-medium border-l border-gray-200">QT</th>
-    <th class="px-1 py-1 text-xs text-green-600 font-medium">가테</th>
-    <th class="px-1 py-1 text-xs text-purple-600 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}</th>
-    <th class="px-1 py-1 text-xs text-orange-600 font-medium">주일${sunRateTxt?`<span class='text-gray-400 font-normal'>${sunRateTxt}</span>`:''}</th>
-    <th class="px-1 py-1 text-xs text-gray-400 font-medium"></th>
+    <th class="sticky left-0 bg-gray-50 px-2 py-1"></th>
+    <th class="px-0.5 py-1"></th>
+    <th class="px-0.5 py-1 text-xs text-blue-600 font-medium border-l border-gray-200">QT</th>
+    <th class="px-0.5 py-1 text-xs text-green-600 font-medium">가테</th>
+    <th class="px-0.5 py-1 text-xs text-purple-600 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}</th>
+    <th class="px-0.5 py-1 text-xs text-orange-600 font-medium">주${sunRateTxt?`<span class='text-gray-400 font-normal'>${sunRateTxt}</span>`:''}</th>
+    <th class="px-0.5 py-1 text-xs text-gray-400 font-medium">🚦</th>
   </tr>`;
 
   let rows = '';
@@ -2932,8 +2902,8 @@ function renderCheckTableView(month, weeks) {
       const clickSat = canEdit ? `onclick="quickToggleAttendance('${s.id}',${wi},'sat')"` : '';
       const clickSun = canEdit ? `onclick="quickToggleAttendance('${s.id}',${wi},'sun')"` : '';
       rows += `<tr class="hover:bg-gray-50 group-${g}" style="opacity:0.95">
-        <td class="sticky left-0 px-3 py-2 font-semibold text-sm text-gray-800 group-${g} cursor-pointer" onclick="openStudentCheckSheet('${s.id}')">${s.name}</td>
-        <td class="px-1 py-2"><span class="badge-${g} text-xs px-1 py-0.5 rounded font-semibold">${g[0]}</span></td>
+        <td class="sticky left-0 px-2 py-1 font-semibold text-xs text-gray-800 group-${g} cursor-pointer" onclick="openStudentCheckSheet('${s.id}')">${s.name}</td>
+        <td class="px-0.5 py-1"><span class="badge-${g} text-xs px-1 py-0.5 rounded font-semibold">${g[0]}</span></td>
         <td class="px-0.5 py-1 border-l border-gray-100">
           <div class="check-cell qt-${c.qt||'빈칸'}" ${clickQT}>${c.qt||'·'}</div>
         </td>
@@ -2948,7 +2918,7 @@ function renderCheckTableView(month, weeks) {
         <td class="px-0.5 py-1">
           <div class="check-cell ${c.sun?`st-${c.sun}`:'st-빈칸'}" ${clickSun}>${c.sun||'·'}</div>
         </td>
-        <td class="px-1 py-1 text-center" ${canEdit ? `onclick="openCheckModal('${s.id}',${wi},'sat')"` : ''} style="${canEdit?'cursor:pointer':''}">${weekTrafficLightHtml(c)}</td>
+        <td class="px-0.5 py-1 text-center" ${canEdit ? `onclick="openCheckModal('${s.id}',${wi},'sat')"` : ''} style="${canEdit?'cursor:pointer':''}">${weekTrafficLightHtml(c)}</td>
       </tr>`;
     });
   });
