@@ -3276,11 +3276,11 @@ function renderQTSubmit() {
         const isActive = qtFeedFilter === s.id;
         const trophy = cnt >= 5 ? '🏆' : '';
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
-          class="flex-shrink-0 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
+          class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-200 text-gray-600'}"
           style="min-height:unset;line-height:1.4">${s.name}(${cnt})${trophy}</button>`;
       }).join('');
       return `<div class="flex items-center gap-0.5 flex-wrap">
-        <span class="text-[9px] text-gray-400 font-bold flex-shrink-0 w-4">${g[0]}</span>
+        <span class="text-[11px] text-gray-400 font-bold flex-shrink-0 w-4">${g[0]}</span>
         ${chips}
       </div>`;
     }).filter(Boolean).join('');
