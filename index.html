@@ -1166,6 +1166,11 @@ function _applyFsData(fsData) {
   const localUser = state.currentUser;
   const localMonth = state.month;
   const localPage = state.page;
+  // 현재 사용자의 읽음 시간 보존 — admin 저장 시 덮어씌워지지 않도록
+  const myReadAt = localUser && state.qtCommentsReadAt ? (state.qtCommentsReadAt[localUser] || 0) : 0;
+  // qtComments 배열→객체 마이그레이션 (구버전 Firestore 데이터 대응)
+  if (!fsData.qtComments || Array.isArray(fsData.qtComments)) fsData.qtComments = {};
+  if (!fsData.qtCommentsReadAt || Array.isArray(fsData.qtCommentsReadAt)) fsData.qtCommentsReadAt = {};
   // 현재 사용자의 로컬 QT 기록 보호 — debounce 창에서 다른 학생 스냅샷에 의해 덮어쓰이지 않도록
   const myLocal = {};
   if (localUser && state.qtDayChecks) {
@@ -1188,6 +1193,11 @@ function _applyFsData(fsData) {
   state.currentUser = localUser;
   state.month = (localMonth === '2026-05' ? '2026-06' : localMonth) || state.month || '2026-06';
   state.page = localPage || 'dashboard';
+  // 현재 사용자의 읽음 시간 복원 (로컬 vs Firestore 중 최신 값 유지)
+  if (!state.qtCommentsReadAt) state.qtCommentsReadAt = {};
+  if (localUser && myReadAt) {
+    state.qtCommentsReadAt[localUser] = Math.max(myReadAt, state.qtCommentsReadAt[localUser] || 0);
+  }
   try { localStorage.setItem('radi_v4', JSON.stringify({...fsData, currentUser: localUser, page: state.page})); } catch(e) {}
 }
 
