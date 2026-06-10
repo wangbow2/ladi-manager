@@ -1117,8 +1117,72 @@ firebase.initializeApp({
 });
 const _db = firebase.firestore();
 const _stateRef = _db.collection('radi').doc('state');
-let _ignoreSnapshot = false;
 let _fsDebounceTimer = null;
+let _lastFsData = null;
+
+const _FS_MAP_FIELDS = new Set([
+  'checks', 'lineups', 'memos', 'pins', 'qtComments', 'qtCommentsReadAt',
+  'qtDayChecks', 'pastoralApprovals', 'adminRestrictions', 'loveMeetingRecords',
+  'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles'
+]);
+
+function _cloneData(data) {
+  if (data === undefined || data === null || typeof data !== 'object') return data;
+  return JSON.parse(JSON.stringify(data));
+}
+
+function _sameData(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// 한 문서 전체를 덮어쓰지 않고, 실제로 바뀐 최상위 필드/맵 키만 저장한다.
+function _buildFsOps(base, next) {
+  const ops = [];
+  const allFields = new Set([...Object.keys(base || {}), ...Object.keys(next || {})]);
+  allFields.forEach(field => {
+    const before = base ? base[field] : undefined;
+    const after = next ? next[field] : undefined;
+    if (_FS_MAP_FIELDS.has(field)) {
+      const beforeMap = before && typeof before === 'object' && !Array.isArray(before) ? before : {};
+      const afterMap = after && typeof after === 'object' && !Array.isArray(after) ? after : {};
+      const keys = new Set([...Object.keys(beforeMap), ...Object.keys(afterMap)]);
+      keys.forEach(key => {
+        if (!(key in afterMap)) ops.push({ field, key, deleted: true });
+        else if (!(key in beforeMap) || !_sameData(beforeMap[key], afterMap[key])) {
+          ops.push({ field, key, value: _cloneData(afterMap[key]) });
+        }
+      });
+    } else if (!_sameData(before, after)) {
+      ops.push(after === undefined ? { field, deleted: true } : { field, value: _cloneData(after) });
+    }
+  });
+  return ops;
+}
+
+function _applyFsOps(target, ops) {
+  ops.forEach(op => {
+    if (op.key !== undefined) {
+      if (!target[op.field] || typeof target[op.field] !== 'object' || Array.isArray(target[op.field])) {
+        target[op.field] = {};
+      }
+      if (op.deleted) delete target[op.field][op.key];
+      else target[op.field][op.key] = _cloneData(op.value);
+    } else if (op.deleted) {
+      delete target[op.field];
+    } else {
+      target[op.field] = _cloneData(op.value);
+    }
+  });
+}
+
+function _opsToFirestoreUpdate(ops) {
+  const update = {};
+  ops.forEach(op => {
+    const path = op.key === undefined ? op.field : `${op.field}.${op.key}`;
+    update[path] = op.deleted ? firebase.firestore.FieldValue.delete() : op.value;
+  });
+  return update;
+}
 
 function _getFsData() {
   return {
@@ -1157,8 +1221,17 @@ function _getFsData() {
 function _fsSaveDebounced() {
   if (_fsDebounceTimer) clearTimeout(_fsDebounceTimer);
   _fsDebounceTimer = setTimeout(() => {
-    _ignoreSnapshot = true;
-    _stateRef.set(_getFsData()).catch(e => console.warn('Firestore 저장 실패:', e));
+    if (!_lastFsData) return;
+    const ops = _buildFsOps(_lastFsData, _getFsData());
+    if (!ops.length) return;
+    _stateRef.update(_opsToFirestoreUpdate(ops)).then(() => {
+      _applyFsOps(_lastFsData, ops);
+      const remaining = _buildFsOps(_lastFsData, _getFsData());
+      if (remaining.length) _fsSaveDebounced();
+    }).catch(e => {
+      console.warn('Firestore 저장 실패:', e);
+      _fsSaveDebounced();
+    });
   }, 800);
 }
 
@@ -1171,25 +1244,11 @@ function _applyFsData(fsData) {
   // qtComments 배열→객체 마이그레이션 (구버전 Firestore 데이터 대응)
   if (!fsData.qtComments || Array.isArray(fsData.qtComments)) fsData.qtComments = {};
   if (!fsData.qtCommentsReadAt || Array.isArray(fsData.qtCommentsReadAt)) fsData.qtCommentsReadAt = {};
-  // 현재 사용자의 로컬 QT 기록 보호 — debounce 창에서 다른 학생 스냅샷에 의해 덮어쓰이지 않도록
-  const myLocal = {};
-  if (localUser && state.qtDayChecks) {
-    const prefix = localUser + '_';
-    Object.entries(state.qtDayChecks).forEach(([k, v]) => {
-      if (k.startsWith(prefix)) myLocal[k] = v;
-    });
-  }
+  // 아직 서버에 저장되지 않은 모든 로컬 변경을 원격 스냅샷 위에 다시 적용한다.
+  const localOps = _lastFsData ? _buildFsOps(_lastFsData, _getFsData()) : [];
   Object.assign(state, fsData);
-  // Firestore 버전보다 로컬이 더 최신인 항목만 복원
-  if (Object.keys(myLocal).length) {
-    if (!state.qtDayChecks) state.qtDayChecks = {};
-    Object.entries(myLocal).forEach(([k, v]) => {
-      const fs = state.qtDayChecks[k];
-      if (!fs || (v.createdAt && v.createdAt > (fs.createdAt || 0))) {
-        state.qtDayChecks[k] = v;
-      }
-    });
-  }
+  _lastFsData = _cloneData(fsData);
+  _applyFsOps(state, localOps);
   state.currentUser = localUser;
   state.month = (localMonth === '2026-05' ? '2026-06' : localMonth) || state.month || '2026-06';
   state.page = localPage || 'dashboard';
@@ -1198,7 +1257,7 @@ function _applyFsData(fsData) {
   if (localUser && myReadAt) {
     state.qtCommentsReadAt[localUser] = Math.max(myReadAt, state.qtCommentsReadAt[localUser] || 0);
   }
-  try { localStorage.setItem('radi_v4', JSON.stringify({...fsData, currentUser: localUser, page: state.page})); } catch(e) {}
+  try { localStorage.setItem('radi_v4', JSON.stringify({...state, currentUser: localUser, page: state.page})); } catch(e) {}
 }
 
 function _renderCurrentPage() {
@@ -1226,9 +1285,8 @@ function initFirestore() {
 
       // 로컬에 본문 데이터가 있는데 Firestore에 없으면 → 업로드
       if (localPassages && !fsData.qtPassageTexts) {
-        _ignoreSnapshot = true;
-        _stateRef.update({ qtPassageTexts: localPassages }).catch(e => {});
         state.qtPassageTexts = localPassages;
+        saveState();
       }
 
       // 손예서 생일 포맷 수정 (MM-DD → YYYY-MM-DD)
@@ -1238,8 +1296,7 @@ function initFirestore() {
         state._r11BirthFixed = true;
         state._r11BirthFixed2 = true;
         state._birthMigrated2026 = true;
-        _ignoreSnapshot = true;
-        _stateRef.update({ students: state.students, _r11BirthFixed: true, _r11BirthFixed2: true, _birthMigrated2026: true }).catch(e => {});
+        saveState();
       }
 
       // 5월 5주차(w4) 토요일 — 지각/결석 제외 전원 O
@@ -1251,8 +1308,7 @@ function initFirestore() {
           if (cur !== '지각' && cur !== '결석') state.checks[key].sat = 'O';
         });
         state._sat5w4Fixed = true;
-        _ignoreSnapshot = true;
-        _stateRef.update({ checks: state.checks, _sat5w4Fixed: true }).catch(e => {});
+        saveState();
       }
 
       if (state.currentUser) {
@@ -1262,14 +1318,12 @@ function initFirestore() {
       }
     } else {
       // 첫 실행 — 로컬 데이터를 Firestore에 업로드
-      _ignoreSnapshot = true;
       _stateRef.set(_getFsData()).catch(e => {});
     }
 
     // 실시간 리스너 — 다른 기기 변경 감지
     let _lastMigrationTrigger = 0;
     _stateRef.onSnapshot(doc => {
-      if (_ignoreSnapshot) { _ignoreSnapshot = false; return; }
       if (!doc.exists) return;
       const fsData = doc.data();
       // 관리자가 이미지 마이그레이션 요청 시 — 학생 기기에서 즉시 실행
@@ -1545,9 +1599,6 @@ function doChangePIN() {
   if (newPin !== confirm) { errEl.textContent = '새 PIN이 일치하지 않습니다'; errEl.classList.remove('hidden'); return; }
   state.pins[state.currentUser] = newPin;
   saveState();
-  // Firestore에 즉시 반영
-  _ignoreSnapshot = true;
-  _stateRef.update({ pins: state.pins }).catch(() => {});
   errEl.classList.add('hidden');
   ['pin-current','pin-new','pin-confirm'].forEach(id => document.getElementById(id).value = '');
   closeModal('modal-pin');
@@ -2358,9 +2409,6 @@ function saveWeeklyFiles(month, wk) {
     sun2:  document.getElementById('wf-sun2').value.trim(),
     live:  document.getElementById('wf-live').value.trim(),
   };
-  // debounce 없이 즉시 Firestore에 저장 — debounce 창에서 스냅샷에 의해 덮어씌워지는 걸 방지
-  _ignoreSnapshot = true;
-  _stateRef.update({ weeklyFiles: state.weeklyFiles }).catch(e => console.warn('weeklyFiles 저장 실패:', e));
   saveState();
   document.getElementById('weekly-file-modal').remove();
   renderDashboard();
@@ -4780,9 +4828,6 @@ function processScannedQR(qrData) {
 
   state.qrUsage[tokenKey] = { timestamp: Date.now(), userId: state.currentUser };
   saveState();
-  // 즉시 Firestore에 저장 (debounce 무시)
-  _ignoreSnapshot = true;
-  _stateRef.update({ checks: state.checks, qrUsage: state.qrUsage }).catch(() => {});
 
   const me = getCurrentUser();
   if (resultEl) resultEl.innerHTML = `
