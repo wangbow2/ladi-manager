@@ -1117,8 +1117,12 @@ firebase.initializeApp({
 });
 const _db = firebase.firestore();
 const _stateRef = _db.collection('radi').doc('state');
+const APP_SCHEMA_VERSION = 3;
 let _fsDebounceTimer = null;
 let _lastFsData = null;
+let _fsRetryDelay = 800;
+let _fsFailureCount = 0;
+let _fsHasPendingChanges = false;
 
 const _FS_MAP_FIELDS = new Set([
   'checks', 'lineups', 'memos', 'pins', 'qtComments', 'qtCommentsReadAt',
@@ -1168,8 +1172,9 @@ function _buildFsOps(base, next) {
         else if (!(key in beforeMap)) ops.push({ path: [field, key], value: _cloneData(afterMap[key]) });
         else _diffNested(ops, [field, key], beforeMap[key], afterMap[key]);
       });
-    } else if (!_sameData(before, after)) {
-      ops.push(after === undefined ? { path: [field], deleted: true } : { path: [field], value: _cloneData(after) });
+    } else if (after !== undefined && !_sameData(before, after)) {
+      // 앱 업데이트로 필드가 코드에서 빠져도 서버 데이터를 자동 삭제하지 않는다.
+      ops.push({ path: [field], value: _cloneData(after) });
     }
   });
   return ops;
@@ -1228,6 +1233,7 @@ function _commitFsOps(ops) {
 
 function _getFsData() {
   return {
+    schemaVersion: APP_SCHEMA_VERSION,
     students: state.students,
     checks: state.checks,
     lineups: state.lineups,
@@ -1261,20 +1267,55 @@ function _getFsData() {
 }
 
 function _fsSaveDebounced() {
+  _fsHasPendingChanges = true;
   if (_fsDebounceTimer) clearTimeout(_fsDebounceTimer);
   _fsDebounceTimer = setTimeout(() => {
-    if (!_lastFsData) return;
+    if (!_lastFsData) { _fsHasPendingChanges = false; return; }
     const ops = _buildFsOps(_lastFsData, _getFsData());
-    if (!ops.length) return;
+    if (!ops.length) { _fsHasPendingChanges = false; return; }
     _commitFsOps(ops).then(() => {
+      _fsRetryDelay = 800;
+      _fsFailureCount = 0;
       _applyFsOps(_lastFsData, ops);
       const remaining = _buildFsOps(_lastFsData, _getFsData());
       if (remaining.length) _fsSaveDebounced();
+      else _fsHasPendingChanges = false;
     }).catch(e => {
       console.warn('Firestore 저장 실패:', e);
+      _fsFailureCount++;
+      if (_fsFailureCount === 3) {
+        alert('서버 저장이 지연되고 있습니다. 앱을 닫지 말고 인터넷 연결을 확인해 주세요. 연결되면 자동으로 다시 저장합니다.');
+      }
+      _fsRetryDelay = Math.min(_fsRetryDelay * 2, 30000);
       _fsSaveDebounced();
     });
-  }, 800);
+  }, _fsRetryDelay);
+}
+
+window.addEventListener('online', () => {
+  _fsRetryDelay = 800;
+  _fsSaveDebounced();
+});
+
+window.addEventListener('beforeunload', event => {
+  if (!_fsHasPendingChanges) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+function _createDailyStateSnapshot(fsData) {
+  const day = new Date().toISOString().slice(0, 10);
+  const ref = _db.collection('stateSnapshots').doc(day);
+  return _db.runTransaction(async transaction => {
+    const existing = await transaction.get(ref);
+    if (!existing.exists) {
+      transaction.set(ref, {
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        schemaVersion: APP_SCHEMA_VERSION,
+        state: _cloneData(fsData),
+      });
+    }
+  }).catch(e => console.warn('일일 스냅샷 생성 실패:', e));
 }
 
 function _applyFsData(fsData) {
@@ -1357,6 +1398,7 @@ function initFirestore() {
 
     if (doc.exists) {
       const fsData = doc.data();
+      _createDailyStateSnapshot(fsData);
       const serverData = _cloneData(fsData);
       const recoveredLocalData = _recoverJuneDataFromLocal(fsData);
       _applyFsData(serverData);
@@ -1441,8 +1483,37 @@ function loadProfiles() {
 }
 
 function saveProfiles() {
+  const uid = state.currentUser;
+  if (uid && profiles[uid]) profiles[uid].updatedAt = Date.now();
   try { localStorage.setItem('radi_profiles', JSON.stringify(profiles)); }
   catch(e) { alert('저장 공간이 부족해요. 사진을 줄여주세요.'); }
+  if (uid && profiles[uid]) {
+    _db.collection('profiles').doc(uid).set(_cloneData(profiles[uid]))
+      .catch(e => console.warn('프로필 서버 저장 실패:', e));
+  }
+}
+
+async function syncProfilesFromFirestore() {
+  try {
+    const snapshot = await _db.collection('profiles').get();
+    const remoteIds = new Set();
+    snapshot.forEach(doc => {
+      remoteIds.add(doc.id);
+      const remote = doc.data();
+      const local = profiles[doc.id];
+      if (!local || (remote.updatedAt || 0) >= (local.updatedAt || 0)) profiles[doc.id] = remote;
+    });
+    await Promise.all(Object.entries(profiles).map(([uid, profile]) => {
+      if (remoteIds.has(uid) || !profile) return Promise.resolve();
+      profile.updatedAt = profile.updatedAt || Date.now();
+      return _db.collection('profiles').doc(uid).set(_cloneData(profile));
+    }));
+    localStorage.setItem('radi_profiles', JSON.stringify(profiles));
+    updateHeaderUserPhoto();
+    if (state.page === 'mypage') renderMyPage();
+  } catch(e) {
+    console.warn('프로필 서버 동기화 실패:', e);
+  }
 }
 
 function loadQTImages() {
@@ -1485,11 +1556,12 @@ async function loadMissingQTImages(imageKeys) {
 // 로컬 qtImages를 Firestore에 업로드 (이전에 localStorage에만 저장된 이미지 복구)
 function _migrateLocalQTImages() {
   if (!Object.keys(qtImages).length) return;
+  const canRecoverOrphans = localStorage.getItem('radi_orphan_qt_recovery_20260610_done') !== '1';
   let recoveredEntry = false;
   Object.entries(qtImages).forEach(([key, base64]) => {
     if (!base64) return;
     const match = key.match(/^([^_]+)_(\d{4}-\d{2}-\d{2})_qt$/);
-    if (match && match[1] === state.currentUser) {
+    if (canRecoverOrphans && match && match[1] === state.currentUser && match[2] <= '2026-06-10') {
       const entryKey = `${match[1]}_${match[2]}`;
       if (!state.qtDayChecks?.[entryKey]) {
         if (!state.qtDayChecks) state.qtDayChecks = {};
@@ -1501,6 +1573,7 @@ function _migrateLocalQTImages() {
       if (!doc.exists) saveQTImageToFirestore(key, base64);
     }).catch(() => {});
   });
+  if (canRecoverOrphans) localStorage.setItem('radi_orphan_qt_recovery_20260610_done', '1');
   if (recoveredEntry) saveState();
 }
 
@@ -4188,6 +4261,11 @@ function submitQTDay(dateStr) {
 function deleteQTDay(dateStr) {
   if (!state.currentUser) return;
   const key = `${state.currentUser}_${dateStr}`;
+  const imageKey = state.qtDayChecks?.[key]?.imageKey;
+  if (imageKey) {
+    delete qtImages[imageKey];
+    saveQTImages();
+  }
   if (state.qtDayChecks) delete state.qtDayChecks[key];
   updateWeekQTCount(dateStr);
   saveState();
@@ -5567,6 +5645,7 @@ initKakaoBanner();
 if (!state.month || state.month === '2026-05') state.month = '2026-06';
 document.getElementById('header-month').textContent = state.month;
 initFirestore();
+syncProfilesFromFirestore();
 
 // Check if QR attendance
 if (location.search.includes('qr=')) {
@@ -5582,11 +5661,7 @@ if (location.search.includes('qr=')) {
 }
 
 // Service worker for offline (optional - just register without blocking)
-if ('serviceWorker' in navigator) {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 </script>
 </body>
 </html>
