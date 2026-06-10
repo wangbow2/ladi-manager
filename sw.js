@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ladi-v5';
+const CACHE_NAME = 'ladi-v6';
 const ASSETS = [
   './',
   './index.html',

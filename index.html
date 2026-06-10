@@ -1129,6 +1129,7 @@ const _FS_MAP_FIELDS = new Set([
   'qtDayChecks', 'pastoralApprovals', 'adminRestrictions', 'loveMeetingRecords',
   'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles'
 ]);
+const _FS_ARRAY_FIELDS = new Set(['students', 'qtPosts', 'editLogs', 'loveMeetings', 'feedbacks']);
 
 function _cloneData(data) {
   if (data === undefined || data === null || typeof data !== 'object') return data;
@@ -1147,12 +1148,14 @@ function _diffNested(ops, path, before, after) {
   if (_isPlainObject(before) && _isPlainObject(after)) {
     const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
     keys.forEach(key => {
-      if (!(key in after)) ops.push({ path: [...path, key], deleted: true });
-      else if (!(key in before)) ops.push({ path: [...path, key], value: _cloneData(after[key]) });
+      if (!(key in after)) ops.push({ path: [...path, key], deleted: true, beforeExists:true, before:_cloneData(before[key]) });
+      else if (!(key in before)) ops.push({ path: [...path, key], value: _cloneData(after[key]), beforeExists:false, before:null });
       else _diffNested(ops, [...path, key], before[key], after[key]);
     });
   } else if (!_sameData(before, after)) {
-    ops.push(after === undefined ? { path, deleted: true } : { path, value: _cloneData(after) });
+    ops.push(after === undefined
+      ? { path, deleted: true, beforeExists:before !== undefined, before:_cloneData(before) }
+      : { path, value:_cloneData(after), beforeExists:before !== undefined, before:_cloneData(before) });
   }
 }
 
@@ -1168,13 +1171,13 @@ function _buildFsOps(base, next) {
       const afterMap = _isPlainObject(after) ? after : {};
       const keys = new Set([...Object.keys(beforeMap), ...Object.keys(afterMap)]);
       keys.forEach(key => {
-        if (!(key in afterMap)) ops.push({ path: [field, key], deleted: true });
-        else if (!(key in beforeMap)) ops.push({ path: [field, key], value: _cloneData(afterMap[key]) });
+        if (!(key in afterMap)) ops.push({ path:[field,key], deleted:true, beforeExists:true, before:_cloneData(beforeMap[key]) });
+        else if (!(key in beforeMap)) ops.push({ path:[field,key], value:_cloneData(afterMap[key]), beforeExists:false, before:null });
         else _diffNested(ops, [field, key], beforeMap[key], afterMap[key]);
       });
     } else if (after !== undefined && !_sameData(before, after)) {
       // 앱 업데이트로 필드가 코드에서 빠져도 서버 데이터를 자동 삭제하지 않는다.
-      ops.push({ path: [field], value: _cloneData(after) });
+      ops.push({ path:[field], value:_cloneData(after), beforeExists:before !== undefined, before:_cloneData(before) });
     }
   });
   return ops;
@@ -1202,12 +1205,48 @@ function _getPathValue(target, path) {
   return { exists: true, value: _cloneData(value) };
 }
 
+function _arrayItemKey(item) {
+  if (item && item.id !== undefined) return `id:${item.id}`;
+  return `json:${JSON.stringify(item)}`;
+}
+
+function _mergeConcurrentArray(serverArray, baseArray, localArray) {
+  const server = new Map((serverArray || []).map(item => [_arrayItemKey(item), _cloneData(item)]));
+  const base = new Map((baseArray || []).map(item => [_arrayItemKey(item), item]));
+  const local = new Map((localArray || []).map(item => [_arrayItemKey(item), item]));
+  local.forEach((item, key) => {
+    if (!base.has(key) || !_sameData(base.get(key), item)) server.set(key, _cloneData(item));
+  });
+  base.forEach((item, key) => {
+    if (!local.has(key) && server.has(key) && _sameData(server.get(key), item)) server.delete(key);
+  });
+  const ordered = [];
+  (localArray || []).forEach(item => {
+    const key = _arrayItemKey(item);
+    if (server.has(key)) { ordered.push(server.get(key)); server.delete(key); }
+  });
+  server.forEach(item => ordered.push(item));
+  return ordered;
+}
+
 function _commitFsOps(ops) {
   const backupRef = _db.collection('stateBackups').doc();
   return _db.runTransaction(async transaction => {
     const snapshot = await transaction.get(_stateRef);
     const serverData = snapshot.exists ? snapshot.data() : {};
-    const changes = ops.map(op => {
+    const appliedOps = [];
+    const conflicts = [];
+    ops.forEach(op => {
+      const current = _getPathValue(serverData, op.path);
+      if (_FS_ARRAY_FIELDS.has(op.path[0]) && op.path.length === 1 && !op.deleted) {
+        appliedOps.push({ ...op, value:_mergeConcurrentArray(current.value, op.before, op.value) });
+      } else if (current.exists !== op.beforeExists || (current.exists && !_sameData(current.value, op.before))) {
+        conflicts.push({ op:_cloneData(op), server:current });
+      } else {
+        appliedOps.push(op);
+      }
+    });
+    const changes = appliedOps.map(op => {
       const before = _getPathValue(serverData, op.path);
       return {
         path: op.path,
@@ -1222,12 +1261,20 @@ function _commitFsOps(ops) {
       userId: state.currentUser || 'unknown',
       changes,
     });
+    if (conflicts.length) {
+      transaction.set(_db.collection('syncConflicts').doc(), {
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        userId: state.currentUser || 'unknown',
+        conflicts,
+      });
+    }
     const args = [];
-    ops.forEach(op => {
+    appliedOps.forEach(op => {
       args.push(new firebase.firestore.FieldPath(...op.path));
       args.push(op.deleted ? firebase.firestore.FieldValue.delete() : op.value);
     });
-    transaction.update(_stateRef, ...args);
+    if (args.length) transaction.update(_stateRef, ...args);
+    return { appliedOps, conflicts };
   });
 }
 
@@ -1273,10 +1320,19 @@ function _fsSaveDebounced() {
     if (!_lastFsData) { _fsHasPendingChanges = false; return; }
     const ops = _buildFsOps(_lastFsData, _getFsData());
     if (!ops.length) { _fsHasPendingChanges = false; return; }
-    _commitFsOps(ops).then(() => {
+    _commitFsOps(ops).then(({appliedOps, conflicts}) => {
       _fsRetryDelay = 800;
       _fsFailureCount = 0;
-      _applyFsOps(_lastFsData, ops);
+      _applyFsOps(_lastFsData, appliedOps);
+      appliedOps.filter(op => _FS_ARRAY_FIELDS.has(op.path[0])).forEach(op => _applyFsOps(state, [op]));
+      conflicts.forEach(({op, server}) => {
+        const serverOp = server.exists
+          ? { path:op.path, value:server.value }
+          : { path:op.path, deleted:true };
+        _applyFsOps(_lastFsData, [serverOp]);
+        _applyFsOps(state, [serverOp]);
+      });
+      if (conflicts.length) alert('다른 기기에서 같은 항목을 동시에 수정해 서버 값을 유지했습니다. 내 변경값은 충돌 기록에 안전하게 보관했습니다.');
       const remaining = _buildFsOps(_lastFsData, _getFsData());
       if (remaining.length) _fsSaveDebounced();
       else _fsHasPendingChanges = false;

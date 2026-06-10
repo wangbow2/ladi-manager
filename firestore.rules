@@ -16,6 +16,10 @@ service cloud.firestore {
       allow read, create: if true;
       allow update, delete: if false;
     }
+    match /syncConflicts/{document} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
     match /qtImages/{document} {
       allow read, create, update: if true;
       allow delete: if false;
