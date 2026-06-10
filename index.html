@@ -240,6 +240,7 @@
         <p class="text-xs text-gray-400 mt-0.5" id="check-rate-summary"></p>
       </div>
       <div class="flex gap-2">
+        <button onclick="openJuneWeek1Recovery()" id="june-recovery-btn" class="hidden text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">1주차 복구</button>
         <button onclick="toggleView()" id="view-toggle" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">카드뷰</button>
         <button onclick="exportCSV()" class="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">내보내기</button>
       </div>
@@ -3286,6 +3287,8 @@ function renderCheckTable() {
   const month = state.month;
   const weeks = getMonthWeeks(month);
   document.getElementById('check-title').textContent = `${getMonthStr(month)} OT 체크표`;
+  const recoveryBtn = document.getElementById('june-recovery-btn');
+  if (recoveryBtn) recoveryBtn.classList.toggle('hidden', !(isLeader() && month === '2026-06'));
 
   // 현재 주차 자동 선택 (월 변경 시 또는 초기)
   if (checkWeekIdx === null || checkWeekIdx >= weeks.length) {
@@ -3314,6 +3317,71 @@ function renderCheckTable() {
   } else {
     renderCheckTableView(month, weeks);
   }
+}
+
+function openJuneWeek1Recovery() {
+  if (!isLeader()) return;
+  const students = state.students.filter(s => s.status === '활동중' && s.group !== '팀장');
+  const gateOptions = ['', 'O', 'X'];
+  const attendanceOptions = ['', 'O', '지각', '결석', '기타'];
+  const optionHtml = (values, current) => values.map(v =>
+    `<option value="${v}" ${v === current ? 'selected' : ''}>${v || '미복구'}</option>`
+  ).join('');
+  document.getElementById('june-week1-recovery')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="june-week1-recovery" class="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center" onclick="if(event.target===this)this.remove()">
+      <div class="bg-white w-full max-w-2xl rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col">
+        <div class="p-4 border-b flex items-start justify-between gap-3">
+          <div>
+            <h3 class="font-bold text-gray-800">6월 1주차 출석 복구</h3>
+            <p class="text-xs text-red-600 mt-1">미복구 공란만 원래 기록을 확인해 입력하세요. 기존 값은 유지됩니다.</p>
+          </div>
+          <button onclick="document.getElementById('june-week1-recovery').remove()" class="text-2xl text-gray-400">×</button>
+        </div>
+        <div class="overflow-auto flex-1 p-2">
+          <table class="w-full text-xs">
+            <thead class="sticky top-0 bg-white"><tr class="border-b">
+              <th class="text-left p-2">이름</th><th>QT</th><th>가테</th><th>토</th><th>주일</th>
+            </tr></thead>
+            <tbody>${students.map(s => {
+              const c = getCheck(s.id, '2026-06', 0);
+              const missing = !c.gate || !c.sat || !c.sun;
+              return `<tr class="border-b ${missing ? 'bg-red-50' : ''}" data-recovery-id="${s.id}">
+                <td class="p-2 font-semibold whitespace-nowrap">${s.name}<span class="block text-[9px] text-gray-400">${s.group}</span></td>
+                <td class="text-center font-bold">${c.qt === '' ? '0' : c.qt}</td>
+                <td class="p-1"><select data-field="gate" class="w-full border rounded p-1 ${c.gate ? '' : 'border-red-300'}">${optionHtml(gateOptions, c.gate)}</select></td>
+                <td class="p-1"><select data-field="sat" class="w-full border rounded p-1 ${c.sat ? '' : 'border-red-300'}">${optionHtml(attendanceOptions, c.sat)}</select></td>
+                <td class="p-1"><select data-field="sun" class="w-full border rounded p-1 ${c.sun ? '' : 'border-red-300'}">${optionHtml(attendanceOptions, c.sun)}</select></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+        <div class="p-3 border-t flex gap-2">
+          <button onclick="saveJuneWeek1Recovery()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">복구값 저장</button>
+          <button onclick="document.getElementById('june-week1-recovery').remove()" class="px-5 bg-gray-100 rounded-xl font-bold">닫기</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+function saveJuneWeek1Recovery() {
+  if (!isLeader()) return;
+  document.querySelectorAll('#june-week1-recovery [data-recovery-id]').forEach(row => {
+    const studentId = row.dataset.recoveryId;
+    const before = getCheck(studentId, '2026-06', 0);
+    const next = { ...before };
+    row.querySelectorAll('select[data-field]').forEach(select => {
+      const field = select.dataset.field;
+      const value = select.value;
+      if (value !== before[field]) addEditLog('check', studentId, '2026-06_w0', field, before[field] || '', value, '6월 1주차 복구');
+      next[field] = value;
+    });
+    state.checks[checkKey(studentId, '2026-06', 0)] = next;
+  });
+  saveState();
+  document.getElementById('june-week1-recovery')?.remove();
+  renderCheckTable();
+  alert('6월 1주차 복구값을 저장했습니다.');
 }
 
 function renderCheckTableView(month, weeks) {
