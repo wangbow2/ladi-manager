@@ -1302,6 +1302,40 @@ function _applyFsData(fsData) {
   try { localStorage.setItem('radi_v4', JSON.stringify({...state, currentUser: localUser, page: state.page})); } catch(e) {}
 }
 
+// 2026-06-09 전체 덮어쓰기 사고 이전 로컬 사본이 남은 기기에서 서버 공란만 복구한다.
+function _recoverJuneDataFromLocal(fsData) {
+  if (localStorage.getItem('radi_recovery_20260610_done') === '1') return false;
+  let changed = false;
+  const localChecks = state.checks || {};
+  const serverChecks = fsData.checks || (fsData.checks = {});
+  Object.entries(localChecks).forEach(([key, localCheck]) => {
+    if (!key.includes('_2026-06_w')) return;
+    const serverCheck = serverChecks[key] || (serverChecks[key] = {});
+    ['qt','gate','sat','sun','memo','arrivalTime','contactTime'].forEach(field => {
+      if ((serverCheck[field] === undefined || serverCheck[field] === '') && localCheck?.[field]) {
+        serverCheck[field] = localCheck[field];
+        changed = true;
+      }
+    });
+    ['lateContacted','qtCopied','leaderConfirmed'].forEach(field => {
+      if (serverCheck[field] === undefined && localCheck?.[field] === true) {
+        serverCheck[field] = true;
+        changed = true;
+      }
+    });
+  });
+  const localQT = state.qtDayChecks || {};
+  const serverQT = fsData.qtDayChecks || (fsData.qtDayChecks = {});
+  Object.entries(localQT).forEach(([key, value]) => {
+    if (key.includes('_2026-06-') && !serverQT[key] && value?.done) {
+      serverQT[key] = _cloneData(value);
+      changed = true;
+    }
+  });
+  localStorage.setItem('radi_recovery_20260610_done', '1');
+  return changed;
+}
+
 function _renderCurrentPage() {
   try {
     const p = state.page || 'dashboard';
@@ -1323,7 +1357,13 @@ function initFirestore() {
 
     if (doc.exists) {
       const fsData = doc.data();
-      _applyFsData(fsData);
+      const serverData = _cloneData(fsData);
+      const recoveredLocalData = _recoverJuneDataFromLocal(fsData);
+      _applyFsData(serverData);
+      if (recoveredLocalData) {
+        _applyFsOps(state, _buildFsOps(serverData, fsData));
+        saveState();
+      }
 
       // 로컬에 본문 데이터가 있는데 Firestore에 없으면 → 업로드
       if (localPassages && !fsData.qtPassageTexts) {
@@ -1444,13 +1484,24 @@ async function loadMissingQTImages(imageKeys) {
 
 // 로컬 qtImages를 Firestore에 업로드 (이전에 localStorage에만 저장된 이미지 복구)
 function _migrateLocalQTImages() {
-  if (!state.qtDayChecks || !Object.keys(qtImages).length) return;
+  if (!Object.keys(qtImages).length) return;
+  let recoveredEntry = false;
   Object.entries(qtImages).forEach(([key, base64]) => {
     if (!base64) return;
+    const match = key.match(/^([^_]+)_(\d{4}-\d{2}-\d{2})_qt$/);
+    if (match && match[1] === state.currentUser) {
+      const entryKey = `${match[1]}_${match[2]}`;
+      if (!state.qtDayChecks?.[entryKey]) {
+        if (!state.qtDayChecks) state.qtDayChecks = {};
+        state.qtDayChecks[entryKey] = { done:true, content:'', imageKey:key, createdAt:Date.now() };
+        recoveredEntry = true;
+      }
+    }
     _db.collection('qtImages').doc(key).get().then(doc => {
       if (!doc.exists) saveQTImageToFirestore(key, base64);
     }).catch(() => {});
   });
+  if (recoveredEntry) saveState();
 }
 
 function loadQTPassageImages() {
