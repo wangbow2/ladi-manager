@@ -24,6 +24,10 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+    match /loveMeetingImages/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
     match /passageImages/{document} {
       allow read, create, update: if true;
       allow delete: if false;

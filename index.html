@@ -1525,6 +1525,8 @@ function initFirestore() {
 
     // 기존 로컬 QT 이미지를 Firestore로 마이그레이션 (학생 기기에서만 의미 있음)
     setTimeout(() => _migrateLocalQTImages(), 3000);
+    // 사랑모임 사진 — 서버에 누락된 로컬 사진 재업로드
+    setTimeout(() => _syncLocalLoveImages(), 3000);
   }).catch(e => console.warn('Firestore 연결 실패, 로컬 모드로 실행:', e));
 }
 
@@ -1534,6 +1536,7 @@ function initFirestore() {
 let qtImages = {};
 let qtPassageImages = {}; // { dateStr: { img0: base64, img1: base64 } }
 let profiles = {};
+let loveImages = {}; // { meetingId_wKey_love: base64 } — 사랑모임 사진 (state 문서와 분리 저장)
 
 function loadProfiles() {
   try { const d = localStorage.getItem('radi_profiles'); if (d) profiles = JSON.parse(d); } catch(e) { profiles = {}; }
@@ -1659,6 +1662,59 @@ async function loadQTPassageImageForDay(dateStr, forceRefresh) {
     qtPassageImages[dateStr] = doc.exists ? doc.data() : {};
     saveQTPassageImageLocal();
   } catch(e) { if (qtPassageImages[dateStr] === undefined) qtPassageImages[dateStr] = {}; }
+}
+
+// 사랑모임 사진 — qtImages와 동일 패턴 (state 문서 1MB 한도 보호 위해 별도 컬렉션 'loveMeetingImages'에 저장)
+function loadLoveImages() {
+  try { const d = localStorage.getItem('radi_love_images'); if (d) loveImages = JSON.parse(d); } catch(e) { loveImages = {}; }
+}
+
+function saveLoveImages() {
+  try { localStorage.setItem('radi_love_images', JSON.stringify(loveImages)); }
+  catch(e) { console.warn('loveImages localStorage 저장 실패 (용량 초과):', e); }
+}
+
+function saveLoveImageToFirestore(imageKey, base64) {
+  _db.collection('loveMeetingImages').doc(imageKey).set({ data: base64 })
+    .catch(e => console.warn('사랑모임 사진 Firestore 저장 실패:', e));
+}
+
+const _loveImagesAttempted = new Set();
+
+async function loadMissingLoveImages(imageKeys) {
+  const missing = imageKeys.filter(k => k && !loveImages[k] && !_loveImagesAttempted.has(k));
+  const alreadyAttempted = imageKeys.filter(k => k && !loveImages[k] && _loveImagesAttempted.has(k));
+  if (!missing.length) return alreadyAttempted.length > 0 ? 'retry' : false;
+  missing.forEach(k => _loveImagesAttempted.add(k));
+  let loaded = false;
+  await Promise.all(missing.map(async key => {
+    try {
+      const doc = await _db.collection('loveMeetingImages').doc(key).get();
+      if (doc.exists && doc.data().data) {
+        loveImages[key] = doc.data().data;
+        loaded = true;
+      }
+    } catch(e) {}
+  }));
+  if (loaded) saveLoveImages();
+  return loaded ? true : 'attempted'; // 'attempted': 시도했지만 미발견 (≠ 'retry': 이미 시도한 키)
+}
+
+// 로컬 loveImages 중 서버에 없는 문서 재업로드 — 저장 시점 오프라인 등으로 업로드가 누락된 사진 복구 (QT 패턴)
+function _syncLocalLoveImages() {
+  Object.entries(loveImages).forEach(([key, base64]) => {
+    if (!base64) return;
+    _db.collection('loveMeetingImages').doc(key).get().then(doc => {
+      if (!doc.exists) saveLoveImageToFirestore(key, base64);
+    }).catch(() => {});
+  });
+}
+
+// 레코드 사진 조회: 신규(photoKey → 별도 문서) 우선, 구버전(photos 배열 — state 내장)은 하위호환으로 유지
+function loveRecPhoto(rec) {
+  if (!rec) return null;
+  if (rec.photoKey && loveImages[rec.photoKey]) return loveImages[rec.photoKey];
+  return rec.photos?.[0] || null;
 }
 
 function compressImage(file, callback, opts) {
@@ -5234,6 +5290,7 @@ function renderMyLoveMeeting() {
     const rec = state.loveMeetingRecords[`${myMeeting.id}_${wKey}`] || {};
     const myAttn = rec.attendance?.[me.id] || '-';
     const myPrayer = rec.prayers?.[me.id] || '';
+    const recPhoto = loveRecPhoto(rec);
     return `
       <div class="border-b border-gray-100 py-3 last:border-0">
         <div class="flex items-center justify-between mb-1">
@@ -5241,7 +5298,7 @@ function renderMyLoveMeeting() {
           <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='O'?'st-O':myAttn==='지각'?'st-지각':myAttn==='-'?'st-빈칸':'st-결석'}">${myAttn}</span>
         </div>
         ${rec.topic ? `<p class="text-xs text-purple-600 mb-1">나눔: ${rec.topic}</p>` : ''}
-        ${rec.photos?.length ? `<img src="${rec.photos[0]}" class="love-photo-thumb mb-1">` : ''}
+        ${recPhoto ? `<img src="${recPhoto}" class="love-photo-thumb mb-1">` : ''}
         <div>
           <p class="text-xs text-gray-400 font-semibold">내 기도제목</p>
           ${myPrayer ? `<p class="text-xs text-gray-700 bg-gray-50 rounded p-1 mt-0.5">${myPrayer}</p>` :
@@ -5266,6 +5323,9 @@ function renderMyLoveMeeting() {
         ${records}
       </div>
     </div>`;
+  // photoKey 사진이 로컬 캐시에 없으면 Firestore에서 불러온 뒤 다시 그림 (QT 패턴)
+  const missingKeys = weeks.map((w, i) => state.loveMeetingRecords[`${myMeeting.id}_${month}_w${i}`]?.photoKey).filter(Boolean);
+  if (missingKeys.length) loadMissingLoveImages(missingKeys).then(r => { if (r === true) renderMyLoveMeeting(); });
 }
 
 function openMyPrayer(meetingId, wKey) {
@@ -5294,7 +5354,8 @@ function renderLoveMeetingAdmin() {
     const memberNames = (m.members||[]).map(id => state.students.find(s => s.id === id)?.name).filter(Boolean);
     const wKey = `${month}_w${lastWeekIdx}`;
     const rec = state.loveMeetingRecords[`${m.id}_${wKey}`] || {};
-    const hasPhoto = rec.photos?.length > 0;
+    const recPhoto = loveRecPhoto(rec);
+    const hasPhoto = !!recPhoto || !!rec.photoKey;
     const attendCount = Object.values(rec.attendance||{}).filter(v=>v==='O').length;
     return `
       <div class="bg-white rounded-2xl p-4 shadow-sm mb-3">
@@ -5314,7 +5375,7 @@ function renderLoveMeetingAdmin() {
           ${rec.topic ? `<span class="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">💬 ${rec.topic.slice(0,10)}...</span>` : '<span class="bg-gray-50 text-gray-400 px-2 py-0.5 rounded-full">나눔 미등록</span>'}
           <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">참석 ${attendCount}명</span>
         </div>
-        ${rec.photos?.length ? `<img src="${rec.photos[0]}" class="love-photo-thumb mt-2">` : ''}
+        ${recPhoto ? `<img src="${recPhoto}" class="love-photo-thumb mt-2">` : ''}
       </div>`;
   }).join('');
 
@@ -5326,6 +5387,9 @@ function renderLoveMeetingAdmin() {
       </div>
       ${meetings.length ? meetingCards : '<div class="text-center py-8 text-gray-400"><p class="text-2xl mb-2">💛</p><p>등록된 사랑 모임이 없습니다</p></div>'}
     </div>`;
+  // photoKey 사진이 로컬 캐시에 없으면 Firestore에서 불러온 뒤 다시 그림 (QT 패턴)
+  const missingKeys = meetings.map(m => state.loveMeetingRecords[`${m.id}_${month}_w${lastWeekIdx}`]?.photoKey).filter(Boolean);
+  if (missingKeys.length) loadMissingLoveImages(missingKeys).then(r => { if (r === true) renderLoveMeetingAdmin(); });
 }
 
 function deleteLoveMeeting(id) {
@@ -5410,7 +5474,18 @@ function openLoveRecord(meetingId, wKey) {
   const m = state.loveMeetings.find(x => x.id === meetingId);
   if (!m) return;
   const rec = state.loveMeetingRecords[`${meetingId}_${wKey}`] || { attendance:{}, prayers:{}, photos:[], topic:'', memo:'' };
-  lrCurrentPhoto = rec.photos?.[0] || null;
+  lrCurrentPhoto = loveRecPhoto(rec);
+  // photoKey만 있고 캐시 미스면 Firestore에서 불러와 미리보기 갱신 (새 사진 선택 전까지만)
+  if (!lrCurrentPhoto && rec.photoKey) {
+    loadMissingLoveImages([rec.photoKey]).then(r => {
+      if (r !== true || !loveImages[rec.photoKey]) return;
+      const pv = document.getElementById('lr-photo-preview');
+      if (pv && !pv.innerHTML) {
+        lrCurrentPhoto = loveImages[rec.photoKey];
+        pv.innerHTML = `<img src="${lrCurrentPhoto}" class="love-photo-thumb">`;
+      }
+    });
+  }
   document.getElementById('modal-love-record-title').textContent = `${m.name} - ${wKey.split('_')[1]}`;
   document.getElementById('lr-meeting-id').value = meetingId;
   document.getElementById('lr-week-key').value = wKey;
@@ -5447,11 +5522,10 @@ function openLoveRecord(meetingId, wKey) {
 function lrPhotoPreview(input) {
   const file = input.files[0];
   if (!file) return;
-  // 사랑모임 사진은 단일 state 문서에 누적 저장 → 1MB 한도 보호 위해 보수적 압축 (저장소 분리 전까지)
   compressImage(file, b64 => {
     lrCurrentPhoto = b64;
     document.getElementById('lr-photo-preview').innerHTML = `<img src="${b64}" class="love-photo-thumb">`;
-  }, { max: 1100, quality: 0.74 });
+  });
 }
 
 function saveLoveRecord() {
@@ -5472,13 +5546,28 @@ function saveLoveRecord() {
     if (el.value.trim()) prayers[el.dataset.uid] = el.value.trim();
   });
 
+  // 사진은 state 문서가 아니라 별도 컬렉션(loveMeetingImages)에 저장 — 1MB 한도 보호.
+  const existing = state.loveMeetingRecords[key] || {};
+  let photoKey = existing.photoKey || null;   // 새 사진 없으면 기존 photoKey 유지
+  if (lrCurrentPhoto) {
+    photoKey = `${meetingId}_${wKey}_love`;
+    loveImages[photoKey] = lrCurrentPhoto;
+    saveLoveImages();
+    saveLoveImageToFirestore(photoKey, lrCurrentPhoto);
+  }
+  // ★데이터 보존: photoKey가 확정된 경우에만 구버전 photos 배열을 비운다(이전 완료).
+  //   사진 로드 실패 등으로 photoKey가 없으면 기존 photos를 절대 잃지 않도록 그대로 유지.
+  const photos = photoKey ? [] : (existing.photos || []);
+
   state.loveMeetingRecords[key] = {
+    ...existing,
     date: document.getElementById('lr-date').value,
     topic: document.getElementById('lr-topic').value,
     memo: document.getElementById('lr-memo').value,
     attendance,
     prayers,
-    photos: lrCurrentPhoto ? [lrCurrentPhoto] : [],
+    photoKey,
+    photos,
   };
   saveState();
   closeModal('modal-love-record');
@@ -5776,6 +5865,7 @@ function showQRResult(type, msg) {
 loadState();
 loadQTImages();
 loadQTPassageImages();
+loadLoveImages();
 loadProfiles();
 initKakaoBanner();
 if (!state.month || state.month === '2026-05') state.month = '2026-06';
