@@ -1661,18 +1661,22 @@ async function loadQTPassageImageForDay(dateStr, forceRefresh) {
   } catch(e) { if (qtPassageImages[dateStr] === undefined) qtPassageImages[dateStr] = {}; }
 }
 
-function compressImage(file, callback) {
+function compressImage(file, callback, opts) {
+  opts = opts || {};
+  const MAX = opts.max || 1440;          // 긴 변 최대 px (기본 고화질)
+  const Q = opts.quality || 0.85;        // JPEG 품질
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
     img.onload = () => {
-      const MAX = 900;
       let w = img.width, h = img.height;
       if (w > h ? w > MAX : h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      callback(c.toDataURL('image/jpeg', 0.65));
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+      callback(c.toDataURL('image/jpeg', Q));
     };
     img.src = e.target.result;
   };
@@ -5443,10 +5447,11 @@ function openLoveRecord(meetingId, wKey) {
 function lrPhotoPreview(input) {
   const file = input.files[0];
   if (!file) return;
+  // 사랑모임 사진은 단일 state 문서에 누적 저장 → 1MB 한도 보호 위해 보수적 압축 (저장소 분리 전까지)
   compressImage(file, b64 => {
     lrCurrentPhoto = b64;
     document.getElementById('lr-photo-preview').innerHTML = `<img src="${b64}" class="love-photo-thumb">`;
-  });
+  }, { max: 1100, quality: 0.74 });
 }
 
 function saveLoveRecord() {
