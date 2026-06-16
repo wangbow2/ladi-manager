@@ -540,7 +540,7 @@
 <!-- Photo Zoom Modal -->
 <div id="modal-photo-zoom" class="modal" onclick="closeModal('modal-photo-zoom')">
   <div class="flex items-center justify-center w-full h-full p-6">
-    <img id="photo-zoom-img" src="" class="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl" style="touch-action:pinch-zoom" onclick="event.stopPropagation()">
+    <img id="photo-zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl" style="touch-action:none;transform-origin:center center;will-change:transform;" onclick="event.stopPropagation()">
   </div>
 </div>
 
@@ -5721,6 +5721,7 @@ function saveMemo() {
 // ==========================================
 function openModal(id) {
   document.getElementById(id).classList.add('open');
+  if (id === 'modal-photo-zoom' && typeof resetPhotoZoom === 'function') resetPhotoZoom();
 }
 
 function closeModal(id) {
@@ -5731,6 +5732,111 @@ function closeModal(id) {
 document.querySelectorAll('.modal').forEach(m=>{
   m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
 });
+
+// ==========================================
+// 사진 핀치줌 / 패닝 / 더블탭 (JS 직접 처리 — 모바일 브라우저 native 핀치 불가 대응)
+// ==========================================
+let _pzScale = 1, _pzTx = 0, _pzTy = 0;          // 현재 배율·이동
+let _pzStartDist = 0, _pzStartScale = 1;          // 핀치 기준값
+let _pzStartX = 0, _pzStartY = 0, _pzBaseTx = 0, _pzBaseTy = 0; // 패닝 기준값
+let _pzLastTap = 0;                               // 더블탭 감지
+const _PZ_MAX = 5, _PZ_MIN = 1;
+
+function resetPhotoZoom() {
+  _pzScale = 1; _pzTx = 0; _pzTy = 0;
+  _applyPhotoZoom();
+}
+function _applyPhotoZoom() {
+  const img = document.getElementById('photo-zoom-img');
+  if (img) img.style.transform = `translate(${_pzTx}px, ${_pzTy}px) scale(${_pzScale})`;
+}
+function _pzDist(t) {
+  const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+  return Math.hypot(dx, dy);
+}
+function _clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+(function setupPhotoZoom() {
+  const img = document.getElementById('photo-zoom-img');
+  if (!img) return;
+
+  img.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      // 핀치 시작
+      _pzStartDist = _pzDist(e.touches);
+      _pzStartScale = _pzScale;
+    } else if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - _pzLastTap < 300) {
+        // 더블탭 → 1배 ↔ 2.5배 토글
+        if (_pzScale > 1) { _pzScale = 1; _pzTx = 0; _pzTy = 0; }
+        else { _pzScale = 2.5; }
+        _applyPhotoZoom();
+        _pzLastTap = 0;
+        e.preventDefault();
+        return;
+      }
+      _pzLastTap = now;
+      // 패닝 시작 (확대 상태일 때만 의미)
+      _pzStartX = e.touches[0].clientX; _pzStartY = e.touches[0].clientY;
+      _pzBaseTx = _pzTx; _pzBaseTy = _pzTy;
+    }
+  }, { passive: false });
+
+  img.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const d = _pzDist(e.touches);
+      if (_pzStartDist > 0) _pzScale = _clamp(_pzStartScale * (d / _pzStartDist), _PZ_MIN, _PZ_MAX);
+      _applyPhotoZoom();
+    } else if (e.touches.length === 1 && _pzScale > 1) {
+      e.preventDefault();
+      _pzTx = _pzBaseTx + (e.touches[0].clientX - _pzStartX);
+      _pzTy = _pzBaseTy + (e.touches[0].clientY - _pzStartY);
+      _applyPhotoZoom();
+    }
+  }, { passive: false });
+
+  img.addEventListener('touchend', e => {
+    if (e.touches.length === 0) {
+      _pzStartDist = 0;
+      if (_pzScale <= 1) { _pzScale = 1; _pzTx = 0; _pzTy = 0; _applyPhotoZoom(); } // 1배 이하로 떨어지면 위치 복구
+    } else if (e.touches.length === 1) {
+      // 핀치 → 한 손가락 남은 경우 패닝 기준 재설정
+      _pzStartX = e.touches[0].clientX; _pzStartY = e.touches[0].clientY;
+      _pzBaseTx = _pzTx; _pzBaseTy = _pzTy;
+    }
+  });
+
+  // 데스크톱: 마우스 휠로도 확대/축소
+  img.addEventListener('wheel', e => {
+    e.preventDefault();
+    _pzScale = _clamp(_pzScale - e.deltaY * 0.002, _PZ_MIN, _PZ_MAX);
+    if (_pzScale === 1) { _pzTx = 0; _pzTy = 0; }
+    _applyPhotoZoom();
+  }, { passive: false });
+
+  // iOS 사파리 전용: 두 손가락 핀치를 touchmove가 아니라 gesture 이벤트로 줌 (e.scale = 시작 대비 배율)
+  img.addEventListener('gesturestart', e => {
+    e.preventDefault();
+    _pzStartScale = _pzScale;
+  }, { passive: false });
+  img.addEventListener('gesturechange', e => {
+    e.preventDefault();
+    _pzScale = _clamp(_pzStartScale * e.scale, _PZ_MIN, _PZ_MAX);
+    _applyPhotoZoom();
+  }, { passive: false });
+  img.addEventListener('gestureend', e => {
+    e.preventDefault();
+    if (_pzScale <= 1) { _pzScale = 1; _pzTx = 0; _pzTy = 0; _applyPhotoZoom(); }
+  }, { passive: false });
+})();
+
+// iOS 사파리: 확대 모달 열려 있을 때 페이지 전체가 핀치줌 되는 것 차단(모달 밖 영역 제스처)
+document.addEventListener('gesturestart', e => {
+  const m = document.getElementById('modal-photo-zoom');
+  if (m && m.classList.contains('open')) e.preventDefault();
+}, { passive: false });
 
 // Close topmost open modal on Escape key
 document.addEventListener('keydown', e=>{
