@@ -32,7 +32,9 @@
   .st-O { background:#DBEAFE; color:#1D4ED8; font-weight:600; }
   .st-X { background:#FEE2E2; color:#DC2626; font-weight:600; }
   .st-지각 { background:#FEF9C3; color:#B45309; font-weight:600; }
+  .st-무단지각 { background:#FDBA74; color:#7C2D12; font-weight:700; }
   .st-결석 { background:#FEE2E2; color:#DC2626; }
+  .st-무단결석 { background:#F87171; color:#7F1D1D; font-weight:700; }
   .st-불가 { background:#F3F4F6; color:#6B7280; }
   .st-빈칸 { background:#F9FAFB; color:#9CA3AF; }
   .qt-5,.qt-4 { background:#DBEAFE; color:#1D4ED8; font-weight:600; }
@@ -770,6 +772,28 @@ const INITIAL_STUDENTS = [
   { id:'a8', name:'송예주', group:'액기스', birthDate:'2010-03-02', gender:'여', grade:'고1', lineupService:'1부', instrument:'건반', phone:'010-2887-5874', parentPhone:'', teacher:'', status:'활동중', memo:'' },
 ];
 
+// 사랑모임 소그룹 (2026-06-20 New 소그룹) — 모임장 포함 멤버
+const SEED_LOVE_MEETINGS = [
+  { id:'lm_gahui',     name:'가희사랑',  leaderId:'r5', members:['r5','r11','r1','s10','s11'],     dayOfWeek:'토요일', time:'' },
+  { id:'lm_yeonjin',   name:'연진사랑',  leaderId:'r7', members:['r7','r3','r2','s9','a8'],         dayOfWeek:'토요일', time:'' },
+  { id:'lm_eunice',    name:'유니스사랑', leaderId:'s1', members:['s1','a2','s4','r4','a5','a7'],     dayOfWeek:'토요일', time:'' },
+  { id:'lm_ganghyeon', name:'강현사랑',  leaderId:'s7', members:['s7','a1','r6','r8','a6','s5'],     dayOfWeek:'토요일', time:'' },
+  { id:'lm_soyeon',    name:'소연사랑',  leaderId:'s6', members:['s6','s2','s3','a4','r10','r9'],    dayOfWeek:'토요일', time:'' },
+];
+const LOVE_WEEKLY_TOPIC_DEFAULT = `💗26.06.20 소그룹 주제💗
+
+1. 이번주 삶 나눔
+-감사했던 일, 힘들었던 일, 특별한 이슈
+-학교에서 월드컵 봤는지ㅋㅋㅋ
+
+2. 기말고사를 일주일 앞둔 소감
+-라디사역과 학교공부를 병행하기가 벅차지는 않는지?
+-기말고사 마지막날 계획?
+
+3. 한 주의 결단 공유하기
+
+📸`;
+
 // 5월 QT 체크 시드 데이터 (이미지에서 입력)
 const SEED_CHECKS = {
   // 액기스
@@ -913,7 +937,7 @@ const QT_SCHEDULE = {
 };
 
 const WEEKS_LABEL = ['1주차','2주차','3주차','4주차','5주차'];
-const ATTENDANCE_OPTIONS = ['O','지각','결석','기타'];
+const ATTENDANCE_OPTIONS = ['O','지각','무단지각','결석','무단결석','기타'];
 const QT_OPTIONS = ['5','4','3','2','1','0','X',''];
 const GATE_OPTIONS = ['O','X',''];
 
@@ -954,6 +978,15 @@ let state = {
 let tempCheck = {};
 let tempMemoKey = null;
 
+// 2026-06-20 New 소그룹: 서버/로컬 어디서 로드되든 1회 적용. 적용 시 true 반환.
+function _applyLoveGroupMigration() {
+  if (state._loveGroupVer === '2026-06-20') return false;
+  state.loveMeetings = JSON.parse(JSON.stringify(SEED_LOVE_MEETINGS));
+  state.loveWeeklyTopic = LOVE_WEEKLY_TOPIC_DEFAULT;
+  state._loveGroupVer = '2026-06-20';
+  return true;
+}
+
 function loadState() {
   try {
     const s = localStorage.getItem('radi_v4');
@@ -984,6 +1017,8 @@ function loadState() {
   if (!state.qtPassageTexts) state.qtPassageTexts = {};
   if (!state.weeklyFiles) state.weeklyFiles = {};
   if (!state.feedbacks) state.feedbacks = [];
+  if (!state.loveWeeklyTopic) state.loveWeeklyTopic = '';
+  _applyLoveGroupMigration(); // 2026-06-20 New 소그룹
   if (!state._may2026Attendance) {
     const mo = '2026-05';
     // 황영환(t1), 김예찬(t3), 정민지(t4), 정여명(t5) — 전 주차 토/주일 O
@@ -1085,6 +1120,8 @@ function saveState() {
       editLogs: state.editLogs,
       loveMeetings: state.loveMeetings,
       loveMeetingRecords: state.loveMeetingRecords,
+      loveWeeklyTopic: state.loveWeeklyTopic,
+      _loveGroupVer: state._loveGroupVer,
       qrUsage: state.qrUsage,
       lineupConfirmed: state.lineupConfirmed,
       qtPassageTexts: state.qtPassageTexts,
@@ -1299,6 +1336,8 @@ function _getFsData() {
     editLogs: (state.editLogs||[]).slice(-100),
     loveMeetings: state.loveMeetings,
     loveMeetingRecords: state.loveMeetingRecords,
+    loveWeeklyTopic: state.loveWeeklyTopic,
+    _loveGroupVer: state._loveGroupVer,
     qrUsage: state.qrUsage,
     lineupConfirmed: state.lineupConfirmed,
     qtPassageTexts: state.qtPassageTexts,
@@ -1398,6 +1437,8 @@ function _applyFsData(fsData) {
     state.qtCommentsReadAt[localUser] = Math.max(myReadAt, state.qtCommentsReadAt[localUser] || 0);
   }
   try { localStorage.setItem('radi_v4', JSON.stringify({...state, currentUser: localUser, page: state.page})); } catch(e) {}
+  // 서버 데이터가 New 소그룹을 아직 안 가졌으면 적용 후 서버에 반영
+  if (_applyLoveGroupMigration()) saveState();
 }
 
 // 2026-06-09 전체 덮어쓰기 사고 이전 로컬 사본이 남은 기기에서 서버 공란만 복구한다.
@@ -1958,7 +1999,7 @@ function quickToggleAttendance(studentId, weekIdx, field) {
   if (!isLeader()) return;
   const c = getCheck(studentId, state.month, weekIdx);
   const cur = c[field] || '';
-  const cycle = ['', 'O', '지각', '결석'];
+  const cycle = ['', 'O', '지각', '무단지각', '결석', '무단결석'];
   const idx = cycle.indexOf(cur);
   const next = cycle[(idx + 1) % cycle.length];
   addEditLog('check', studentId, `${state.month}_w${weekIdx}`, field, cur, next, '');
@@ -2055,6 +2096,8 @@ function getLineupStatus(studentId, month, weekIdx) {
 function autoLineup(studentId, month, weekIdx) {
   const c = getCheck(studentId, month, weekIdx);
   if (c.sun === '결석') return { auto:'제외', final:'', reason:'결석' };
+  if (c.sun === '무단결석') return { auto:'제외', final:'', reason:'무단 결석' };
+  if (c.sun === '무단지각') return { auto:'제외', final:'', reason:'무단 지각 (사전 연락 없음)' };
   if (c.sun === 'O' || c.sun === '') {
     if (c.sun === 'O') {
       if (c.qt === '0') return { auto:'확인필요', final:'', reason:'QT 0점' };
@@ -2095,7 +2138,7 @@ function calcStats(studentId, month) {
     const c = getCheck(studentId, month, i);
     if (c.sat || c.sun || c.qt !== '') {
       if (c.sat !== '') { totalSat++; if(c.sat==='O') okSat++; }
-      if (c.sun !== '') { totalSun++; if(c.sun==='O'||c.sun==='지각') okSun++; }
+      if (c.sun !== '') { totalSun++; if(c.sun==='O'||c.sun==='지각'||c.sun==='무단지각') okSun++; }
       if (c.qt !== '' && c.qt !== 'X') { totalQt++; sumQt += parseInt(c.qt)||0; }
     }
   });
@@ -2225,6 +2268,7 @@ function calcTrafficLight(c) {
   if ((c.qt === 'X') || (qtFilled && qt < 4)) return 'red';
   if (c.gate === 'X') return 'red';
   // Yellow: 지각 OR 필사 조건(sun지각+미연락)
+  if (c.sat === '무단지각' || c.sun === '무단지각' || c.sat === '무단결석' || c.sun === '무단결석') return 'red';
   if (c.sat === '지각') return 'yellow';
   if (c.sun === '지각') return 'yellow';
   // Green
@@ -2889,8 +2933,9 @@ function renderPastoralAlerts() {
   const CONDS = [
     { label: 'QT미통과', test: c => c.qt !== '' && c.qt !== 'X' && !isNaN(parseInt(c.qt)) && parseInt(c.qt) < 4 },
     { label: '가테불통',  test: c => c.gate === 'X' },
-    { label: '토요불참',  test: c => c.sat === '결석' },
-    { label: '주일불참',  test: c => c.sun === '결석' },
+    { label: '토요불참',  test: c => c.sat === '결석' || c.sat === '무단결석' },
+    { label: '주일불참',  test: c => c.sun === '결석' || c.sun === '무단결석' },
+    { label: '무단지각',  test: c => c.sat === '무단지각' || c.sun === '무단지각' },
   ];
   const alerts = [];
   students.forEach(s => {
@@ -2939,7 +2984,7 @@ function renderAdminStats() {
     weeks.forEach((w,i) => {
       const c = getCheck(s.id, month, i);
       if (c.sat !== '') { satTotal++; if (c.sat==='O') satOk++; }
-      if (c.sun !== '') { sunTotal++; if (c.sun==='O'||c.sun==='지각') sunOk++; }
+      if (c.sun !== '') { sunTotal++; if (c.sun==='O'||c.sun==='지각'||c.sun==='무단지각') sunOk++; }
       const qt = parseInt(c.qt);
       if (c.qt !== '' && c.qt !== 'X' && !isNaN(qt)) { qtSum += qt; qtCount++; }
     });
@@ -3478,7 +3523,7 @@ function renderCheckTableView(month, weeks) {
   weekStudents.forEach(s => {
     const c = getCheck(s.id, month, wi);
     if (c.sat !== '') { satTotal++; if (c.sat==='O') satOk++; }
-    if (c.sun !== '') { sunTotal++; if (c.sun==='O'||c.sun==='지각') sunOk++; }
+    if (c.sun !== '') { sunTotal++; if (c.sun==='O'||c.sun==='지각'||c.sun==='무단지각') sunOk++; }
   });
   const satRateTxt = satTotal ? ` ${Math.round(satOk/satTotal*100)}%` : '';
   const sunRateTxt = sunTotal ? ` ${Math.round(sunOk/sunTotal*100)}%` : '';
@@ -4516,7 +4561,7 @@ function buildCheckModalBody() {
   function attButtons(field) {
     return attOpts.map(v=>`
       <button onclick="setTempCheck('${field}','${v}')"
-        class="px-2 py-1 rounded-lg text-xs font-semibold ${v==='O'?'st-O':v==='지각'?'st-지각':v==='결석'?'st-결석':v==='기타'?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-500'} ${tempCheck[field]===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
+        class="px-2 py-1 rounded-lg text-xs font-semibold ${v==='O'?'st-O':v==='지각'?'st-지각':v==='무단지각'?'st-무단지각':v==='결석'?'st-결석':v==='무단결석'?'st-무단결석':v==='기타'?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-500'} ${tempCheck[field]===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
         ${v||'빈칸'}
       </button>`).join('');
   }
@@ -4739,7 +4784,9 @@ function getLineupRestrictions(studentId, month, weekIdx, svc) {
   const qt = parseInt(c.qt);
   if (c.qt !== '' && c.qt !== 'X' && !isNaN(qt) && qt < 4) restrictions.push(`QT ${qt}/4회`);
   if (c.gate === 'X') restrictions.push('가사 테스트 미통과');
-  if (c.sat === '결석') restrictions.push('토요일 결석');
+  if (c.sat === '결석' || c.sat === '무단결석') restrictions.push('토요일 결석');
+  if (c.sun === '무단결석') restrictions.push('주일 무단 결석');
+  if (c.sun === '무단지각') restrictions.push('무단 지각 (사전 연락 없음)');
   if (c.sun === '지각' && !c.lateContacted) restrictions.push('5분 초과 지각 (미연락)');
   const pastoralApproved = !!state.pastoralApprovals[key];
   return { eligible: restrictions.length === 0, adminRestricted: false, restrictions, pastoralApproved };
@@ -5278,6 +5325,27 @@ function generateQR() {
 // ==========================================
 // 사랑 모임
 // ==========================================
+function loveWeeklyTopicCard(editable) {
+  const topic = state.loveWeeklyTopic || '';
+  if (!topic && !editable) return '';
+  const safe = topic.replace(/</g, '&lt;');
+  return `
+    <div class="rounded-2xl p-4 shadow-sm border border-pink-100" style="background:linear-gradient(135deg,#FDF2F8,#F5F3FF)">
+      <div class="flex items-center justify-between mb-2">
+        <p class="font-bold text-pink-600 text-sm">💗 이번주 소그룹 주제</p>
+        ${editable && isLeader() ? `<button onclick="editLoveWeeklyTopic()" class="text-xs bg-white text-pink-600 border border-pink-200 px-2 py-1 rounded-lg">수정</button>` : ''}
+      </div>
+      ${topic ? `<div class="text-sm text-gray-700" style="white-space:pre-wrap;line-height:1.65">${safe}</div>` : `<p class="text-xs text-gray-400">아직 등록된 주제가 없습니다</p>`}
+    </div>`;
+}
+function editLoveWeeklyTopic() {
+  if (!isLeader()) return;
+  const next = prompt('이번주 소그룹 주제를 입력하세요', state.loveWeeklyTopic || '');
+  if (next === null) return;
+  state.loveWeeklyTopic = next;
+  saveState();
+  renderLoveMeeting();
+}
 function renderLoveMeeting() {
   if (isMember()) { renderMyLoveMeeting(); return; }
   renderLoveMeetingAdmin();
@@ -5310,7 +5378,7 @@ function renderMyLoveMeeting() {
       <div class="border-b border-gray-100 py-3 last:border-0">
         <div class="flex items-center justify-between mb-1">
           <span class="text-sm font-semibold text-gray-700">${w.label}</span>
-          <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='O'?'st-O':myAttn==='지각'?'st-지각':myAttn==='-'?'st-빈칸':'st-결석'}">${myAttn}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='O'?'st-O':myAttn==='지각'?'st-지각':myAttn==='무단지각'?'st-무단지각':myAttn==='무단결석'?'st-무단결석':myAttn==='-'?'st-빈칸':'st-결석'}">${myAttn}</span>
         </div>
         ${rec.topic ? `<p class="text-xs text-purple-600 mb-1">나눔: ${rec.topic}</p>` : ''}
         ${recPhoto ? `<img src="${recPhoto}" class="love-photo-thumb mb-1">` : ''}
@@ -5323,6 +5391,7 @@ function renderMyLoveMeeting() {
   }).join('');
   el.innerHTML = `
     <div class="space-y-4">
+      ${loveWeeklyTopicCard(false)}
       <div class="bg-white rounded-2xl p-4 shadow-sm">
         <div class="flex items-center gap-3 mb-2">
           <div class="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-800 font-bold text-lg">💛</div>
@@ -5400,6 +5469,7 @@ function renderLoveMeetingAdmin() {
         <h2 class="font-bold text-gray-800">사랑 모임</h2>
         ${isAdmin() ? `<button onclick="openAddLoveMeeting()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full font-semibold">+ 추가</button>` : ''}
       </div>
+      ${loveWeeklyTopicCard(true)}
       ${meetings.length ? meetingCards : '<div class="text-center py-8 text-gray-400"><p class="text-2xl mb-2">💛</p><p>등록된 사랑 모임이 없습니다</p></div>'}
     </div>`;
   // photoKey 사진이 로컬 캐시에 없으면 Firestore에서 불러온 뒤 다시 그림 (QT 패턴)
