@@ -643,13 +643,6 @@
           <option value="">선택</option>
         </select>
       </div>
-      <div class="flex gap-2">
-        <div class="flex-1"><label class="text-xs text-gray-500 font-semibold mb-1 block">모임 요일</label>
-          <select id="lm-day"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option><option>토</option><option>주일</option></select>
-        </div>
-        <div class="flex-1"><label class="text-xs text-gray-500 font-semibold mb-1 block">모임 시간</label><input type="time" id="lm-time" value="19:00"></div>
-      </div>
-      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">장소</label><input type="text" id="lm-location" placeholder="모임 장소"></div>
       <div>
         <label class="text-xs text-gray-500 font-semibold mb-1 block">사랑원 선택</label>
         <div id="lm-members-list" class="grid grid-cols-3 gap-1 max-h-40 overflow-y-auto border rounded-xl p-2"></div>
@@ -774,11 +767,11 @@ const INITIAL_STUDENTS = [
 
 // 사랑모임 소그룹 (2026-06-20 New 소그룹) — 모임장 포함 멤버
 const SEED_LOVE_MEETINGS = [
-  { id:'lm_gahui',     name:'가희사랑',  leaderId:'r5', members:['r5','r11','r1','s10','s11'],     dayOfWeek:'토요일', time:'' },
-  { id:'lm_yeonjin',   name:'연진사랑',  leaderId:'r7', members:['r7','r3','r2','s9','a8'],         dayOfWeek:'토요일', time:'' },
-  { id:'lm_eunice',    name:'유니스사랑', leaderId:'s1', members:['s1','a2','s4','r4','a5','a7'],     dayOfWeek:'토요일', time:'' },
-  { id:'lm_ganghyeon', name:'강현사랑',  leaderId:'s7', members:['s7','a1','r6','r8','a6','s5'],     dayOfWeek:'토요일', time:'' },
-  { id:'lm_soyeon',    name:'소연사랑',  leaderId:'s6', members:['s6','s2','s3','a4','r10','r9'],    dayOfWeek:'토요일', time:'' },
+  { id:'lm_gahui',     name:'가희사랑',  leaderId:'r5', members:['r5','r11','r1','s10','s11'] },
+  { id:'lm_yeonjin',   name:'연진사랑',  leaderId:'r7', members:['r7','r3','r2','s9','a8'] },
+  { id:'lm_eunice',    name:'유니스사랑', leaderId:'s1', members:['s1','a2','s4','r4','a5','a7'] },
+  { id:'lm_ganghyeon', name:'강현사랑',  leaderId:'s7', members:['s7','a1','r6','r8','a6','s5'] },
+  { id:'lm_soyeon',    name:'소연사랑',  leaderId:'s6', members:['s6','s2','s3','a4','r10','r9'] },
 ];
 const LOVE_WEEKLY_TOPIC_DEFAULT = `💗26.06.20 소그룹 주제💗
 
@@ -5404,7 +5397,7 @@ function renderMyLoveMeeting() {
         <div class="flex items-center justify-between mb-1">
           <span class="text-sm font-semibold text-gray-700">${w.label}</span>
           <div class="flex items-center gap-1">
-            <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='O'?'st-O':myAttn==='지각'?'st-지각':myAttn==='무단지각'?'st-무단지각':myAttn==='무단결석'?'st-무단결석':myAttn==='-'?'st-빈칸':'st-결석'}">${myAttn}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='참여'?'st-O':myAttn==='불참'?'st-결석':'st-빈칸'}">${myAttn}</span>
             ${amLoveLeader ? `<button onclick="openLoveRecord('${myMeeting.id}','${wKey}')" class="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-lg font-semibold">✏️ 기록</button>` : ''}
           </div>
         </div>
@@ -5425,10 +5418,9 @@ function renderMyLoveMeeting() {
           <div class="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-800 font-bold text-lg">💛</div>
           <div>
             <p class="font-bold text-gray-800">${myMeeting.name}${amLoveLeader ? ' <span class="text-xs bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-full align-middle">사랑장</span>' : ''}</p>
-            <p class="text-xs text-gray-500">모임장: ${leader?.name || '-'} · ${myMeeting.dayOfWeek} ${myMeeting.time}</p>
+            <p class="text-xs text-gray-500">모임장: ${leader?.name || '-'}</p>
           </div>
         </div>
-        <p class="text-xs text-gray-500">${myMeeting.location ? `📍 ${myMeeting.location}` : ''}</p>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm">
         <p class="text-xs text-gray-500 font-semibold mb-2">${monthName(month)} 모임 기록</p>
@@ -5468,13 +5460,13 @@ function renderLoveMeetingAdmin() {
     const rec = state.loveMeetingRecords[`${m.id}_${wKey}`] || {};
     const recPhoto = loveRecPhoto(rec);
     const hasPhoto = !!recPhoto || !!rec.photoKey;
-    const attendCount = Object.values(rec.attendance||{}).filter(v=>v==='O').length;
+    const attendCount = Object.values(rec.attendance||{}).filter(v=>v==='참여').length;
     return `
       <div class="bg-white rounded-2xl p-4 shadow-sm mb-3">
         <div class="flex items-center justify-between mb-2">
           <div>
             <p class="font-bold text-gray-800">${m.name}</p>
-            <p class="text-xs text-gray-500">모임장: ${leader?.name||'-'} · ${m.dayOfWeek} ${m.time} · ${memberNames.length}명</p>
+            <p class="text-xs text-gray-500">모임장: ${leader?.name||'-'} · 사랑원 ${memberNames.length}명</p>
           </div>
           <div class="flex gap-1">
             <button onclick="openEditLoveMeeting('${m.id}')" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg">수정</button>
@@ -5522,9 +5514,7 @@ function openAddLoveMeeting() {
   document.getElementById('modal-love-meeting-title').textContent = '사랑 모임 추가';
   document.getElementById('love-meeting-id').value = '';
   document.getElementById('lm-name').value = '';
-  document.getElementById('lm-location').value = '';
   document.getElementById('lm-note').value = '';
-  document.getElementById('lm-time').value = '19:00';
   populateLoveMeetingLeaderSelect('');
   populateLoveMeetingMembers([]);
   openModal('modal-love-meeting');
@@ -5536,9 +5526,6 @@ function openEditLoveMeeting(id) {
   document.getElementById('modal-love-meeting-title').textContent = '사랑 모임 수정';
   document.getElementById('love-meeting-id').value = id;
   document.getElementById('lm-name').value = m.name;
-  document.getElementById('lm-day').value = m.dayOfWeek||'목';
-  document.getElementById('lm-time').value = m.time||'19:00';
-  document.getElementById('lm-location').value = m.location||'';
   document.getElementById('lm-note').value = m.note||'';
   populateLoveMeetingLeaderSelect(m.leaderId||'');
   populateLoveMeetingMembers(m.members||[]);
@@ -5570,9 +5557,6 @@ function saveLoveMeeting() {
   const data = {
     id, name,
     leaderId: document.getElementById('lm-leader').value,
-    dayOfWeek: document.getElementById('lm-day').value,
-    time: document.getElementById('lm-time').value,
-    location: document.getElementById('lm-location').value,
     note: document.getElementById('lm-note').value,
     members,
   };
@@ -5618,8 +5602,8 @@ function openLoveRecord(meetingId, wKey) {
     return `<div class="flex items-center justify-between py-1">
       <span class="text-sm text-gray-700">${s.name}</span>
       <div class="flex gap-1">
-        ${['O','지각','결석','-'].map(v => `<button onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-purple-400','font-bold'));this.classList.add('ring-2','ring-purple-400','font-bold');this._val='${v}'" data-uid="${s.id}" data-val="${v}"
-          class="text-xs px-2 py-1 rounded-lg ${v==='O'?'st-O':v==='지각'?'st-지각':v==='결석'?'st-결석':'bg-gray-100 text-gray-500'} ${cur===v?'ring-2 ring-purple-400 font-bold':''} lr-attn-btn">
+        ${['참여','불참'].map(v => `<button onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-purple-400','font-bold'));this.classList.add('ring-2','ring-purple-400','font-bold');this._val='${v}'" data-uid="${s.id}" data-val="${v}"
+          class="text-sm px-4 py-1.5 rounded-lg font-semibold ${v==='참여'?'st-O':'st-결석'} ${cur===v?'ring-2 ring-purple-400 font-bold':''} lr-attn-btn">
           ${v}
         </button>`).join('')}
       </div>
