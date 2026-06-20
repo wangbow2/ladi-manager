@@ -1828,10 +1828,21 @@ function getCurrentUser() {
   return state.students.find(s => s.id === state.currentUser) || null;
 }
 
+// 사랑장 = 자기 사랑모임의 모임장(leaderId). 일반 팀원이지만 자기 그룹은 수정 가능.
+function isLoveLeader() {
+  const uid = state.currentUser;
+  return !!uid && (state.loveMeetings || []).some(m => m.leaderId === uid);
+}
+function canEditLoveMeeting(meetingId) {
+  if (isLeader()) return true; // 팀장/관리자는 모든 그룹 수정 가능
+  const m = (state.loveMeetings || []).find(x => x.id === meetingId);
+  return !!m && m.leaderId === state.currentUser; // 사랑장은 자기 그룹만
+}
 function getRoleLabel() {
   const r = getUserRole();
   if (r === 'admin') return '관리자';
   if (r === 'leader') return '팀장';
+  if (isLoveLeader()) return '사랑장';
   return '팀원';
 }
 
@@ -5381,6 +5392,7 @@ function renderMyLoveMeeting() {
   const leader = state.students.find(s => s.id === myMeeting.leaderId);
   const month = state.month;
   const weeks = getMonthWeeks(month);
+  const amLoveLeader = myMeeting.leaderId === me.id;
   const records = weeks.map((w, i) => {
     const wKey = `${month}_w${i}`;
     const rec = state.loveMeetingRecords[`${myMeeting.id}_${wKey}`] || {};
@@ -5391,7 +5403,10 @@ function renderMyLoveMeeting() {
       <div class="border-b border-gray-100 py-3 last:border-0">
         <div class="flex items-center justify-between mb-1">
           <span class="text-sm font-semibold text-gray-700">${w.label}</span>
-          <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='O'?'st-O':myAttn==='지각'?'st-지각':myAttn==='무단지각'?'st-무단지각':myAttn==='무단결석'?'st-무단결석':myAttn==='-'?'st-빈칸':'st-결석'}">${myAttn}</span>
+          <div class="flex items-center gap-1">
+            <span class="text-xs px-2 py-0.5 rounded-full ${myAttn==='O'?'st-O':myAttn==='지각'?'st-지각':myAttn==='무단지각'?'st-무단지각':myAttn==='무단결석'?'st-무단결석':myAttn==='-'?'st-빈칸':'st-결석'}">${myAttn}</span>
+            ${amLoveLeader ? `<button onclick="openLoveRecord('${myMeeting.id}','${wKey}')" class="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-lg font-semibold">✏️ 기록</button>` : ''}
+          </div>
         </div>
         ${rec.topic ? `<p class="text-xs text-purple-600 mb-1">나눔: ${rec.topic}</p>` : ''}
         ${recPhoto ? `<img src="${recPhoto}" class="love-photo-thumb mb-1">` : ''}
@@ -5409,7 +5424,7 @@ function renderMyLoveMeeting() {
         <div class="flex items-center gap-3 mb-2">
           <div class="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-800 font-bold text-lg">💛</div>
           <div>
-            <p class="font-bold text-gray-800">${myMeeting.name}</p>
+            <p class="font-bold text-gray-800">${myMeeting.name}${amLoveLeader ? ' <span class="text-xs bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-full align-middle">사랑장</span>' : ''}</p>
             <p class="text-xs text-gray-500">모임장: ${leader?.name || '-'} · ${myMeeting.dayOfWeek} ${myMeeting.time}</p>
           </div>
         </div>
@@ -5572,6 +5587,7 @@ function saveLoveMeeting() {
 let lrCurrentPhoto = null;
 
 function openLoveRecord(meetingId, wKey) {
+  if (!canEditLoveMeeting(meetingId)) return;
   const m = state.loveMeetings.find(x => x.id === meetingId);
   if (!m) return;
   const rec = state.loveMeetingRecords[`${meetingId}_${wKey}`] || { attendance:{}, prayers:{}, photos:[], topic:'', memo:'' };
@@ -5630,8 +5646,8 @@ function lrPhotoPreview(input) {
 }
 
 function saveLoveRecord() {
-  if (!isLeader()) return;
   const meetingId = document.getElementById('lr-meeting-id').value;
+  if (!canEditLoveMeeting(meetingId)) return;
   const wKey = document.getElementById('lr-week-key').value;
   const key = `${meetingId}_${wKey}`;
 
