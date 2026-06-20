@@ -980,9 +980,12 @@ let tempMemoKey = null;
 
 // 2026-06-20 New 소그룹: 서버/로컬 어디서 로드되든 1회 적용. 적용 시 true 반환.
 function _applyLoveGroupMigration() {
-  if (state._loveGroupVer === '2026-06-20') return false;
+  // 자가복구: 플래그가 있어도 실제 그룹이 없으면 다시 생성한다.
+  const ids = new Set((state.loveMeetings || []).map(m => m && m.id));
+  const hasNew = SEED_LOVE_MEETINGS.every(g => ids.has(g.id));
+  if (state._loveGroupVer === '2026-06-20' && hasNew) return false;
   state.loveMeetings = JSON.parse(JSON.stringify(SEED_LOVE_MEETINGS));
-  state.loveWeeklyTopic = LOVE_WEEKLY_TOPIC_DEFAULT;
+  if (!state.loveWeeklyTopic) state.loveWeeklyTopic = LOVE_WEEKLY_TOPIC_DEFAULT;
   state._loveGroupVer = '2026-06-20';
   return true;
 }
@@ -5338,6 +5341,16 @@ function loveWeeklyTopicCard(editable) {
       ${topic ? `<div class="text-sm text-gray-700" style="white-space:pre-wrap;line-height:1.65">${safe}</div>` : `<p class="text-xs text-gray-400">아직 등록된 주제가 없습니다</p>`}
     </div>`;
 }
+function createLoveGroups() {
+  if (!isAdmin()) return;
+  if (!confirm('사랑모임을 New 소그룹 5개로 생성/초기화할까요?\n(가희·연진·유니스·강현·소연사랑 — 기존 모임 목록은 교체됩니다)')) return;
+  state.loveMeetings = JSON.parse(JSON.stringify(SEED_LOVE_MEETINGS));
+  if (!state.loveWeeklyTopic) state.loveWeeklyTopic = LOVE_WEEKLY_TOPIC_DEFAULT;
+  state._loveGroupVer = '2026-06-20';
+  saveState();
+  renderLoveMeeting();
+  alert('New 소그룹 5개를 생성했습니다 💐');
+}
 function editLoveWeeklyTopic() {
   if (!isLeader()) return;
   const next = prompt('이번주 소그룹 주제를 입력하세요', state.loveWeeklyTopic || '');
@@ -5467,7 +5480,10 @@ function renderLoveMeetingAdmin() {
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="font-bold text-gray-800">사랑 모임</h2>
-        ${isAdmin() ? `<button onclick="openAddLoveMeeting()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full font-semibold">+ 추가</button>` : ''}
+        ${isAdmin() ? `<div class="flex gap-1">
+          <button onclick="createLoveGroups()" class="text-xs bg-pink-500 text-white px-3 py-1.5 rounded-full font-semibold">💐 New 소그룹 생성</button>
+          <button onclick="openAddLoveMeeting()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full font-semibold">+ 추가</button>
+        </div>` : ''}
       </div>
       ${loveWeeklyTopicCard(true)}
       ${meetings.length ? meetingCards : '<div class="text-center py-8 text-gray-400"><p class="text-2xl mb-2">💛</p><p>등록된 사랑 모임이 없습니다</p></div>'}
