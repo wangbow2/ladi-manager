@@ -1141,16 +1141,33 @@ function saveState() {
 // ==========================================
 // FIREBASE FIRESTORE SYNC
 // ==========================================
-firebase.initializeApp({
-  apiKey: "AIzaSyBH-ogVqi9C63GIrllY2aIK76i5dwFBGgQ",
-  authDomain: "ladi-manager.firebaseapp.com",
-  projectId: "ladi-manager",
-  storageBucket: "ladi-manager.firebasestorage.app",
-  messagingSenderId: "583728554598",
-  appId: "1:583728554598:web:b5127dc45914432eadc3a7"
-});
-const _db = firebase.firestore();
-const _stateRef = _db.collection('radi').doc('state');
+// Firebase 초기화 — CDN 미로딩/차단 시에도 앱이 죽지 않고 로컬 전용 모드로 강등된다.
+let _db, _stateRef, _FS_OK = false;
+try {
+  if (typeof firebase === 'undefined') throw new Error('firebase SDK 로드 실패 (CDN 차단/네트워크)');
+  firebase.initializeApp({
+    apiKey: "AIzaSyBH-ogVqi9C63GIrllY2aIK76i5dwFBGgQ",
+    authDomain: "ladi-manager.firebaseapp.com",
+    projectId: "ladi-manager",
+    storageBucket: "ladi-manager.firebasestorage.app",
+    messagingSenderId: "583728554598",
+    appId: "1:583728554598:web:b5127dc45914432eadc3a7"
+  });
+  _db = firebase.firestore();
+  _stateRef = _db.collection('radi').doc('state');
+  _FS_OK = true;
+} catch (e) {
+  console.warn('Firebase 초기화 실패 — 로컬 전용 모드로 실행합니다:', e);
+  // 체이너블 no-op 스텁: 기존 Firestore 호출이 예외 없이 무시되도록 한다.
+  const _stub = {
+    collection: () => _stub, doc: () => _stub,
+    get: () => Promise.resolve({ exists: false, data: () => ({}), forEach: () => {} }),
+    set: () => Promise.resolve(), update: () => Promise.resolve(),
+    add: () => Promise.resolve(), delete: () => Promise.resolve(),
+    onSnapshot: () => (() => {}), runTransaction: () => Promise.resolve(),
+  };
+  _db = _stub; _stateRef = _stub;
+}
 const APP_SCHEMA_VERSION = 3;
 let _fsDebounceTimer = null;
 let _lastFsData = null;
@@ -1486,6 +1503,7 @@ function _renderCurrentPage() {
 }
 
 function initFirestore() {
+  if (!_FS_OK) return; // 로컬 전용 모드 — 서버 동기화 생략
   _stateRef.get().then(doc => {
     const localPassages = state.qtPassageTexts && Object.keys(state.qtPassageTexts).length > 0
       ? state.qtPassageTexts : null;
@@ -6069,28 +6087,38 @@ function showQRResult(type, msg) {
 // ==========================================
 // INIT
 // ==========================================
-loadState();
-loadQTImages();
-loadQTPassageImages();
-loadLoveImages();
-loadProfiles();
-initKakaoBanner();
-if (!state.month || state.month === '2026-05') state.month = '2026-06';
-document.getElementById('header-month').textContent = state.month;
-initFirestore();
-syncProfilesFromFirestore();
+// 부팅을 try/catch로 감싼다 — 어떤 초기화 단계가 실패해도 흰 화면 대신 최소한 로그인 화면이 뜨도록.
+try {
+  loadState();
+  // 비핵심 단계는 각자 보호 — 하나가 실패해도 라우팅까지 도달하도록
+  [loadQTImages, loadQTPassageImages, loadLoveImages, loadProfiles, initKakaoBanner].forEach(fn => {
+    try { fn(); } catch (e) { console.warn(fn.name + ' 실패:', e); }
+  });
+  if (!state.month || state.month === '2026-05') state.month = '2026-06';
+  const _hm = document.getElementById('header-month');
+  if (_hm) _hm.textContent = state.month;
+  try { initFirestore(); } catch (e) { console.warn('initFirestore 실패:', e); }
+  try { syncProfilesFromFirestore(); } catch (e) { console.warn('syncProfilesFromFirestore 실패:', e); }
 
-// Check if QR attendance
-if (location.search.includes('qr=')) {
-  document.getElementById('login-screen').style.display = 'none';
-  checkQRAttendance();
-} else if (state.currentUser) {
-  document.getElementById('login-screen').style.display = 'none';
-  updateHeaderUser();
-  updateNav();
-  navigate(state.page && state.page !== 'dashboard' ? state.page : 'dashboard');
-} else {
-  showLoginScreen();
+  // Check if QR attendance
+  if (location.search.includes('qr=')) {
+    document.getElementById('login-screen').style.display = 'none';
+    checkQRAttendance();
+  } else if (state.currentUser) {
+    document.getElementById('login-screen').style.display = 'none';
+    updateHeaderUser();
+    updateNav();
+    navigate(state.page && state.page !== 'dashboard' ? state.page : 'dashboard');
+  } else {
+    showLoginScreen();
+  }
+} catch (e) {
+  console.error('초기화 오류 — 로그인 화면으로 폴백:', e);
+  try {
+    const ls = document.getElementById('login-screen');
+    if (ls) ls.style.display = '';
+    if (typeof showLoginScreen === 'function') showLoginScreen();
+  } catch (_) {}
 }
 
 // Service worker for offline (optional - just register without blocking)
