@@ -3999,19 +3999,18 @@ function renderQTSubmit() {
   const userId = state.currentUser || '';
   const doneCount = Object.keys(state.qtDayChecks||{}).filter(k=>k.startsWith(userId+'_'+qtMonth)).length;
   const totalDays = Object.keys(QT_SCHEDULE).filter(k=>k.startsWith(qtMonth)).length;
-  const qtDownload = QT_DOWNLOADS[qtMonth];
-  const qtDownloadCard = qtDownload ? `
+  const qtDownloadItems = Object.values(QT_DOWNLOADS);
+  const qtDownloadCard = qtDownloadItems.length ? `
     <div class="bg-white rounded-xl p-3 shadow-sm border border-purple-100">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="text-xs font-semibold text-gray-500">큐티 자료</p>
-          <p class="text-sm font-bold text-gray-800">${qtDownload.label}</p>
-        </div>
-        <a href="${qtDownload.href}" download class="flex-shrink-0 bg-purple-600 text-white px-3 py-2 rounded-xl text-xs font-bold active:bg-purple-700 inline-flex items-center justify-center" style="min-height:40px">
-          다운로드
-        </a>
+      <p class="text-xs font-semibold text-gray-500 mb-2">큐티 자료</p>
+      <div class="grid grid-cols-2 gap-2">
+        ${qtDownloadItems.map(item => `
+          <a href="${item.href}" download class="bg-purple-600 text-white px-3 py-2 rounded-xl text-xs font-bold active:bg-purple-700 inline-flex flex-col items-center justify-center text-center" style="min-height:48px">
+            <span>${item.label.replace(' 청소년 큐티 PDF', '')}</span>
+            <span class="text-[10px] text-purple-100 font-semibold">${item.size} PDF</span>
+          </a>
+        `).join('')}
       </div>
-      <p class="text-[10px] text-gray-400 mt-1">${qtDownload.size} · PDF</p>
     </div>` : '';
 
   // 오늘의 말씀 + 큐티 폼 인라인
