@@ -927,6 +927,18 @@ const QT_SCHEDULE = {
   '2026-06-22':'고린도전서 14:1-19','2026-06-23':'고린도전서 14:20-40','2026-06-24':'고린도전서 15:1-11',
   '2026-06-25':'고린도전서 15:12-19','2026-06-26':'고린도전서 15:20-34','2026-06-27':'고린도전서 15:35-49',
   '2026-06-28':'고린도전서 15:50-58','2026-06-29':'고린도전서 16:1-12','2026-06-30':'고린도전서 16:13-24',
+  // 2026년 7월 — 매일성경(성서유니온): 시편(1~15일) → 이사야(16~31일)
+  '2026-07-01':'시편 1:1-6','2026-07-02':'시편 2:1-12','2026-07-03':'시편 3:1-8',
+  '2026-07-04':'시편 4:1-8','2026-07-05':'시편 5:1-12','2026-07-06':'시편 6:1-10',
+  '2026-07-07':'시편 7:1-17','2026-07-08':'시편 8:1-9','2026-07-09':'시편 9:1-20',
+  '2026-07-10':'시편 10:1-18','2026-07-11':'시편 11:1-7','2026-07-12':'시편 12:1-8',
+  '2026-07-13':'시편 13:1-6','2026-07-14':'시편 14:1-7','2026-07-15':'시편 15:1-5',
+  '2026-07-16':'이사야 1:1-20','2026-07-17':'이사야 1:21-31','2026-07-18':'이사야 2:1-22',
+  '2026-07-19':'이사야 3:1-12','2026-07-20':'이사야 3:13-4:6','2026-07-21':'이사야 5:1-17',
+  '2026-07-22':'이사야 5:18-30','2026-07-23':'이사야 6:1-13','2026-07-24':'이사야 7:1-25',
+  '2026-07-25':'이사야 8:1-22','2026-07-26':'이사야 9:1-7','2026-07-27':'이사야 9:8-10:4',
+  '2026-07-28':'이사야 10:5-19','2026-07-29':'이사야 10:20-34','2026-07-30':'이사야 11:1-16',
+  '2026-07-31':'이사야 12:1-6',
 };
 
 const WEEKS_LABEL = ['1주차','2주차','3주차','4주차','5주차'];
@@ -3728,9 +3740,24 @@ function deleteQTComment(studentId, dateStr, commentId) {
   renderQTSubmit();
 }
 
+let qtCalMonth = null; // QT 달력이 보고 있는 월 (null=오늘 기준 자동). ‹ › 로 이동.
+function _qtAvailMonths() {
+  return [...new Set(Object.keys(QT_SCHEDULE).map(k => k.slice(0,7)))].sort();
+}
 function getQTMonthStr() {
-  const keys = Object.keys(QT_SCHEDULE).sort();
-  return keys.length ? keys[0].slice(0,7) : null;
+  const months = _qtAvailMonths();
+  if (!months.length) return null;
+  if (qtCalMonth && months.includes(qtCalMonth)) return qtCalMonth;
+  const cur = TODAY_STR.slice(0,7);
+  if (months.includes(cur)) return cur;          // 이번 달 일정이 있으면 이번 달
+  return cur < months[0] ? months[0] : months[months.length-1]; // 범위 밖이면 가장 가까운 달
+}
+function changeQTMonth(dir) {
+  const months = _qtAvailMonths();
+  const i = months.indexOf(getQTMonthStr());
+  const ni = Math.max(0, Math.min(months.length-1, i+dir));
+  qtCalMonth = months[ni];
+  renderQTSubmit();
 }
 
 function isDayLocked(dateStr) {
@@ -3802,6 +3829,8 @@ function renderQTSubmit() {
     return;
   }
   const [y, m] = qtMonth.split('-').map(Number);
+  const _qtMonths = _qtAvailMonths();
+  const _qtMi = _qtMonths.indexOf(qtMonth);
 
   // ── Full monthly calendar (주~토 7열) ──
   const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -3911,7 +3940,7 @@ function renderQTSubmit() {
   const todayLocked = isDayLocked(TODAY_STR);
   const todayEntry = getQTDayEntry(TODAY_STR);
 
-  let todayImgHtml = todayImgsData ? _renderPassageImgSection(TODAY_STR) : '';
+  let todayImgHtml = _renderPassageImgSection(TODAY_STR); // 수동 업로드 없어도 청소년 매일성경 자동 표시
   // 항상 Firestore에서 최신 이미지 강제 로드
   loadQTPassageImageForDay(TODAY_STR, true).then(() => {
     const el = document.getElementById('qt-today-imgs');
@@ -4109,7 +4138,11 @@ function renderQTSubmit() {
   document.getElementById('qt-submit-content').innerHTML = `
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="font-bold text-gray-800">6월 말씀 큐티</h2>
+        <div class="flex items-center gap-1">
+          <button onclick="changeQTMonth(-1)" class="text-gray-400 text-lg leading-none px-1 ${_qtMi>0?'':'opacity-30 pointer-events-none'}">‹</button>
+          <h2 class="font-bold text-gray-800">${m}월 말씀 큐티</h2>
+          <button onclick="changeQTMonth(1)" class="text-gray-400 text-lg leading-none px-1 ${_qtMi<_qtMonths.length-1?'':'opacity-30 pointer-events-none'}">›</button>
+        </div>
         <span class="text-xs text-gray-500">내 진도 <span class="font-bold text-purple-600">${doneCount}</span>/${totalDays}일</span>
       </div>
       <div class="bg-gray-50 rounded-xl p-3 shadow-sm">
@@ -4323,19 +4356,37 @@ function confirmDeletePassageImage(dateStr, slot) {
   removePassageImage(dateStr, slot);
 }
 
+// 청소년(QT2) 매일성경 라이브 이미지 — 날짜로 URL이 결정됨. 수동 업로드가 없으면 매일 자동 표시.
+function _suYouthImgUrl(dateStr, slot) {
+  const ymd = dateStr.replace(/-/g, ''); // 'YYYY-MM-DD' → 'YYYYMMDD'
+  return `https://sum.su.or.kr:8888/Bible_Attach/QT2/J${ymd}-${slot + 1}.jpg`;
+}
+function _passageImgSrc(dateStr, slot) {
+  const imgs = qtPassageImages[dateStr] || {};
+  const manual = slot === 0 ? imgs.img0 : imgs.img1;
+  return manual || _suYouthImgUrl(dateStr, slot); // 수동 업로드 우선, 없으면 청소년 매일성경 자동
+}
+
 function _renderPassageImgSection(dateStr) {
   const imgs = qtPassageImages[dateStr] || {};
-  const entries = [['img0',0,imgs.img0],['img1',1,imgs.img1]].filter(([,,v])=>v);
   const inEdit = _qtImgEditDate === dateStr;
 
-  const imgItems = entries.map(([key, slot, src]) => `
-    <div class="relative flex-shrink-0 rounded-xl overflow-hidden" style="width:${entries.length>1?'calc(50% - 4px)':'100%'}">
+  // 슬롯 0·1 항상 렌더 — 수동 업로드가 있으면 그걸, 없으면 청소년 매일성경 이미지를 자동 표시.
+  // 해당 날짜에 청소년 이미지가 없으면(404) onerror로 그 칸을 숨긴다.
+  const imgItems = [0, 1].map(slot => {
+    const key = 'img' + slot;
+    const manual = slot === 0 ? imgs.img0 : imgs.img1;
+    const src = manual || _suYouthImgUrl(dateStr, slot);
+    return `
+    <div class="su-passage-img relative flex-shrink-0 rounded-xl overflow-hidden" style="width:calc(50% - 4px)">
       <img src="${src}" class="w-full object-cover rounded-xl cursor-pointer active:opacity-80" style="max-height:260px;display:block"
+           onerror="this.closest('.su-passage-img').style.display='none'"
            onclick="event.stopPropagation();${inEdit?'':(`openImgFullscreen('${dateStr}','${key}')`)}">
-      ${inEdit && isLeader() ? `<button onclick="event.stopPropagation();confirmDeletePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10 font-semibold">삭제</button>` : ''}
-    </div>`).join('');
+      ${inEdit && isLeader() && manual ? `<button onclick="event.stopPropagation();confirmDeletePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10 font-semibold">삭제</button>` : ''}
+    </div>`;
+  }).join('');
 
-  const carouselHtml = entries.length ? `<div class="flex gap-2 mt-3">${imgItems}</div>` : '';
+  const carouselHtml = `<div class="flex gap-2 mt-3">${imgItems}</div>`;
 
   if (!isLeader()) return carouselHtml;
 
@@ -4349,7 +4400,7 @@ function _renderPassageImgSection(dateStr) {
     ? `<button onclick="_qtImgEditDate=null;_rerenderPassageImgs('${dateStr}')" class="mt-2 text-xs bg-green-500 text-white px-3 py-1.5 rounded-full font-semibold">수정완료</button>`
     : `<button onclick="_qtImgEditDate='${dateStr}';_rerenderPassageImgs('${dateStr}')" class="mt-2 text-xs bg-amber-500 text-white px-3 py-1.5 rounded-full font-semibold">수정</button>`;
 
-  return `<p class="text-xs font-semibold text-amber-600 mt-3 mb-1">📸 말씀 이미지</p>${carouselHtml}${uploadBtns}${editBtn}`;
+  return `<p class="text-xs font-semibold text-amber-600 mt-3 mb-1">📸 말씀 이미지 <span class="text-gray-400 font-normal">· 청소년 매일성경 자동</span></p>${carouselHtml}${uploadBtns}${editBtn}`;
 }
 
 function _attachSwipeDownClose(el, img, cleanup, onHorizSwipe) {
@@ -4403,11 +4454,9 @@ function openSrcFullscreen(imageKey) {
 }
 
 function openImgFullscreen(dateStr, imgKey) {
-  const imgs = qtPassageImages[dateStr] || {};
-  const keys = ['img0','img1'].filter(k => imgs[k]);
-  let idx = keys.indexOf(imgKey);
-  if (idx < 0) idx = 0;
-  const srcs = keys.map(k => imgs[k]);
+  // 수동 업로드 우선, 없으면 청소년 매일성경 라이브 이미지 — 두 슬롯 모두 전체화면에서 넘겨볼 수 있게.
+  const srcs = [0, 1].map(s => _passageImgSrc(dateStr, s));
+  let idx = imgKey === 'img1' ? 1 : 0;
   if (!srcs.length) return;
 
   const el = document.createElement('div');
