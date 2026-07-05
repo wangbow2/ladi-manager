@@ -1860,30 +1860,59 @@ function compressImage(file, callback, opts) {
   const Q        = opts.quality  || 0.85;     // JPEG 품질 (시작값)
   const MIN_Q    = opts.minQuality || 0.62;   // 더는 안 떨어뜨리는 하한
   const MAX_BYTES= opts.maxBytes || 920000;   // 사진 1장 상한 ≈0.9MB (Firestore 1MB 문서 한도 보호)
+  // 실패 시 조용히 멈추지 않고 사용자에게 알린다(예전엔 onerror가 없어 업로드가 그냥 먹통이 됐음).
+  const onError  = typeof opts.onError === 'function' ? opts.onError
+    : (() => alert('사진을 처리하지 못했어요. 다른 사진으로 다시 시도하거나, 사진 용량을 조금 줄여서 올려 주세요.'));
+
   const reader = new FileReader();
+  reader.onerror = () => { console.warn('사진 읽기 실패'); onError(new Error('read-failed')); };
   reader.onload = e => {
     const img = new Image();
+    img.onerror = () => { console.warn('이미지 디코딩 실패'); onError(new Error('decode-failed')); };
     img.onload = () => {
-      // 주어진 긴변·품질로 한 번 렌더 → dataURL 반환
-      function render(maxDim, q) {
+      try {
+        // base64 길이 → 대략 바이트 (base64는 원본의 4/3)
+        const bytesOf = url => Math.floor(url.length * 0.75);
+        // 1) 목표 긴변으로 '한 번만' 축소해 캔버스에 그린다.
+        //    (예전에는 품질을 낮출 때마다 원본을 2048px로 매번 다시 그려 base64를 반복 할당 →
+        //     큰 폰 사진에서 모바일 브라우저 메모리 초과로 탭이 리로드=튕김. 이제 원본 draw는 1회뿐.)
         let w = img.width, h = img.height;
-        if (w > h ? w > maxDim : h > maxDim) { if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; } else { w = Math.round(w * maxDim / h); h = maxDim; } }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        const ctx = c.getContext('2d');
+        if (Math.max(w, h) > MAX) {
+          if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+          else        { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, w, h);
-        return c.toDataURL('image/jpeg', q);
+
+        // 2) 같은 캔버스에서 품질만 낮춰 재인코딩(원본 재-draw 없음 → 메모리 안정, 화질 우선 유지)
+        let q = Q;
+        let out = canvas.toDataURL('image/jpeg', q);
+        while (bytesOf(out) > MAX_BYTES && q > MIN_Q) {
+          q = Math.max(MIN_Q, +(q - 0.08).toFixed(2));
+          out = canvas.toDataURL('image/jpeg', q);
+        }
+        // 3) 그래도 크면 이미 줄인 캔버스를 단계적으로 더 축소(텍스트 가독성 위해 긴변 1000px 하한)
+        while (bytesOf(out) > MAX_BYTES && Math.max(canvas.width, canvas.height) > 1000) {
+          let nw = Math.round(canvas.width * 0.85), nh = Math.round(canvas.height * 0.85);
+          const longEdge = Math.max(nw, nh);
+          if (longEdge < 1000) { const k = 1000 / longEdge; nw = Math.round(nw * k); nh = Math.round(nh * k); }
+          const tmp = document.createElement('canvas');
+          tmp.width = nw; tmp.height = nh;
+          const tctx = tmp.getContext('2d');
+          tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
+          tctx.drawImage(canvas, 0, 0, nw, nh);   // 원본(img)이 아니라 이미 줄인 canvas에서 축소
+          canvas.width = nw; canvas.height = nh;
+          ctx.drawImage(tmp, 0, 0);
+          out = canvas.toDataURL('image/jpeg', q);
+        }
+        callback(out);
+      } catch (err) {
+        console.warn('이미지 압축 실패:', err);
+        onError(err);
       }
-      // base64 길이 → 대략 바이트 (base64는 원본의 4/3)
-      const bytesOf = url => Math.floor(url.length * 0.75);
-      let maxDim = MAX, q = Q;
-      let out = render(maxDim, q);
-      // 1단계: 한도 넘으면 품질부터 단계적으로 낮춤(화질 우선 유지)
-      while (bytesOf(out) > MAX_BYTES && q > MIN_Q) { q = Math.max(MIN_Q, +(q - 0.07).toFixed(2)); out = render(maxDim, q); }
-      // 2단계: 그래도 크면 긴변을 줄임(텍스트 가독성 위해 1000px까지만)
-      while (bytesOf(out) > MAX_BYTES && maxDim > 1000) { maxDim = Math.round(maxDim * 0.85); out = render(maxDim, q); }
-      callback(out);
     };
     img.src = e.target.result;
   };
@@ -4607,7 +4636,7 @@ function uploadPassageImage(input, dateStr, slot) {
     saveQTPassageImageToFirestore(dateStr);
     const el = document.getElementById(`qt-passage-imgs-${dateStr}`);
     if (el) el.innerHTML = _renderPassageImgSection(dateStr);
-  }, { max: 2048, quality: 0.92 });
+  }, { max: 1600, quality: 0.9 });
 }
 
 function removePassageImage(dateStr, slot) {
@@ -4637,7 +4666,7 @@ function qtDayPreviewImg(input) {
     _qtDayPendingImg = data;
     const el = document.getElementById('qt-day-img-preview');
     if (el) el.innerHTML = `<div class="relative"><img src="${data}" class="w-full rounded-xl max-h-52 object-cover"><button onclick="_qtDayPendingImg=null;document.getElementById('qt-day-img-preview').innerHTML=''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">삭제</button></div>`;
-  }, { max: 2048, quality: 0.92 });
+  }, { max: 1600, quality: 0.9 });
 }
 
 function submitQTDay(dateStr) {
@@ -4662,9 +4691,16 @@ function submitQTDay(dateStr) {
   const createdAt = qtEditMode && existing ? existing.createdAt : Date.now();
   state.qtDayChecks[key] = { done: true, content, imageKey, createdAt };
   qtEditMode = false;
-  updateWeekQTCount(dateStr);
-  saveState();
-  if (qtOpenDay) renderQTDayView(); else renderQTSubmit();
+  try { updateWeekQTCount(dateStr); } catch (e) { console.warn('주간 QT 카운트 갱신 실패:', e); }
+  saveState(); // ← 저장은 렌더보다 먼저. 여기까지 오면 큐티는 이미 기록됨.
+  // 렌더가 어쩌다 실패해도(간헐적 예외) 기록은 살아있게 try/catch로 감싼다.
+  try {
+    if (qtOpenDay) renderQTDayView(); else renderQTSubmit();
+  } catch (e) {
+    console.warn('큐티 화면 렌더 실패(기록은 저장됨):', e);
+    if (typeof showToast === 'function') showToast('큐티는 저장됐어요. 화면만 새로고침할게요.');
+    try { _renderCurrentPage(); } catch (_) {}
+  }
 }
 
 function deleteQTDay(dateStr) {
@@ -6216,6 +6252,40 @@ function showQRResult(type, msg) {
   `;
   body.classList.add('active');
 }
+
+// ==========================================
+// 전역 안전망 + 토스트
+// ==========================================
+// 짧게 뜨는 안내 토스트(모바일). 알림창(alert)과 달리 흐름을 막지 않는다.
+function showToast(msg, ms) {
+  try {
+    let el = document.getElementById('_app-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = '_app-toast';
+      el.style.cssText = 'position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:99999;max-width:88%;background:rgba(30,30,40,.94);color:#fff;padding:10px 16px;border-radius:14px;font-size:13px;font-weight:600;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.25);text-align:center;opacity:0;transition:opacity .2s;pointer-events:none;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.opacity = '0'; }, ms || 2600);
+  } catch (_) {}
+}
+
+// 어떤 렌더/이벤트에서 처리 안 된 예외가 나도 앱이 '튕기지' 않게 잡아준다.
+// (예외 자체를 없애는 건 아니지만, 흰 화면/멈춤 대신 앱을 살려두고 사용자가 계속 쓰게 한다.)
+let _lastErrToast = 0;
+function _softHandleError(where, err) {
+  console.warn('[전역오류:' + where + ']', err);
+  const now = Date.now();
+  if (now - _lastErrToast > 4000) { // 토스트 도배 방지
+    _lastErrToast = now;
+    showToast('일시적인 오류가 있었어요. 방금 동작만 다시 눌러 주세요. (앱은 그대로예요)');
+  }
+}
+window.addEventListener('error', e => { _softHandleError('error', e.error || e.message); });
+window.addEventListener('unhandledrejection', e => { _softHandleError('promise', e.reason); });
 
 // ==========================================
 // INIT
