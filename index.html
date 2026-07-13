@@ -512,6 +512,8 @@
 
 <!-- Login Screen -->
 <div id="login-screen" class="fixed inset-0 z-[300] flex items-center justify-center bg-gradient-to-br from-purple-800 to-purple-600">
+  <!-- 어느 버전이 돌고 있는지 눈으로 확인하는 곳. 폰이 옛 버전에 갇혔는지 여기서 바로 보인다. -->
+  <div id="build-badge" class="absolute bottom-4 left-0 right-0 text-center text-[11px] text-purple-300/70 select-text"></div>
   <div class="bg-white rounded-3xl w-full max-w-sm mx-4 overflow-hidden shadow-2xl">
     <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-center">
       <div class="text-4xl mb-2">🎵</div>
@@ -6324,8 +6326,72 @@ try {
   } catch (_) {}
 }
 
-// Service worker for offline (optional - just register without blocking)
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+// ==========================================
+// 앱 자동 업데이트
+// ==========================================
+// sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
+const APP_BUILD = '2026-07-13.1';
+try {
+  const _badge = document.getElementById('build-badge');
+  if (_badge) _badge.textContent = 'v' + APP_BUILD;
+  window.APP_BUILD = APP_BUILD;
+} catch (_) {}
+
+// 홈화면에 설치한 앱에는 '새로고침' 버튼이 없다. 게다가 iOS는 앱을 다시 열 때
+// 새로 접속하지 않고 이전 화면을 그대로 되살린다. 그래서 새 버전을 배포해도
+// 아이들 폰에는 영영 닿지 않고, 옛날 버전이 계속 돌아간다.
+// 여기서 직접 챙긴다 — 앱이 다시 보일 때마다 새 버전을 확인하고, 안전한 순간에 새로고침.
+if ('serviceWorker' in navigator) {
+  let _swReg = null;
+  let _reloading = false;
+  const _hadController = !!navigator.serviceWorker.controller;
+
+  // 아이가 큐티를 쓰는 중이거나 서버 저장이 안 끝났으면 새로고침을 미룬다.
+  // 쓰던 글이 날아가는 것보다는 업데이트가 몇 초 늦는 편이 낫다.
+  function _safeToReload() {
+    if (_fsHasPendingChanges) return false;
+    const t = document.getElementById('qt-day-text');
+    if (t && t.value.trim()) return false;
+    if (typeof _qtDayPendingImg !== 'undefined' && _qtDayPendingImg) return false;
+    return true;
+  }
+
+  function _reloadWhenSafe() {
+    if (_reloading) return;
+    if (!_safeToReload()) { setTimeout(_reloadWhenSafe, 5000); return; }
+    _reloading = true;
+    location.reload();
+  }
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // 앱을 처음 설치할 때도 이 이벤트가 뜬다. 그때는 새로고침할 이유가 없다.
+    if (_hadController) _reloadWhenSafe();
+  });
+
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .then(reg => {
+      _swReg = reg;
+      reg.update().catch(() => {});
+      const nudge = () => { if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); };
+      nudge();
+      reg.addEventListener('updatefound', () => {
+        if (reg.installing) reg.installing.addEventListener('statechange', nudge);
+      });
+    })
+    .catch(() => {});
+
+  // 앱을 다시 열 때마다 새 버전 확인 (1분에 한 번까지만)
+  let _lastUpdateCheck = 0;
+  function _checkForUpdate() {
+    if (!_swReg || document.visibilityState !== 'visible') return;
+    if (Date.now() - _lastUpdateCheck < 60000) return;
+    _lastUpdateCheck = Date.now();
+    _swReg.update().catch(() => {});
+  }
+  document.addEventListener('visibilitychange', _checkForUpdate);
+  window.addEventListener('pageshow', _checkForUpdate);
+  window.addEventListener('focus', _checkForUpdate);
+}
 </script>
 </body>
 </html>
