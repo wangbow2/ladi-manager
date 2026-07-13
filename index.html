@@ -1067,6 +1067,17 @@ function _applyLoveGroupMigration() {
   return true;
 }
 
+// 앱을 열 때 기본으로 보여줄 '지금 이 달'. 저장된 옛 달을 물고 있으면 팀장이 열었을 때
+// 지난달 출석부가 떠서 큰 혼란을 준다 — 그래서 항상 오늘 기준으로 다시 계산한다.
+// 데이터가 있는 범위(2026-06 ~ 2026-12)를 벗어나면 가까운 끝으로 맞춘다.
+function currentMonthStr() {
+  const t = new Date();
+  let ym = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
+  if (ym < '2026-06') ym = '2026-06';
+  if (ym > '2026-12') ym = '2026-12';
+  return ym;
+}
+
 function loadState() {
   try {
     const s = localStorage.getItem('radi_v4');
@@ -1075,6 +1086,8 @@ function loadState() {
       Object.assign(state, parsed);
     }
   } catch(e) {}
+  // 저장본에서 복원된 옛 달을 버리고 항상 현재 달로 연다.
+  state.month = currentMonthStr();
   if (!state.students || !state.students.length) {
     state.students = JSON.parse(JSON.stringify(INITIAL_STUDENTS));
     state.checks = { ...SEED_CHECKS };
@@ -1526,7 +1539,9 @@ function _applyFsData(fsData) {
   _lastFsData = _cloneData(fsData);
   _applyFsOps(state, localOps);
   state.currentUser = localUser;
-  state.month = (localMonth === '2026-05' ? '2026-06' : localMonth) || state.month || '2026-06';
+  // 실시간 동기화 중에는 사용자가 지금 보고 있는 달을 유지한다(과거 달 열람 중 튕기지 않도록).
+  // 초기 기본값은 loadState/INIT에서 이미 현재 달로 잡았다.
+  state.month = localMonth || currentMonthStr();
   state.page = localPage || 'dashboard';
   // 현재 사용자의 읽음 시간 복원 (로컬 vs Firestore 중 최신 값 유지)
   if (!state.qtCommentsReadAt) state.qtCommentsReadAt = {};
@@ -3551,6 +3566,11 @@ function renderCheckTable() {
   const month = state.month;
   const weeks = getMonthWeeks(month);
   document.getElementById('check-title').textContent = `${getMonthStr(month)} OT 체크표`;
+  // 상단 월 탭의 활성 표시를 실제 보고 있는 달과 일치시킨다(정적 HTML은 6월로 고정돼 있으므로).
+  document.querySelectorAll('.cm-tab').forEach(btn => {
+    const active = btn.dataset.cm === month;
+    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`;
+  });
   const recoveryBtn = document.getElementById('june-recovery-btn');
   if (recoveryBtn) recoveryBtn.classList.toggle('hidden', !(isLeader() && month === '2026-06'));
 
@@ -5964,6 +5984,7 @@ function showMonthPicker() {
 
 function selectMonth(ym) {
   state.month = ym;
+  checkWeekIdx = null; // 달을 바꾸면 그 달의 현재 주차로 다시 잡히도록
   document.getElementById('header-month').textContent = ym;
   closeModal('modal-month');
   if (state.page==='check') renderCheckTable();
@@ -6299,7 +6320,7 @@ try {
   [loadQTImages, loadQTPassageImages, loadLoveImages, loadProfiles, initKakaoBanner].forEach(fn => {
     try { fn(); } catch (e) { console.warn(fn.name + ' 실패:', e); }
   });
-  if (!state.month || state.month === '2026-05') state.month = '2026-06';
+  state.month = currentMonthStr();
   const _hm = document.getElementById('header-month');
   if (_hm) _hm.textContent = state.month;
   try { initFirestore(); } catch (e) { console.warn('initFirestore 실패:', e); }
@@ -6330,7 +6351,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-07-13.1';
+const APP_BUILD = '2026-07-13.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
