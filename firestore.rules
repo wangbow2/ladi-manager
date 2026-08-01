@@ -20,6 +20,11 @@ service cloud.firestore {
       allow read, create: if true;
       allow update, delete: if false;
     }
+    // 큐티 안전사본 — 본 기록이 유실돼도 여기서 되살린다.
+    match /qtSubmissions/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
     match /qtImages/{document} {
       allow read, create, update: if true;
       allow delete: if false;
