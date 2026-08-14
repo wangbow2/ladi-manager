@@ -1,5 +1,5 @@
 // 배포할 때마다 이 값만 올리면 된다. 앱이 새 버전을 알아채는 유일한 기준.
-const APP_BUILD = '2026-08-01.1';
+const APP_BUILD = '2026-08-14.1';
 const CACHE_NAME = 'ladi-' + APP_BUILD;
 const ASSETS = [
   './',
@@ -40,6 +40,10 @@ self.addEventListener('fetch', e => {
   let url;
   try { url = new URL(req.url); } catch (_) { return; }
   if (url.origin !== self.location.origin) return;
+
+  // 앱이 버전 확인용으로 직접 부르는 sw.js는 그냥 통과시킨다.
+  // (매번 다른 쿼리가 붙어 있어 가로채면 캐시에 쓰레기 항목만 쌓인다.)
+  if (url.pathname.endsWith('/sw.js')) return;
 
   // 앱 화면(HTML)은 항상 네트워크 우선 — 그리고 HTTP 캐시까지 우회한다.
   // GitHub Pages가 index.html에 max-age=600을 붙이기 때문에, no-store로 받지 않으면

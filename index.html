@@ -6433,7 +6433,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-01.1';
+const APP_BUILD = '2026-08-14.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
@@ -6459,16 +6459,61 @@ if ('serviceWorker' in navigator) {
     return true;
   }
 
-  function _reloadWhenSafe() {
+  // --- 새로고침 루프 차단기 ---
+  // 자동 새로고침은 '새 버전이 실제로 올라왔을 때' 딱 한 번만 일어나야 한다.
+  // 그런데 서비스워커 교체(controllerchange)만 믿고 새로고침하면, 기기에 남은
+  // 옛 워커·캐시 상태에 따라 새로고침 → 워커 교체 → 새로고침이 끝없이 돌 수 있다.
+  // 그래서 두 겹으로 막는다.
+  //   1) 서버의 sw.js에 적힌 버전을 직접 확인해, 지금 화면과 같은 버전이면 새로고침하지 않는다.
+  //   2) 그래도 한 세션에서 자동 새로고침이 두 번 이상 반복되면 아예 자동 새로고침을 끈다.
+  const _RELOAD_LOG_KEY = 'ladi_auto_reloads';
+  function _reloadHistory() {
+    try { return JSON.parse(sessionStorage.getItem(_RELOAD_LOG_KEY) || '[]'); } catch (_) { return []; }
+  }
+  function _noteReload(toBuild) {
+    try {
+      const log = _reloadHistory().concat({ t: Date.now(), from: APP_BUILD, to: toBuild }).slice(-5);
+      sessionStorage.setItem(_RELOAD_LOG_KEY, JSON.stringify(log));
+    } catch (_) {}
+  }
+  function _reloadLoopSuspected() {
+    return _reloadHistory().filter(r => Date.now() - r.t < 300000).length >= 2;
+  }
+
+  // 서버가 지금 내려주는 버전. 확인에 실패하면(오프라인 등) null — 이때는 새로고침하지 않는다.
+  async function _serverBuild() {
+    try {
+      const res = await fetch('./sw.js?ts=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return null;
+      const m = (await res.text()).match(/APP_BUILD\s*=\s*['"]([^'"]+)['"]/);
+      return m ? m[1] : null;
+    } catch (_) { return null; }
+  }
+
+  function _reloadWhenSafe(toBuild) {
     if (_reloading) return;
-    if (!_safeToReload()) { setTimeout(_reloadWhenSafe, 5000); return; }
+    if (!_safeToReload()) { setTimeout(() => _reloadWhenSafe(toBuild), 5000); return; }
     _reloading = true;
+    _noteReload(toBuild);
     location.reload();
+  }
+
+  async function _maybeReloadForNewBuild() {
+    if (_reloading) return;
+    if (_reloadLoopSuspected()) {
+      console.warn('[업데이트] 자동 새로고침이 반복돼 이번 세션에서는 중단합니다.');
+      try { const b = document.getElementById('build-badge'); if (b) b.textContent = 'v' + APP_BUILD + ' (업데이트 대기)'; } catch (_) {}
+      return;
+    }
+    const server = await _serverBuild();
+    // 같은 버전이거나 확인 불가면 새로고침해도 달라질 게 없다 — 여기서 멈춘다.
+    if (!server || server === APP_BUILD) return;
+    _reloadWhenSafe(server);
   }
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     // 앱을 처음 설치할 때도 이 이벤트가 뜬다. 그때는 새로고침할 이유가 없다.
-    if (_hadController) _reloadWhenSafe();
+    if (_hadController) _maybeReloadForNewBuild();
   });
 
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
@@ -6482,6 +6527,17 @@ if ('serviceWorker' in navigator) {
       });
     })
     .catch(() => {});
+
+  // 진단용 기록 — 새로고침이 또 반복되면 원인을 눈으로 확인할 수 있게 남긴다.
+  // 콘솔에서 ladiDiag() 를 치면 최근 부팅 20회의 상태가 표로 나온다.
+  try {
+    const nav = (performance.getEntriesByType('navigation')[0] || {}).type || '?';
+    const boots = JSON.parse(localStorage.getItem('ladi_boot_log') || '[]')
+      .concat({ t: new Date().toISOString(), build: APP_BUILD, nav, ctrl: _hadController })
+      .slice(-20);
+    localStorage.setItem('ladi_boot_log', JSON.stringify(boots));
+    window.ladiDiag = () => { console.table(boots); return { boots, autoReloads: _reloadHistory() }; };
+  } catch (_) {}
 
   // 앱을 다시 열 때마다 새 버전 확인 (1분에 한 번까지만)
   let _lastUpdateCheck = 0;
