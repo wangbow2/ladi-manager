@@ -97,10 +97,16 @@
   <div id="page-status" class="page p-4 space-y-4"></div>
   <div id="page-roster" class="page p-4 space-y-4"></div>
   <div id="page-rules" class="page p-4 space-y-4"></div>
+  <div id="page-notice" class="page p-4 space-y-4"></div>
+  <div id="page-apply" class="page p-4 space-y-4"></div>
+  <div id="page-myapp" class="page p-4 space-y-4"></div>
+  <div id="page-docs" class="page p-4 space-y-4"></div>
+  <div id="page-audition" class="page p-4 space-y-4"></div>
+  <div id="page-applicants" class="page p-4 space-y-4"></div>
 </main>
 
-<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg">
-  <div class="flex justify-around items-center max-w-2xl mx-auto py-1">
+<nav id="nav-member" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg" style="overflow-x:auto">
+  <div class="flex justify-around items-center max-w-2xl mx-auto py-1" style="min-width:max-content">
     <button class="nav-btn active flex flex-col items-center py-1 px-2" onclick="navigate('home')" id="nav-home">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">홈</span>
@@ -121,9 +127,30 @@
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">명단</span>
     </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2 hidden" onclick="navigate('applicants')" id="nav-applicants">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6"/><path d="M19 8v6"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">지원자</span>
+    </button>
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('rules')" id="nav-rules">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">기준</span>
+    </button>
+  </div>
+</nav>
+
+<nav id="nav-applicant" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg hidden">
+  <div class="flex justify-around items-center max-w-2xl mx-auto py-1">
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('myapp')" id="nav-myapp">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">내 전형</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('docs')" id="nav-docs">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">서류</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('audition')" id="nav-audition">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">실기</span>
     </button>
   </div>
 </nav>
@@ -153,6 +180,13 @@
       <button onclick="doLogin()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
       <p class="text-xs text-gray-400 text-center">처음 PIN은 <span class="font-bold text-purple-600">0000</span> 입니다</p>
     </div>
+    <div class="border-t bg-gray-50 p-4 space-y-2">
+      <p class="text-xs text-gray-500 text-center font-semibold" id="apply-entry-title">26년 하반기 라디 찬양팀 모집</p>
+      <div class="flex gap-2">
+        <button onclick="openNotice()" class="flex-1 bg-white border border-purple-200 text-purple-700 py-3 rounded-xl font-bold text-sm">모집 안내 · 지원하기</button>
+        <button onclick="openModal('modal-applicant-login')" class="flex-1 bg-white border py-3 rounded-xl font-bold text-sm text-gray-600">지원자 로그인</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -171,10 +205,32 @@
       <p class="text-xs text-gray-500 mt-0.5" id="user-menu-role"></p>
     </div>
     <div class="p-2">
-      <button onclick="closeModal('modal-user-menu');openModal('modal-pin')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50">🔐 PIN 번호 변경</button>
+      <button id="btn-pin" onclick="closeModal('modal-user-menu');openModal('modal-pin')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50">🔐 PIN 번호 변경</button>
       <button id="btn-settings" onclick="closeModal('modal-user-menu');openModal('modal-settings')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50 hidden">📅 과정 시작일 설정</button>
       <button onclick="doLogout()" class="w-full text-left px-4 py-3 text-sm text-red-600 rounded-xl active:bg-gray-50">로그아웃</button>
       <button onclick="closeModal('modal-user-menu')" class="w-full text-left px-4 py-3 text-sm text-gray-400 rounded-xl active:bg-gray-50">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 지원자 로그인 -->
+<div id="modal-applicant-login" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h3 class="font-bold text-gray-800">지원자 로그인</h3>
+      <button onclick="closeModal('modal-applicant-login')" class="text-gray-400 text-2xl leading-none">×</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">이름</label>
+        <input type="text" id="ap-login-name" placeholder="지원할 때 적은 이름"></div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">실기번호 6자리</label>
+        <input type="text" id="ap-login-code" inputmode="numeric" maxlength="6" placeholder="● ● ● ● ● ●" class="pin-input"></div>
+      <p id="ap-login-error" class="text-xs text-red-500 hidden text-center"></p>
+      <p class="text-[11px] text-gray-400 leading-relaxed">실기번호는 지원할 때 화면에 나온 6자리 숫자입니다. 잊어버렸으면 팀장에게 물어보세요.</p>
+    </div>
+    <div class="p-4 pt-0 flex gap-2">
+      <button onclick="doApplicantLogin()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">들어가기</button>
+      <button onclick="closeModal('modal-applicant-login')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
 </div>
@@ -196,6 +252,21 @@
     <div class="p-4 pt-0 flex gap-2">
       <button onclick="doChangePIN()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">변경</button>
       <button onclick="closeModal('modal-pin')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 공고 편집 (팀장) -->
+<div id="modal-notice-edit" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[88vh] overflow-y-auto">
+    <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-white">
+      <h3 class="font-bold text-gray-800">모집 공고 편집</h3>
+      <button onclick="closeModal('modal-notice-edit')" class="text-gray-400 text-2xl leading-none">×</button>
+    </div>
+    <div class="p-4 space-y-3" id="notice-edit-body"></div>
+    <div class="p-4 pt-0 flex gap-2 sticky bottom-0 bg-white">
+      <button onclick="saveNotice()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">저장</button>
+      <button onclick="closeModal('modal-notice-edit')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
 </div>
@@ -224,7 +295,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.5';
+const APP_BUILD = '2026-08-26.6';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -456,7 +527,14 @@ let state = {
   startDate: DEFAULT_START,
   students: ROSTER.map(s => ({ ...s })),
   pins: {},
-  eduExempt: Object.assign({}, EDU_EXEMPT_DEFAULT), // 신입생 교육 면제(표시 전용)
+  eduExempt: Object.assign({}, EDU_EXEMPT_DEFAULT), // YIP 교육 면제(표시 전용)
+  apply: {          // 26년 하반기 모집 공고 — 팀장이 앱에서 채운다
+    open: true,
+    notice: '',
+    docDeadline: '',
+    auditionDate: '', auditionTime: '', auditionPlace: '', auditionNote: '',
+    parts: { 싱어:'', 악기:'', 워십:'' }
+  },
   att: {},   // `${id}_w${n}_sat` | `_sun`  → 출석/지각/무단지각/결석/무단결석
   qt: {},    // `${id}_w${n}` → [bool x5] (월~금)
   gate: {},  // `${id}_w${n}` → 'O' | 'X'
@@ -545,7 +623,7 @@ function initFirestore() {
   });
 }
 function applyRemote(data) {
-  ['startDate','pins','eduExempt','att','qt','gate','edu','memos'].forEach(k => {
+  ['startDate','pins','eduExempt','att','qt','gate','edu','memos','apply'].forEach(k => {
     if (data[k] !== undefined) state[k] = data[k];
   });
   if (Array.isArray(data.students) && data.students.length) {
@@ -673,6 +751,7 @@ function doLogin() {
   renderAll();
 }
 function doLogout() {
+  if (currentApplicant) { applicantLogout(); return; }
   currentUser = null;
   try { localStorage.removeItem('ladi_newcomer_user'); } catch (_) {}
   closeModal('modal-user-menu');
@@ -743,21 +822,274 @@ function cycleGate(id, n) {
 }
 
 // ==========================================
+// 26년 하반기 오디션 — 지원자 전형
+// ==========================================
+const APPLY_PARTS = ['싱어', '악기', '워십'];
+const APPLY_Q = [
+  { key:'q1', title:'1. 자기 소개', min:700, rows:10,
+    hint:['언제부터 교회에 나왔고 지금은 어떻게 신앙생활을 하는지','교회에서 맡아 섬겨온 일이 있다면 무엇을 얼마나 했는지','내가 어떤 사람인지 — 잘하는 것, 약한 것','노래나 악기를 언제부터 어떻게 해왔는지'] },
+  { key:'q2', title:'2. 지원 동기', min:1200, rows:12,
+    hint:['왜 하필 지금이고, 왜 하필 라디인지','지원을 마음먹게 된 구체적인 계기 — 언제, 어떤 일이 있었는지','찬양팀에서 무엇을 하고 싶고 무엇을 배우고 싶은지','연습과 섬김에 시간을 얼마나 낼 수 있는지'] },
+  { key:'q3', title:'3. 내가 만난 하나님에 대해 말해주세요', min:1200, rows:12,
+    hint:["하나님이 '진짜 계시는 분'으로 다가온 순간이 있었다면 언제, 어떤 일이었는지",'그때 마음이 어땠고 그 뒤로 무엇이 달라졌는지','지금 나에게 하나님은 어떤 분인지, 그렇게 말하는 근거가 무엇인지','믿음이 흔들렸던 때가 있었다면 그것도 함께'] },
+  { key:'q4', title:'4. 예배가 무엇이라고 생각하나요?', min:550, rows:8,
+    hint:['나에게 예배가 무엇인지 내 말로 정의해보세요','그렇게 생각하게 된 이유 — 말씀이든 겪은 일이든','일상에서의 예배는 무엇이라고 생각하는지','찬양팀으로 서는 예배는 앉아서 드리는 예배와 무엇이 다를지'] },
+  { key:'q5', title:'5. 찬양을 통해 가장 크게 은혜 받았던 경험을 간증해주세요', min:1000, rows:12,
+    hint:['어떤 찬양이었는지 곡 제목','언제, 어디서, 어떤 상황에서 부르거나 들었는지','가사의 어느 부분이 마음에 박혔는지, 왜 하필 그 부분이었는지','그 경험이 지금 나에게 무엇으로 남아 있는지'] }
+];
+const STAGE_INFO = {
+  '접수':       { level:'yellow', label:'서류 심사 중',   desc:'서류를 다 쓰고 제출하면 심사가 시작됩니다.' },
+  '서류합격':   { level:'green',  label:'서류 합격',       desc:'실기·면접 안내를 확인하세요.' },
+  '서류불합격': { level:'red',    label:'서류 불합격',     desc:'' },
+  '최종합격':   { level:'green',  label:'최종 합격',       desc:'수습 과정에서 만나요.' },
+  '최종불합격': { level:'red',    label:'불합격',          desc:'' }
+};
+
+let currentApplicant = null;   // 지원자 세션(로컬 전용)
+let publicView = false;        // 로그인 전 모집 안내/신청 화면
+const _applicants = {};        // 팀장 목록 캐시: code → doc
+let _applicantsLoaded = false;
+let _applyDraft = {};          // 서류 초안 — 다시 그려도 안 날아가게
+let _applyPendingPhoto = null;
+
+function applyCfg() { return Object.assign({ open:true, notice:'', docDeadline:'', auditionDate:'', auditionTime:'', auditionPlace:'', auditionNote:'', parts:{} }, state.apply || {}); }
+function partPrep(part) { return (applyCfg().parts || {})[part] || ''; }
+function docsDone(a) { return APPLY_Q.every(q => ((a.docs||{})[q.key]||'').trim().length >= q.min); }
+function docsChars(a) { return APPLY_Q.reduce((n,q) => n + ((a.docs||{})[q.key]||'').trim().length, 0); }
+function deadlinePassed() {
+  const d = applyCfg().docDeadline;
+  return !!d && today0() > parseDate(d);
+}
+
+function openNotice() {
+  publicView = true;
+  document.getElementById('login-screen').style.display = 'none';
+  navigate('notice');
+}
+function closePublic() {
+  publicView = false;
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── 지원 신청 ──
+function newCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
+async function doApply() {
+  const g = id => (document.getElementById(id).value || '').trim();
+  const name = g('ap-name'), grade = g('ap-grade'), cls = g('ap-cls'), phone = g('ap-phone');
+  const part = g('ap-part'), detail = g('ap-detail');
+  const err = document.getElementById('ap-error');
+  const show = m => { err.textContent = m; err.classList.remove('hidden'); };
+  if (!name) return show('이름을 적어주세요');
+  if (!phone) return show('연락처를 적어주세요');
+  if (!part) return show('지원 파트를 골라주세요');
+  if (part === '악기' && !detail) return show('어떤 악기인지 적어주세요');
+  if (!_FS_OK) return show('인터넷 연결을 확인해주세요');
+  err.classList.add('hidden');
+
+  const btn = document.getElementById('ap-submit');
+  btn.disabled = true; btn.textContent = '접수하는 중…';
+  try {
+    for (let i = 0; i < 12; i++) {
+      const code = newCode();
+      const ref = _db.collection('newcomerApply').doc(code);
+      const snap = await ref.get();
+      if (snap.exists) continue;                     // 번호가 겹치면 다시 뽑는다
+      const doc = { code, name, grade, cls, phone, part, detail,
+                    stage: '접수', createdAt: new Date().toISOString(),
+                    docs: {}, photo: '', videoUrl: '', submittedAt: '' };
+      await ref.set(doc);
+      currentApplicant = doc;
+      _applicants[code] = doc;
+      try { localStorage.setItem('ladi_applicant', code); } catch (_) {}
+      publicView = false;
+      navigate('myapp');
+      return;
+    }
+    show('번호 발급에 실패했어요. 다시 눌러주세요');
+  } catch (e) {
+    console.warn('지원 접수 실패:', e);
+    show('접수가 안 됐어요. 잠시 뒤 다시 눌러주세요');
+  } finally {
+    btn.disabled = false; btn.textContent = '지원 접수하기';
+  }
+}
+
+// ── 지원자 로그인 ──
+async function doApplicantLogin() {
+  const name = (document.getElementById('ap-login-name').value || '').replace(/\s/g, '');
+  const code = (document.getElementById('ap-login-code').value || '').trim();
+  const err = document.getElementById('ap-login-error');
+  const show = m => { err.textContent = m; err.classList.remove('hidden'); };
+  if (!name || !/^\d{6}$/.test(code)) return show('이름과 6자리 번호를 확인해주세요');
+  if (!_FS_OK) return show('인터넷 연결을 확인해주세요');
+  try {
+    const d = await _db.collection('newcomerApply').doc(code).get();
+    if (!d.exists) return show('그런 번호가 없어요');
+    const a = d.data();
+    if ((a.name || '').replace(/\s/g, '') !== name) return show('이름과 번호가 맞지 않아요');
+    currentApplicant = a;
+    _applicants[code] = a;
+    try { localStorage.setItem('ladi_applicant', code); } catch (_) {}
+    err.classList.add('hidden');
+    closeModal('modal-applicant-login');
+    document.getElementById('login-screen').style.display = 'none';
+    publicView = false;
+    navigate('myapp');
+  } catch (e) {
+    console.warn('지원자 로그인 실패:', e);
+    show('불러오지 못했어요. 잠시 뒤 다시 해주세요');
+  }
+}
+function applicantLogout() {
+  currentApplicant = null;
+  _applyDraft = {}; _applyPendingPhoto = null;
+  try { localStorage.removeItem('ladi_applicant'); } catch (_) {}
+  closeModal('modal-user-menu');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('nav-applicant').classList.add('hidden');
+  document.getElementById('nav-member').classList.remove('hidden');
+}
+
+// ── 서류 저장 ──
+function pickApplyPhoto(input) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  toast('사진을 줄이는 중이에요…');
+  compressImage(f, d => {
+    if (!d) { toast('사진이 너무 커요. 다른 사진으로 해볼래요?'); return; }
+    _applyPendingPhoto = d; renderAll();
+  });
+}
+function clearApplyPhoto() { _applyPendingPhoto = null; renderAll(); }
+
+function saveDocs(submit) {
+  const a = currentApplicant;
+  if (!a) return;
+  const docs = Object.assign({}, a.docs || {});
+  APPLY_Q.forEach(q => {
+    const el = document.getElementById('doc-' + q.key);
+    if (el) docs[q.key] = el.value;
+  });
+  const videoUrl = (document.getElementById('doc-video') || {}).value || a.videoUrl || '';
+  const photo = _applyPendingPhoto || a.photo || '';
+
+  if (submit) {
+    const missing = APPLY_Q.filter(q => (docs[q.key] || '').trim().length < q.min);
+    if (missing.length) {
+      toast(`${missing[0].title.split('.')[0]}번 문항이 아직 짧아요 (최소 ${missing[0].min}자)`);
+      return;
+    }
+  }
+  const patch = { docs, videoUrl, photo };
+  if (submit) patch.submittedAt = new Date().toISOString();
+  Object.assign(a, patch);
+  _applicants[a.code] = a;
+  _applyPendingPhoto = null;
+  _applyDraft = {};
+  renderAll();
+  if (!_FS_OK) { toast('이 기기에만 저장했어요'); return; }
+  _db.collection('newcomerApply').doc(a.code).set(patch, { merge: true })
+    .then(() => toast(submit ? '서류를 제출했어요!' : '저장했어요'))
+    .catch(e => { console.warn('서류 저장 실패:', e); toast('저장이 안 됐어요. 다시 눌러주세요'); });
+}
+
+// ── 팀장: 지원자 목록·심사 ──
+function loadApplicants() {
+  if (_applicantsLoaded || !_FS_OK) return;
+  _applicantsLoaded = true;
+  _db.collection('newcomerApply').get()
+    .then(sn => { sn.forEach(d => { _applicants[d.id] = d.data(); }); renderAll(); })
+    .catch(e => { console.warn('지원자 목록 실패:', e); _applicantsLoaded = false; });
+}
+function setStage(code, stage) {
+  if (!isLeader()) return;
+  const a = _applicants[code];
+  if (!a) return;
+  a.stage = stage;
+  renderAll();
+  if (_FS_OK) _db.collection('newcomerApply').doc(code).set({ stage }, { merge: true })
+    .catch(e => { console.warn('단계 저장 실패:', e); toast('저장이 안 됐어요'); });
+  toast(`${a.name} — ${stage}`);
+}
+// 최종 합격자를 수습 명단으로 넘긴다. 손으로 옮겨 적지 않아도 되도록.
+function moveToTrainee(code) {
+  if (!isLeader()) return;
+  const a = _applicants[code];
+  if (!a) return;
+  if (state.students.some(s => s.applyCode === code)) { toast('이미 수습 명단에 있어요'); return; }
+  const nextNum = state.students.reduce((m, s) => Math.max(m, parseInt(String(s.id).replace(/\D/g,'')) || 0), 0) + 1;
+  const id = 'n' + String(nextNum).padStart(2, '0');
+  const part = a.part === '악기' ? (a.detail || '악기') : a.part;
+  const student = { id, name: a.name, part, gender: '', phone: a.phone || '', applyCode: code };
+  state.students = state.students.concat([student]);
+  pushPatch({ students: state.students });
+  a.movedAt = new Date().toISOString();
+  if (_FS_OK) _db.collection('newcomerApply').doc(code).set({ movedAt: a.movedAt }, { merge: true }).catch(() => {});
+  fillLoginSelect();
+  renderAll();
+  toast(`${a.name} — 수습 명단에 넣었어요 (PIN 0000)`);
+}
+
+// ── 팀장: 공고 편집 ──
+function saveNotice() {
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const parts = {};
+  APPLY_PARTS.forEach(p => { parts[p] = g('nt-part-' + p); });
+  const apply = {
+    open: document.getElementById('nt-open').checked,
+    notice: g('nt-notice'),
+    docDeadline: g('nt-deadline'),
+    auditionDate: g('nt-date'), auditionTime: g('nt-time'),
+    auditionPlace: g('nt-place'), auditionNote: g('nt-note'),
+    parts
+  };
+  pushPatch({ apply });
+  closeModal('modal-notice-edit');
+  renderAll();
+  toast('공고를 저장했어요');
+}
+
+// ==========================================
 // 렌더링
 // ==========================================
 function navigate(page) {
-  // 명단은 팀장 전용 — 아이들에게 다른 아이들 명단·판정을 보여주지 않는다.
-  if (page === 'roster' && !isLeader()) page = 'home';
+  // 명단·지원자는 팀장 전용 — 아이들에게 다른 사람 명단·판정을 보여주지 않는다.
+  if ((page === 'roster' || page === 'applicants') && !isLeader() && !currentApplicant) page = 'home';
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const pg = document.getElementById('page-' + page);
+  if (pg) pg.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('nav-' + page).classList.add('active');
+  const nb = document.getElementById('nav-' + page);
+  if (nb) nb.classList.add('active');
   window.scrollTo(0, 0);
   renderAll();
 }
 
 function renderAll() {
+  const navM = document.getElementById('nav-member'), navA = document.getElementById('nav-applicant');
+
+  // 로그인 전 모집 안내·지원 신청
+  if (publicView) {
+    navM.classList.add('hidden'); navA.classList.add('hidden');
+    ({ notice: renderNotice, apply: renderApply }[currentPage] || renderNotice)();
+    return;
+  }
+  // 지원자 세션
+  if (currentApplicant) {
+    navM.classList.add('hidden'); navA.classList.remove('hidden');
+    document.getElementById('header-user-name').textContent = currentApplicant.name;
+    document.getElementById('header-week').textContent = '지원';
+    document.getElementById('user-menu-name').textContent = currentApplicant.name;
+    document.getElementById('user-menu-role').textContent = '지원자 · ' + currentApplicant.code;
+    document.getElementById('btn-settings').classList.add('hidden');
+    document.getElementById('btn-pin').classList.add('hidden');
+    ({ myapp: renderMyApp, docs: renderDocs, audition: renderAudition }[currentPage] || renderMyApp)();
+    return;
+  }
+  navA.classList.add('hidden'); navM.classList.remove('hidden');
+  document.getElementById('btn-pin').classList.remove('hidden');
   if (!currentUser) return;
   const u = findUser(currentUser);
   document.getElementById('header-user-name').textContent = u ? u.name : '';
@@ -765,9 +1097,11 @@ function renderAll() {
   document.getElementById('user-menu-role').textContent = isLeader() ? (u ? u.title : '팀장') : (u ? `${u.part} · 신입생` : '');
   document.getElementById('btn-settings').classList.toggle('hidden', !isLeader());
   document.getElementById('nav-roster').classList.toggle('hidden', !isLeader());
+  document.getElementById('nav-applicants').classList.toggle('hidden', !isLeader());
   const w = weekInfo(currentWeek());
   document.getElementById('header-week').textContent = `${currentWeek()+1}주차`;
-  ({ home: renderHome, qt: renderQT, check: renderCheck, status: renderStatus, roster: renderRoster, rules: renderRules }[currentPage] || renderHome)();
+  ({ home: renderHome, qt: renderQT, check: renderCheck, status: renderStatus, roster: renderRoster,
+     rules: renderRules, applicants: renderApplicants }[currentPage] || renderHome)();
 }
 
 function sigChip(v, big) {
@@ -1270,6 +1604,260 @@ function renderRoster() {
     </div>` : ''}`;
 }
 
+function stageChip(stage, big) {
+  const i = STAGE_INFO[stage] || STAGE_INFO['접수'];
+  const dot = { green:'🟢', yellow:'🟡', red:'🔴' }[i.level];
+  return `<span class="sig-${i.level} rounded-full font-bold ${big?'px-4 py-2 text-sm':'px-2.5 py-1 text-xs'}">${dot} ${i.label}</span>`;
+}
+function dday(dateStr) {
+  if (!dateStr) return '';
+  const n = Math.round((parseDate(dateStr) - today0()) / 86400000);
+  return n > 0 ? `D-${n}` : (n === 0 ? '오늘 마감' : '마감');
+}
+
+// 로그인 전에도 보이는 모집 안내
+function renderNotice() {
+  const c = applyCfg();
+  document.getElementById('page-notice').innerHTML = `
+    <button onclick="closePublic();navigate('home')" class="text-sm text-gray-400" style="min-height:32px">‹ 돌아가기</button>
+    <div class="card text-center">
+      <div class="text-3xl mb-1">🎵</div>
+      <h2 class="text-lg font-bold text-gray-800">26년 하반기 라디 찬양팀 모집</h2>
+      ${c.docDeadline ? `<p class="text-sm text-purple-600 font-bold mt-2">서류 마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}</p>` : ''}
+      ${!c.open ? `<p class="text-sm text-red-600 font-bold mt-2">지금은 접수를 받지 않습니다</p>` : ''}
+    </div>
+    ${c.notice ? `<div class="card"><p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${esc(c.notice)}</p></div>` : ''}
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">전형은 이렇게 진행됩니다</h3>
+      <div class="space-y-2">
+        <div class="flex gap-2"><span class="text-purple-600 font-bold text-sm w-10">1차</span><span class="text-sm text-gray-700">서류 — 다섯 문항을 정직하게, 구체적으로</span></div>
+        <div class="flex gap-2"><span class="text-purple-600 font-bold text-sm w-10">2차</span><span class="text-sm text-gray-700">실기(5분) · 면접(5분)</span></div>
+        <div class="flex gap-2"><span class="text-purple-600 font-bold text-sm w-10">3차</span><span class="text-sm text-gray-700">수습 8주 — 출석 · 큐티 · 가테를 지켜야 수료합니다</span></div>
+      </div>
+    </div>
+    ${(c.auditionDate || c.auditionPlace) ? `
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">실기·면접</h3>
+      ${c.auditionDate ? `<p class="text-sm text-gray-700">${fmt(parseDate(c.auditionDate))}${c.auditionTime ? ' ' + esc(c.auditionTime) : ''}</p>` : ''}
+      ${c.auditionPlace ? `<p class="text-sm text-gray-700">${esc(c.auditionPlace)}</p>` : ''}
+      ${c.auditionNote ? `<p class="text-xs text-gray-500 mt-1 whitespace-pre-wrap">${esc(c.auditionNote)}</p>` : ''}
+    </div>` : ''}
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">파트별 준비</h3>
+      ${APPLY_PARTS.map(pt => `<div class="py-2 border-b last:border-0">
+        <p class="text-sm font-bold text-purple-700">${pt}</p>
+        <p class="text-sm text-gray-700 whitespace-pre-wrap mt-0.5">${partPrep(pt) ? esc(partPrep(pt)) : '<span class="text-gray-300">준비되는 대로 올라옵니다</span>'}</p>
+      </div>`).join('')}
+    </div>
+    ${c.open ? `<button onclick="navigate('apply')" class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold">지원 신청하기</button>` : ''}
+    <button onclick="closePublic();openModal('modal-applicant-login')" class="w-full bg-white border py-3 rounded-xl font-bold text-sm text-gray-600">이미 지원했어요 (지원자 로그인)</button>`;
+}
+
+function renderApply() {
+  document.getElementById('page-apply').innerHTML = `
+    <button onclick="navigate('notice')" class="text-sm text-gray-400" style="min-height:32px">‹ 모집 안내</button>
+    <div class="card space-y-3">
+      <h2 class="font-bold text-gray-800">지원 신청</h2>
+      <p class="text-xs text-gray-500">접수하면 <b>6자리 실기번호</b>가 바로 나옵니다. 이 번호가 로그인 비밀번호이니 꼭 적어두세요.</p>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">이름</label><input type="text" id="ap-name"></div>
+      <div class="flex gap-2">
+        <div class="flex-1"><label class="text-xs text-gray-500 font-semibold mb-1 block">학년</label><input type="text" id="ap-grade" inputmode="numeric" placeholder="1"></div>
+        <div class="flex-1"><label class="text-xs text-gray-500 font-semibold mb-1 block">반</label><input type="text" id="ap-cls" inputmode="numeric" placeholder="17"></div>
+      </div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">연락처</label><input type="tel" id="ap-phone" inputmode="numeric" placeholder="010-0000-0000"></div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">지원 파트</label>
+        <select id="ap-part" onchange="document.getElementById('ap-detail-wrap').style.display = this.value==='악기' ? '' : 'none'">
+          <option value="">고르세요</option>
+          ${APPLY_PARTS.map(p => `<option value="${p}">${p}</option>`).join('')}
+        </select></div>
+      <div id="ap-detail-wrap" style="display:none"><label class="text-xs text-gray-500 font-semibold mb-1 block">어떤 악기인가요</label>
+        <input type="text" id="ap-detail" placeholder="건반 / 드럼 / 베이스 / 일렉 / 어쿠스틱"></div>
+      <p id="ap-error" class="text-xs text-red-500 hidden"></p>
+      <button id="ap-submit" onclick="doApply()" class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-sm">지원 접수하기</button>
+    </div>`;
+}
+
+function renderMyApp() {
+  const a = currentApplicant;
+  if (!a) return;
+  const c = applyCfg(), info = STAGE_INFO[a.stage] || STAGE_INFO['접수'];
+  const submitted = !!a.submittedAt;
+  document.getElementById('page-myapp').innerHTML = `
+    <div class="card text-center">
+      <p class="text-xs text-gray-500">${esc(a.name)}${a.grade ? ` · ${esc(a.grade)}학년 ${esc(a.cls||'')}반` : ''} · ${esc(a.part)}${a.detail ? `(${esc(a.detail)})` : ''}</p>
+      <p class="text-xs text-gray-400 mt-2">내 실기번호</p>
+      <p class="text-3xl font-bold text-purple-700 tracking-widest select-text">${esc(a.code)}</p>
+      <p class="text-[11px] text-gray-400 mt-1">로그인할 때 쓰는 번호예요. 꼭 적어두세요</p>
+      <div class="mt-3">${stageChip(a.stage, true)}</div>
+      ${info.desc ? `<p class="text-xs text-gray-500 mt-2">${info.desc}</p>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-gray-800 text-sm">1차 서류</h3>
+        <span class="text-xs font-bold ${submitted ? 'text-blue-600' : 'text-amber-600'}">${submitted ? '제출 완료' : '작성 중'}</span>
+      </div>
+      ${c.docDeadline ? `<p class="text-xs text-gray-500 mt-1">마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}</p>` : ''}
+      <p class="text-xs text-gray-400 mt-1">${docsChars(a).toLocaleString()}자 썼어요</p>
+      <button onclick="navigate('docs')" class="w-full mt-3 ${submitted ? 'bg-gray-100 text-gray-700' : 'bg-purple-600 text-white'} py-3 rounded-xl font-bold text-sm">${submitted ? '서류 다시 보기' : '서류 쓰러 가기'}</button>
+    </div>
+
+    ${a.stage === '서류합격' || a.stage === '최종합격' ? `
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm">2차 실기·면접</h3>
+      <p class="text-xs text-gray-500 mt-1">${c.auditionDate ? `${fmt(parseDate(c.auditionDate))} ${esc(c.auditionTime||'')}` : '일정은 곧 안내됩니다'}</p>
+      <button onclick="navigate('audition')" class="w-full mt-3 bg-white border py-3 rounded-xl font-bold text-sm text-gray-700">실기 안내 보기</button>
+    </div>` : ''}
+
+    ${a.stage === '최종합격' ? `
+    <div class="card bg-green-50 border border-green-200">
+      <p class="text-sm text-green-800 font-bold">최종 합격입니다. 축하합니다!</p>
+      <p class="text-xs text-green-700 mt-1 leading-relaxed">이제 수습 8주가 시작됩니다. 수습 페이지는 <b>이름 + PIN 0000</b>으로 들어가면 됩니다(이 번호가 아니라요). 첫 로그인 뒤 PIN을 꼭 바꾸세요.</p>
+    </div>` : ''}
+    ${(a.stage === '서류불합격' || a.stage === '최종불합격') ? `
+    <div class="card">
+      <p class="text-sm text-gray-700 leading-relaxed">이번에는 함께하지 못하게 됐습니다. 지원해준 마음과 써준 글을 가볍게 읽지 않았습니다. 다음 기회에 다시 만나면 좋겠습니다.</p>
+    </div>` : ''}`;
+}
+
+function renderDocs() {
+  const a = currentApplicant;
+  if (!a) return;
+  const locked = a.stage !== '접수' || deadlinePassed();
+  const photo = _applyPendingPhoto || a.photo || '';
+  document.getElementById('page-docs').innerHTML = `
+    <div class="card !py-3 bg-purple-50 border border-purple-100">
+      <p class="text-sm font-bold text-purple-800">'구체적으로'가 이 서류의 전부입니다</p>
+      <p class="text-xs text-purple-700 mt-1 leading-relaxed">"은혜받았습니다" 한 줄 대신, 언제 어디서 무슨 일이 있었는지를 적어주세요. 흔들렸던 때를 정직하게 적은 글이 훨씬 좋습니다. 문항마다 최소 글자 수를 채워야 제출됩니다.</p>
+      ${locked ? `<p class="text-xs text-red-600 font-bold mt-2">${deadlinePassed() ? '마감이 지나 고칠 수 없습니다' : '심사가 시작되어 고칠 수 없습니다'}</p>` : ''}
+    </div>
+    ${APPLY_Q.map(q => {
+      const val = _applyDraft[q.key] !== undefined ? _applyDraft[q.key] : ((a.docs||{})[q.key] || '');
+      const n = val.trim().length, ok = n >= q.min;
+      return `<div class="card">
+        <h3 class="font-bold text-gray-800 text-sm">${q.title}</h3>
+        <ul class="mt-1 mb-2 space-y-0.5">${q.hint.map(h => `<li class="text-[11px] text-gray-400">· ${h}</li>`).join('')}</ul>
+        <textarea id="doc-${q.key}" rows="${q.rows}" ${locked ? 'readonly' : ''} oninput="_applyDraft['${q.key}']=this.value;document.getElementById('cnt-${q.key}').textContent=this.value.trim().length"
+          class="w-full border rounded-xl p-3 text-sm resize-none ${locked ? 'bg-gray-50' : ''}">${esc(val)}</textarea>
+        <p class="text-xs mt-1 ${ok ? 'text-blue-600' : 'text-gray-400'}"><span id="cnt-${q.key}">${n}</span>자 / 최소 ${q.min}자${ok ? ' · 채웠어요' : ''}</p>
+      </div>`;
+    }).join('')}
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">사진 · 영상 (선택)</h3>
+      ${photo ? `<div class="relative mb-2">
+        <img src="${photo}" onclick="showImg(this.src)" class="w-full rounded-xl border cursor-pointer" style="max-height:280px;object-fit:contain;background:#F9FAFB">
+        ${locked ? '' : `<button onclick="clearApplyPhoto()" style="min-height:32px" class="absolute top-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>`}
+      </div>` : ''}
+      ${locked ? '' : `<label class="flex items-center justify-center gap-2 border-2 border-dashed border-purple-200 rounded-xl py-3 text-sm font-semibold text-purple-500 cursor-pointer active:bg-purple-50">
+        📷 ${photo ? '사진 바꾸기' : '사진 올리기'}
+        <input type="file" accept="image/*" class="hidden" onchange="pickApplyPhoto(this)">
+      </label>`}
+      <label class="text-xs text-gray-500 font-semibold mt-3 mb-1 block">연주·찬양 영상 링크</label>
+      <input type="text" id="doc-video" ${locked ? 'readonly' : ''} value="${esc(a.videoUrl || '')}" placeholder="유튜브 등 링크 (없으면 비워두세요)" class="${locked ? 'bg-gray-50' : ''}">
+    </div>
+    ${locked ? '' : `
+    <div class="flex gap-2">
+      <button onclick="saveDocs(false)" class="flex-1 bg-white border py-4 rounded-xl font-bold text-sm text-gray-700">임시 저장</button>
+      <button onclick="saveDocs(true)" class="flex-1 bg-purple-600 text-white py-4 rounded-xl font-bold text-sm">${a.submittedAt ? '고쳐서 다시 제출' : '제출하기'}</button>
+    </div>
+    <p class="text-[11px] text-gray-400 text-center">제출한 뒤에도 마감 전까지는 고칠 수 있어요</p>`}`;
+}
+
+function renderAudition() {
+  const a = currentApplicant, c = applyCfg();
+  if (!a) return;
+  const allowed = a.stage === '서류합격' || a.stage === '최종합격';
+  document.getElementById('page-audition').innerHTML = allowed ? `
+    <div class="card text-center">
+      <p class="text-xs text-gray-400">내 실기번호</p>
+      <p class="text-3xl font-bold text-purple-700 tracking-widest select-text">${esc(a.code)}</p>
+      <p class="text-[11px] text-gray-400 mt-1">이 번호로 부릅니다</p>
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">언제 · 어디서</h3>
+      <p class="text-sm text-gray-700">${c.auditionDate ? `${fmt(parseDate(c.auditionDate))} ${esc(c.auditionTime || '')}` : '일정이 정해지면 여기에 올라옵니다'}</p>
+      ${c.auditionPlace ? `<p class="text-sm text-gray-700 mt-0.5">${esc(c.auditionPlace)}</p>` : ''}
+      ${c.auditionNote ? `<p class="text-xs text-gray-500 mt-2 whitespace-pre-wrap">${esc(c.auditionNote)}</p>` : ''}
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">어떻게 진행되나요</h3>
+      <div class="flex gap-2 py-1"><span class="text-purple-600 font-bold text-sm w-14">실기 5분</span><span class="text-sm text-gray-700">준비한 곡을 합니다</span></div>
+      <div class="flex gap-2 py-1"><span class="text-purple-600 font-bold text-sm w-14">면접 5분</span><span class="text-sm text-gray-700">서류에 쓴 내용을 두고 이야기합니다</span></div>
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-1">${esc(a.part)} 준비사항</h3>
+      <p class="text-sm text-gray-700 whitespace-pre-wrap">${partPrep(a.part) ? esc(partPrep(a.part)) : '<span class="text-gray-300">준비되는 대로 여기에 올라옵니다</span>'}</p>
+    </div>` : `
+    <div class="card text-center">
+      <p class="text-sm text-gray-500 py-6">서류 결과가 나온 뒤에 열립니다</p>
+    </div>`;
+}
+
+function renderApplicants() {
+  const el = document.getElementById('page-applicants');
+  loadApplicants();
+  const list = Object.values(_applicants).sort((x, y) => (x.createdAt || '').localeCompare(y.createdAt || ''));
+  const cnt = { 접수:0, 서류합격:0, 서류불합격:0, 최종합격:0, 최종불합격:0 };
+  list.forEach(a => { cnt[a.stage] = (cnt[a.stage] || 0) + 1; });
+  const c = applyCfg();
+  el.innerHTML = `
+    <div class="card !py-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-bold text-gray-800">26년 하반기 지원자 ${list.length}명</p>
+          <p class="text-xs text-gray-500 mt-0.5">접수 ${cnt.접수} · 서류합격 ${cnt.서류합격} · 최종합격 ${cnt.최종합격}</p>
+        </div>
+        <button onclick="openModal('modal-notice-edit')" style="min-height:36px" class="text-xs bg-purple-600 text-white px-3 py-2 rounded-xl font-bold">공고 편집</button>
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2">${c.open ? '접수를 받고 있습니다' : '접수를 닫아 두었습니다'}${c.docDeadline ? ` · 서류 마감 ${fmt(parseDate(c.docDeadline))}` : ''}</p>
+    </div>
+    ${list.length ? list.map(a => {
+      const open = qtOpenStudent === 'ap_' + a.code;
+      const moved = state.students.some(s => s.applyCode === a.code);
+      return `<div class="card !p-3">
+        <div onclick="qtOpenStudent = qtOpenStudent==='ap_${a.code}' ? null : 'ap_${a.code}'; renderAll()" class="flex items-center justify-between cursor-pointer">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xs text-gray-300 font-mono">${esc(a.code)}</span>
+            <span class="font-bold text-gray-800 text-sm">${esc(a.name)}</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-600">${esc(a.part)}${a.detail ? ' ' + esc(a.detail) : ''}</span>
+          </div>
+          ${stageChip(a.stage)}
+        </div>
+        <p class="text-[11px] text-gray-400 mt-1">${a.grade ? `${esc(a.grade)}학년 ${esc(a.cls||'')}반 · ` : ''}${a.submittedAt ? `제출 ${docsChars(a).toLocaleString()}자` : '아직 제출 안 함'}${a.phone ? ` · ${esc(a.phone)}` : ''}</p>
+        ${open ? `<div class="mt-3 pt-3 border-t space-y-3">
+          ${APPLY_Q.map(q => {
+            const t = (a.docs||{})[q.key] || '';
+            return `<div>
+              <p class="text-xs font-bold text-purple-700">${q.title} <span class="text-gray-300 font-normal">${t.trim().length}자</span></p>
+              <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3 mt-1">${t ? esc(t) : '<span class="text-gray-300">아직 안 씀</span>'}</p>
+            </div>`;
+          }).join('')}
+          ${a.photo ? `<img src="${a.photo}" onclick="showImg(this.src)" class="w-full rounded-xl border cursor-pointer" style="max-height:280px;object-fit:contain;background:#F9FAFB">` : ''}
+          ${a.videoUrl ? `<p class="text-xs">영상: <a href="${esc(a.videoUrl)}" target="_blank" rel="noopener" class="text-purple-600 underline break-all">${esc(a.videoUrl)}</a></p>` : ''}
+          ${a.phone ? `<a href="tel:${esc(a.phone)}" class="text-xs text-purple-600 font-semibold">📞 ${esc(a.phone)}</a>` : ''}
+          <div>
+            <p class="text-[11px] text-gray-400 mb-1">1차 서류</p>
+            <div class="flex gap-2">
+              <button onclick="setStage('${a.code}','서류합격')" class="flex-1 py-2 rounded-xl text-xs font-bold ${a.stage==='서류합격'?'bg-green-600 text-white':'bg-green-50 text-green-700 border border-green-200'}" style="min-height:38px">서류 합격</button>
+              <button onclick="setStage('${a.code}','서류불합격')" class="flex-1 py-2 rounded-xl text-xs font-bold ${a.stage==='서류불합격'?'bg-red-600 text-white':'bg-red-50 text-red-700 border border-red-200'}" style="min-height:38px">서류 불합격</button>
+            </div>
+          </div>
+          <div>
+            <p class="text-[11px] text-gray-400 mb-1">2차 실기·면접</p>
+            <div class="flex gap-2">
+              <button onclick="setStage('${a.code}','최종합격')" class="flex-1 py-2 rounded-xl text-xs font-bold ${a.stage==='최종합격'?'bg-green-600 text-white':'bg-green-50 text-green-700 border border-green-200'}" style="min-height:38px">최종 합격</button>
+              <button onclick="setStage('${a.code}','최종불합격')" class="flex-1 py-2 rounded-xl text-xs font-bold ${a.stage==='최종불합격'?'bg-red-600 text-white':'bg-red-50 text-red-700 border border-red-200'}" style="min-height:38px">불합격</button>
+            </div>
+          </div>
+          ${a.stage === '최종합격' ? `<button onclick="moveToTrainee('${a.code}')" ${moved?'disabled':''}
+            class="w-full py-3 rounded-xl text-sm font-bold ${moved ? 'bg-gray-100 text-gray-400' : 'bg-purple-600 text-white'}">
+            ${moved ? '✓ 수습 명단에 있음' : '수습 명단으로 넣기'}</button>` : ''}
+          <button onclick="setStage('${a.code}','접수')" class="w-full py-2 text-xs text-gray-400" style="min-height:32px">심사 전으로 되돌리기</button>
+        </div>` : ''}
+      </div>`;
+    }).join('') : `<div class="card"><p class="text-sm text-gray-400 text-center py-6">아직 지원자가 없습니다</p></div>`}`;
+}
+
 function renderRules() {
   const el = document.getElementById('page-rules');
   el.innerHTML = `
@@ -1328,6 +1916,30 @@ function renderRules() {
 // 작은 도구들
 // ==========================================
 function openModal(id) {
+  if (id === 'modal-notice-edit') {
+    const c = applyCfg();
+    document.getElementById('notice-edit-body').innerHTML = `
+      <label class="flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <input type="checkbox" id="nt-open" ${c.open ? 'checked' : ''} style="width:auto"> 지원 접수 열기
+      </label>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">모집 안내 글</label>
+        <textarea id="nt-notice" rows="6" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="누구를 뽑는지, 무엇을 기대하는지 자유롭게 적어주세요">${esc(c.notice)}</textarea></div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">서류 마감일</label>
+        <input type="date" id="nt-deadline" value="${esc(c.docDeadline)}"></div>
+      <div class="flex gap-2">
+        <div class="flex-1"><label class="text-xs text-gray-500 font-semibold mb-1 block">실기 날짜</label>
+          <input type="date" id="nt-date" value="${esc(c.auditionDate)}"></div>
+        <div class="flex-1"><label class="text-xs text-gray-500 font-semibold mb-1 block">시간</label>
+          <input type="text" id="nt-time" value="${esc(c.auditionTime)}" placeholder="오후 2시"></div>
+      </div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">장소</label>
+        <input type="text" id="nt-place" value="${esc(c.auditionPlace)}" placeholder="본당 3층 소예배실"></div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">실기 안내 (준비물·주의사항)</label>
+        <textarea id="nt-note" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none">${esc(c.auditionNote)}</textarea></div>
+      <p class="text-xs font-bold text-purple-700 pt-2">파트별 준비사항 — 어떤 곡을 어떻게 준비할지</p>
+      ${APPLY_PARTS.map(pt => `<div><label class="text-xs text-gray-500 font-semibold mb-1 block">${pt}</label>
+        <textarea id="nt-part-${pt}" rows="4" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="곡 · 준비 방법 · 반주 여부 등">${esc(partPrep(pt))}</textarea></div>`).join('')}`;
+  }
   if (id === 'modal-settings') {
     document.getElementById('set-start-date').value = state.startDate || DEFAULT_START;
     updateSettingsPreview();
@@ -1378,6 +1990,19 @@ fillLoginSelect();
 checkWeek = currentWeek();
 // 큐티 화면은 오늘 자로 연다. 오늘이 토·주일이면 그 주 월요일부터.
 qtDate = qtSlotOf(iso(today0())) ? iso(today0()) : qtDateOf(currentWeek(), 0);
+
+try {
+  const savedAp = localStorage.getItem('ladi_applicant');
+  if (savedAp && _FS_OK) {
+    _db.collection('newcomerApply').doc(savedAp).get().then(d => {
+      if (!d.exists) return;
+      currentApplicant = d.data();
+      _applicants[savedAp] = currentApplicant;
+      document.getElementById('login-screen').style.display = 'none';
+      navigate('myapp');
+    }).catch(() => {});
+  }
+} catch (_) {}
 
 try {
   const saved = localStorage.getItem('ladi_newcomer_user');

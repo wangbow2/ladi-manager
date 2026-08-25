@@ -21,6 +21,12 @@ service cloud.firestore {
       allow create, update: if true;
       allow delete: if false;
     }
+    // 26년 하반기 오디션 지원서 — 지원자 한 명당 문서 하나(문서 id = 6자리 실기번호).
+    match /newcomerApply/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
     match /stateBackups/{document} {
       allow read, create: if true;
       allow update, delete: if false;
