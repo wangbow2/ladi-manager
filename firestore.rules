@@ -14,6 +14,13 @@ service cloud.firestore {
       allow create, update: if true;
       allow delete: if false;
     }
+    // 신입생 큐티 제출물(묵상 글·사진) — 문서 하나가 커지므로 state와 분리해 둔다.
+    // 본 앱이 겪은 '한 문서에 몰아넣다 유실' 사고를 되풀이하지 않기 위해서다.
+    match /newcomerQT/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
     match /stateBackups/{document} {
       allow read, create: if true;
       allow update, delete: if false;

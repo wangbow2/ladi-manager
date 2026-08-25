@@ -224,7 +224,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.1';
+const APP_BUILD = '2026-08-26.2';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -458,12 +458,15 @@ let state = {
   att: {},   // `${id}_w${n}_sat` | `_sun`  → 출석/지각/무단지각/결석/무단결석
   qt: {},    // `${id}_w${n}` → [bool x5] (월~금)
   gate: {},  // `${id}_w${n}` → 'O' | 'X'
+  edu: {},   // `${id}_w${n}` → 'O' | 'X'  (토요일 교육 참석: 1~3주 YIP, 4~8주 신입생 교육)
   memos: {}
 };
 let currentUser = null;   // 로컬 전용 — 서버에 올리지 않는다
 let currentPage = 'home';
 let checkWeek = 0;
 let qtDate = '';   // 큐티 화면에서 보고 있는 날짜
+let qtOpenStudent = null;  // 팀장이 펼쳐 본 아이
+const _qtDraft = {};       // 날짜 → 쓰다 만 글. 화면이 다시 그려져도 날아가지 않게.
 
 function saveLocal() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {}
@@ -527,6 +530,9 @@ function initFirestore() {
     _stateRef.onSnapshot(d => {
       if (!d.exists) return;
       applyRemote(d.data());
+      // 아이가 큐티를 쓰는 중이면 화면을 다시 그리지 않는다 — 쓰던 글이 흔들리지 않도록.
+      const ta = document.getElementById('qt-text');
+      if (ta && document.activeElement === ta) return;
       renderAll();
     }, e => console.warn('실시간 동기화 끊김:', e));
     renderAll();
@@ -537,7 +543,7 @@ function initFirestore() {
   });
 }
 function applyRemote(data) {
-  ['startDate','pins','eduExempt','att','qt','gate','memos'].forEach(k => {
+  ['startDate','pins','eduExempt','att','qt','gate','edu','memos'].forEach(k => {
     if (data[k] !== undefined) state[k] = data[k];
   });
   if (Array.isArray(data.students) && data.students.length) {
@@ -578,10 +584,11 @@ function qtOf(id, n) { const v = state.qt[`${id}_w${n}`]; return Array.isArray(v
 function qtCount(id, n) { return qtOf(id, n).filter(Boolean).length; }
 function qtHasEntry(id, n) { return state.qt[`${id}_w${n}`] !== undefined; }
 function gateOf(id, n) { return state.gate[`${id}_w${n}`] || ''; }
+function eduOf(id, n) { return (state.edu || {})[`${id}_w${n}`] || ''; }
 
 function tally(id) {
   const t = { 지각:0, 무단지각:0, 결석:0, 무단결석:0, 큐티미달:0, 가테미통과:0,
-              출석:0, 미입력출석:0, 큐티미입력:0, 가테미입력:0 };
+              출석:0, 미입력출석:0, 큐티미입력:0, 가테미입력:0, 교육불참:0, 교육미입력:0 };
   for (let n = 0; n < WEEKS; n++) {
     ['sat','sun'].forEach(day => {
       const v = attOf(id, n, day);
@@ -596,6 +603,11 @@ function tally(id) {
       const g = gateOf(id, n);
       if (g === 'X') t.가테미통과++;
       else if (!g) t.가테미입력++;
+      if (!isEduExempt(id, n)) {
+        const e = eduOf(id, n);
+        if (e === 'X') t.교육불참++;
+        else if (!e) t.교육미입력++;
+      }
     }
   }
   return t;
@@ -627,7 +639,9 @@ function allUsers() { return state.students.concat(LEADERS); }
 function findUser(id) { return allUsers().find(u => u.id === id) || null; }
 function isLeader() { return LEADERS.some(l => l.id === currentUser); }
 function canEditAtt() { return isLeader(); }
-function canEditQT(id) { return isLeader() || currentUser === id; }
+// 큐티 체크는 아이가 직접 누르는 게 아니라 '제출'로 켜진다.
+// 체크칸을 직접 고치는 건 바로잡을 일이 있는 팀장만.
+function canEditQT(id) { return isLeader(); }
 
 function fillLoginSelect() {
   const sel = document.getElementById('login-name-select');
@@ -706,6 +720,15 @@ function toggleQT(id, n, i) {
   const arr = qtOf(id, n).slice();
   arr[i] = !arr[i];
   pushPatch({ qt: { [key]: arr } });
+  renderAll();
+}
+// 토요일 교육 참석. 면제받은 아이의 신입생 교육 주차는 체크하지 않는다.
+function cycleEdu(id, n) {
+  if (!canEditAtt() || isEduExempt(id, n)) return;
+  const key = `${id}_w${n}`;
+  const cur = eduOf(id, n);
+  const next = cur === '' ? 'O' : (cur === 'O' ? 'X' : '');
+  pushPatch({ edu: { [key]: next } });
   renderAll();
 }
 function cycleGate(id, n) {
@@ -841,10 +864,10 @@ function renderHome() {
         return `<p class="text-base font-bold text-purple-700">${ref}</p>
                 <p class="text-xs text-gray-400 mt-0.5">${s ? `${s.n+1}주차 ${DOW_QT[s.i]}요일` : '토·주일은 큐티를 세지 않아요'}</p>`;
       })()}
-      <div class="flex gap-1.5 justify-between mt-3" onclick="event.stopPropagation()">
+      <div class="flex gap-1.5 justify-between mt-3">
         ${DOW_QT.map((d,i) => `<div class="flex flex-col items-center gap-1">
           <span class="text-[11px] text-gray-400">${d}</span>
-          <div class="qt-dot ${qtOf(id,cw)[i]?'on':''}" onclick="toggleQT('${id}',${cw},${i})">${qtOf(id,cw)[i]?'✓':''}</div>
+          <div class="qt-dot ${qtOf(id,cw)[i]?'on':''}" style="cursor:default">${qtOf(id,cw)[i]?'✓':''}</div>
         </div>`).join('')}
       </div>
       <p class="text-xs mt-2 ${qtCount(id,cw)>=4?'text-blue-600':'text-gray-400'}">이번 주 ${qtCount(id,cw)}일 / 5일 — 4일 이상이면 통과입니다</p>
@@ -873,6 +896,93 @@ function shiftQtDate(step) {
 function showImg(src) {
   document.getElementById('modal-img-src').src = src;
   openModal('modal-img');
+}
+
+// ── 큐티 제출물(묵상 글·사진) ──
+// state 문서에 같이 넣으면 문서가 금방 커진다. 별도 컬렉션에 하루치씩 따로 둔다.
+const _qtDocs = {};            // `${id}_${date}` → {text, image} | null
+const _qtLoading = {};
+let _qtPendingImg = null;      // 아직 안 올린 사진(미리보기용)
+
+function qtKey(id, date) { return `${id}_${date}`; }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function loadQtDoc(id, date) {
+  const k = qtKey(id, date);
+  if (_qtDocs[k] !== undefined || _qtLoading[k]) return;
+  if (!_FS_OK) { _qtDocs[k] = null; return; }
+  _qtLoading[k] = true;
+  _db.collection('newcomerQT').doc(k).get()
+    .then(d => { _qtDocs[k] = d.exists ? d.data() : null; })
+    .catch(e => { console.warn('큐티 불러오기 실패:', e); _qtDocs[k] = null; })
+    .then(() => { delete _qtLoading[k]; renderAll(); });
+}
+
+// 사진은 폰 원본 그대로면 너무 커서 저장이 거부된다. 긴 변 1000px·품질을 낮춰 줄인다.
+function compressImage(file, cb) {
+  const reader = new FileReader();
+  reader.onerror = () => cb(null);
+  reader.onload = e => {
+    const img = new Image();
+    img.onerror = () => cb(null);
+    img.onload = () => {
+      try {
+        const max = 1000, scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        let q = 0.72, out = c.toDataURL('image/jpeg', q);
+        while (out.length > 420000 && q > 0.35) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+        cb(out.length > 700000 ? null : out);
+      } catch (_) { cb(null); }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function pickQtImage(input) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  toast('사진을 줄이는 중이에요…');
+  compressImage(f, dataUrl => {
+    if (!dataUrl) { toast('사진이 너무 커요. 다른 사진으로 해볼래요?'); return; }
+    _qtPendingImg = dataUrl;
+    renderAll();
+  });
+}
+function clearQtImage() { _qtPendingImg = null; renderAll(); }
+
+function submitQT(id, n, i, date) {
+  const ta = document.getElementById('qt-text');
+  const text = (ta ? ta.value : '').trim();
+  const prev = _qtDocs[qtKey(id, date)] || {};
+  const image = _qtPendingImg || prev.image || '';
+  if (!text && !image) { toast('묵상한 내용을 적거나 사진을 올려주세요'); return; }
+  const doc = { studentId: id, date, text, image, updatedAt: new Date().toISOString() };
+
+  _qtDocs[qtKey(id, date)] = doc;
+  _qtPendingImg = null;
+  delete _qtDraft[date];
+  // 체크는 제출과 함께 켠다 — 올렸는데 체크가 안 되는 일이 없도록.
+  const arr = qtOf(id, n).slice();
+  arr[i] = true;
+  pushPatch({ qt: { [`${id}_w${n}`]: arr } });
+  renderAll();
+
+  if (!_FS_OK) { toast('저장했어요 (인터넷이 없어 이 기기에만)'); return; }
+  _db.collection('newcomerQT').doc(qtKey(id, date)).set(doc)
+    .then(() => toast('큐티를 올렸어요!'))
+    .catch(e => {
+      console.warn('큐티 저장 실패:', e);
+      toast('저장이 안 됐어요. 잠시 뒤 다시 눌러주세요');
+    });
 }
 
 function renderQT() {
@@ -921,25 +1031,68 @@ function renderQT() {
       <p class="text-[11px] text-gray-400 mt-2 text-center">사진을 누르면 크게 볼 수 있어요 · 성서유니온 「청소년 매일성경」</p>
     </div>
 
-    ${meId ? `
-    <button onclick="toggleQT('${meId}',${n},${i})"
-      class="w-full py-4 rounded-xl font-bold text-sm ${done ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-purple-600 text-white'}">
-      ${done ? '✓ 오늘 큐티 완료' : '큐티 다 했어요'}
-    </button>
+    ${meId ? (() => {
+      loadQtDoc(meId, qtDate);
+      const saved = _qtDocs[qtKey(meId, qtDate)];
+      const loading = saved === undefined;
+      const shownImg = _qtPendingImg || (saved && saved.image) || '';
+      return `
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">${d.getMonth()+1}월 ${d.getDate()}일 묵상</h3>
+      ${loading ? `<p class="text-sm text-gray-400 py-6 text-center">불러오는 중…</p>` : `
+      <textarea id="qt-text" rows="6" oninput="_qtDraft['${qtDate}']=this.value"
+        placeholder="오늘 말씀을 읽고 마음에 남은 것, 하나님이 어떤 분으로 보였는지, 내 삶에 어떻게 적용할지 자유롭게 적어보세요."
+        class="w-full border rounded-xl p-3 text-sm resize-none">${esc(_qtDraft[qtDate] !== undefined ? _qtDraft[qtDate] : (saved && saved.text || ''))}</textarea>
+
+      ${shownImg ? `
+      <div class="mt-3 relative">
+        <img src="${shownImg}" onclick="showImg(this.src)" class="w-full rounded-xl border cursor-pointer" style="max-height:320px;object-fit:contain;background:#F9FAFB">
+        <button onclick="clearQtImage()" style="min-height:32px" class="absolute top-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>
+        ${_qtPendingImg ? `<p class="text-[11px] text-amber-600 mt-1">아직 안 올렸어요 — 아래 버튼을 눌러야 저장됩니다</p>` : ''}
+      </div>` : ''}
+
+      <label class="mt-3 flex items-center justify-center gap-2 border-2 border-dashed border-purple-200 rounded-xl py-3 text-sm font-semibold text-purple-500 cursor-pointer active:bg-purple-50">
+        📷 ${shownImg ? '사진 바꾸기' : '큐티 노트 사진 올리기'}
+        <input type="file" accept="image/*" class="hidden" onchange="pickQtImage(this)">
+      </label>
+
+      <button onclick="submitQT('${meId}',${n},${i},'${qtDate}')"
+        class="w-full mt-3 py-4 rounded-xl font-bold text-sm ${saved ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'}">
+        ${saved ? '고쳐서 다시 올리기' : '큐티 올리기'}
+      </button>
+      ${saved && saved.updatedAt ? `<p class="text-[11px] text-gray-400 mt-2 text-center">${new Date(saved.updatedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}에 올렸어요 ${done?'· 체크 완료':''}</p>` : ''}
+      `}
+    </div>
     <div class="card !py-3 text-center">
       <p class="text-sm ${qtCount(meId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(meId,n)}일 / 5일</p>
       <p class="text-xs text-gray-400 mt-0.5">${qtCount(meId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(meId,n)}일 남았어요`}</p>
-    </div>` : `
+    </div>`;
+    })() : `
     <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm mb-2">${n+1}주차 큐티 현황</h3>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">${d.getMonth()+1}월 ${d.getDate()}일 큐티</h3>
+      <p class="text-[11px] text-gray-400 mb-2">이름을 누르면 그날 올린 묵상을 볼 수 있어요</p>
       ${state.students.map(s => {
+        loadQtDoc(s.id, qtDate);
+        const doc = _qtDocs[qtKey(s.id, qtDate)];
+        const open = qtOpenStudent === s.id;
         const c = qtCount(s.id, n);
-        return `<div class="flex items-center justify-between py-1 border-b last:border-0">
-          <span class="text-sm text-gray-700">${s.name}</span>
-          <span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">${c}/5</span>
+        return `<div class="border-b last:border-0">
+          <div onclick="qtOpenStudent = qtOpenStudent==='${s.id}' ? null : '${s.id}'; renderAll()" class="flex items-center justify-between py-2 cursor-pointer">
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-800 font-semibold">${s.name}</span>
+              ${doc === undefined ? '<span class="text-[11px] text-gray-300">…</span>'
+                : (doc ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">올림</span>'
+                       : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">아직</span>')}
+            </div>
+            <span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">주 ${c}/5</span>
+          </div>
+          ${open && doc ? `<div class="pb-3">
+            ${doc.text ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3">${esc(doc.text)}</p>` : ''}
+            ${doc.image ? `<img src="${doc.image}" onclick="showImg(this.src)" class="w-full rounded-xl border mt-2 cursor-pointer" style="max-height:320px;object-fit:contain;background:#F9FAFB">` : ''}
+          </div>` : (open ? `<p class="text-xs text-gray-400 pb-3">아직 올리지 않았어요</p>` : '')}
         </div>`;
       }).join('')}
-      <p class="text-[11px] text-gray-400 mt-2">체크는 체크표에서 고칠 수 있습니다.</p>
+      <p class="text-[11px] text-gray-400 mt-2">체크만 고치려면 체크표에서 하면 됩니다.</p>
     </div>`}
 
     <div class="card">
@@ -971,16 +1124,25 @@ function renderCheck() {
           isEduExempt(s.id, n) ? `<span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">교육 면제</span>` : ''}</div>
         <span class="text-xs ${qtCount(s.id,n)>=4?'text-blue-600 font-semibold':'text-gray-400'}">큐티 ${qtCount(s.id,n)}/5</span>
       </div>
-      <div class="flex items-center gap-2 mb-2">
+      <div class="flex items-center gap-1.5 mb-2">
         ${['sat','sun'].map(day => {
           const v = attOf(s.id, n, day);
           const cls = v ? 'st-'+v : 'st-빈칸';
-          return `<div class="flex-1">
-            <p class="text-[11px] text-gray-400 mb-0.5">${day==='sat'?`토 ${fmt(wi.sat)}`:`주일 ${fmt(wi.sun)}`}</p>
+          return `<div class="flex-1 min-w-0">
+            <p class="text-[11px] text-gray-400 mb-0.5 truncate">${day==='sat'?`토 ${fmt(wi.sat)}`:`주일 ${fmt(wi.sun)}`}</p>
             <div class="check-cell ${cls} w-full ${canEditAtt()?'':'opacity-70'}" onclick="cycleAtt('${s.id}',${n},'${day}')">${ATT_SHORT[v]}</div>
           </div>`;
         }).join('')}
-        <div style="width:74px">
+        ${(() => {
+          const exempt = isEduExempt(s.id, n), e = eduOf(s.id, n);
+          const label = programOf(n).name === 'YIP 교육' ? 'YIP' : '신입생';
+          return `<div class="flex-1 min-w-0">
+            <p class="text-[11px] text-gray-400 mb-0.5 truncate">${label}</p>
+            <div class="check-cell w-full ${exempt ? 'st-빈칸' : (e ? 'gate-'+e : 'st-빈칸')} ${(canEditAtt()&&!exempt)?'':'opacity-60'}"
+                 onclick="cycleEdu('${s.id}',${n})">${exempt ? '면제' : (e || '·')}</div>
+          </div>`;
+        })()}
+        <div class="flex-1 min-w-0">
           <p class="text-[11px] text-gray-400 mb-0.5">가테</p>
           <div class="check-cell w-full ${g?'gate-'+g:'st-빈칸'} ${canEditAtt()?'':'opacity-70'}" onclick="cycleGate('${s.id}',${n})">${g || '·'}</div>
         </div>
@@ -1001,7 +1163,7 @@ function renderCheck() {
         <p class="text-sm font-bold text-purple-800">${n+1}주차 · ${fmt(wi.sat)}(토) ~ ${fmt(wi.fri)}(금)</p>
         <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold ${programOf(n).cls}">토요일 ${programOf(n).name}</span>
       </div>
-      <p class="text-xs text-purple-600 mt-0.5">${canEditAtt() ? '칸을 누르면 상태가 바뀝니다 · 출석 → 지각 → 무단지각 → 결석 → 무단결석' : '큐티는 직접 체크할 수 있어요'}</p>
+      <p class="text-xs text-purple-600 mt-0.5">${canEditAtt() ? '칸을 누르면 상태가 바뀝니다 · 출석 → 지각 → 무단지각 → 결석 → 무단결석' : '큐티는 큐티 화면에서 올리면 자동으로 체크됩니다'}</p>
     </div>` + rows;
 }
 
@@ -1009,7 +1171,7 @@ function renderStatus() {
   const el = document.getElementById('page-status');
   const list = isLeader() ? state.students : state.students.filter(s => s.id === currentUser);
   // 가장 중요한 '판정'을 이름 바로 옆에 둔다 — 옆으로 밀지 않아도 보이도록.
-  const head = ['이름','판정','지각','무지','결석','무결','큐티','가테'];
+  const head = ['이름','판정','지각','무지','결석','무결','큐티','가테','교육'];
   const SHORT = { red:'불가', yellow:'주의', green:'정상' };
   el.innerHTML = `
     <div class="card !p-0 overflow-hidden">
@@ -1029,12 +1191,13 @@ function renderStatus() {
                 <td class="px-2 py-2 font-semibold text-gray-800">${s.name}</td>
                 <td class="px-1 py-2 text-center"><span class="sig-${v.level} px-2 py-1 rounded-full font-bold text-[11px]">${short}</span></td>
                 ${cell('지각')}${cell('무단지각')}${cell('결석')}${cell('무단결석')}${cell('큐티미달')}${cell('가테미통과')}
+                <td class="px-2 py-2 text-center ${t.교육불참 ? 'text-gray-600 font-semibold' : 'text-gray-300'}">${t.교육불참}</td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>
-      <p class="text-[11px] text-gray-400 px-3 py-2 border-t">무지=무단지각 · 무결=무단결석 · 큐티=4일 미만 주차 · 가테=미통과</p>
+      <p class="text-[11px] text-gray-400 px-3 py-2 border-t">무지=무단지각 · 무결=무단결석 · 큐티=4일 미만 주차 · 가테=미통과<br>교육=토요일 교육 불참 횟수 (기록만 하고 수료 판정에는 넣지 않습니다)</p>
     </div>
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">아직 안 채워진 곳</h3>
@@ -1047,6 +1210,7 @@ function renderStatus() {
           if (t.미입력출석) parts.push(`출석 ${t.미입력출석}칸`);
           if (t.큐티미입력) parts.push(`큐티 ${t.큐티미입력}주`);
           if (t.가테미입력) parts.push(`가테 ${t.가테미입력}주`);
+          if (t.교육미입력) parts.push(`교육 ${t.교육미입력}주`);
           if (!parts.length) return;
           const key = parts.join(', ');
           (groups[key] = groups[key] || []).push(s.name);
@@ -1119,6 +1283,7 @@ function renderRules() {
           <span class="text-sm text-gray-700">${p.from+1}~${p.to+1}주차</span>
           <span class="text-xs text-gray-400 ml-auto">${fmt(weekInfo(p.from).sat)} ~ ${fmt(weekInfo(p.to).sat)}</span>
         </div>`).join('')}
+      <p class="text-xs text-gray-500 mt-2">교육 참석은 체크표에 따로 기록합니다. 다만 수료 기준(출석·큐티·가테)에는 들어가지 않습니다.</p>
       ${(() => {
         if (!isLeader()) {
           return (state.eduExempt||{})[currentUser]
@@ -1249,7 +1414,12 @@ if ('serviceWorker' in navigator) {
     } catch (_) { return null; }
   }
   // 큐티/체크를 누르고 아직 서버에 못 올렸으면 새로고침을 미룬다.
-  function _safeToReload() { return !_pendingPatch; }
+  function _safeToReload() {
+    if (_pendingPatch) return false;                 // 서버에 아직 못 올린 체크가 있음
+    if (_qtPendingImg) return false;                 // 고른 사진을 아직 안 올림
+    if (Object.keys(_qtDraft).length) return false;  // 쓰다 만 묵상 글이 있음
+    return true;
+  }
   function _reloadWhenSafe(to) {
     if (_reloading) return;
     if (!_safeToReload()) { setTimeout(() => _reloadWhenSafe(to), 4000); return; }
