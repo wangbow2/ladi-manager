@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>수영로고 LADI 신입생</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="LADI 신입생">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex, nofollow">
+<link rel="apple-touch-icon" href="../icons/icon-152x152.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* 파트 배지 */
+  .part-건반 { background:#DBEAFE; color:#1e40af; }
+  .part-드럼 { background:#FFE4D6; color:#9a3412; }
+  .part-싱어 { background:#FEF9C3; color:#92400e; }
+  .part-보컬 { background:#F3E8FF; color:#6D28D9; }
+  .part-워십 { background:#DCFCE7; color:#166534; }
+
+  /* 출석 상태 — 본 앱과 같은 색 언어 */
+  .st-출석 { background:#DBEAFE; color:#1D4ED8; font-weight:600; }
+  .st-지각 { background:#FEF9C3; color:#B45309; font-weight:600; }
+  .st-무단지각 { background:#FDBA74; color:#7C2D12; font-weight:700; }
+  .st-결석 { background:#FEE2E2; color:#DC2626; font-weight:600; }
+  .st-무단결석 { background:#F87171; color:#7F1D1D; font-weight:700; }
+  .st-빈칸 { background:#F9FAFB; color:#9CA3AF; }
+
+  .gate-O { background:#DCFCE7; color:#166534; font-weight:700; }
+  .gate-X { background:#FEE2E2; color:#DC2626; font-weight:700; }
+
+  /* 신호등 */
+  .sig-green  { background:#DCFCE7; color:#166534; }
+  .sig-yellow { background:#FEF9C3; color:#B45309; }
+  .sig-red    { background:#FEE2E2; color:#B91C1C; }
+
+  .check-cell {
+    min-width: 38px; min-height: 38px; text-align:center; padding:2px;
+    font-size:13px; border-radius:6px; cursor:pointer; user-select:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .qt-dot {
+    width:30px; height:30px; border-radius:8px; font-size:12px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none;
+    border:1px solid #E5E7EB; background:#F9FAFB; color:#9CA3AF;
+  }
+  .qt-dot.on { background:#DBEAFE; border-color:#93C5FD; color:#1D4ED8; }
+
+  .nav-btn.active svg { stroke:#7C3AED; }
+  .nav-btn.active span { color:#7C3AED; }
+  .scroll-table { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table th, table td { white-space:nowrap; }
+
+  #login-screen { display:flex; }
+  .pin-input { letter-spacing:0.5em; font-size:1.5rem; text-align:center; }
+
+  .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+  .modal.open { display:flex; }
+
+  input[type="text"], input[type="date"], input[type="tel"], select, textarea {
+    border:1px solid #D1D5DB; border-radius:8px; padding:8px 12px; font-size:14px; width:100%; outline:none;
+  }
+  input:focus, select:focus, textarea:focus { border-color:#7C3AED; box-shadow:0 0 0 2px rgba(124,58,237,0.2); }
+  button, .btn { min-height:44px; }
+  .nav-btn { min-height:unset; }
+  .card { background:#fff; border-radius:12px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04); padding:16px; }
+</style>
+</head>
+<body class="bg-gray-50">
+
+<header class="bg-purple-700 text-white px-4 py-3 fixed top-0 left-0 right-0 z-50 shadow-md">
+  <div class="flex items-center justify-between max-w-2xl mx-auto">
+    <h1 class="text-lg font-bold cursor-pointer active:opacity-70" onclick="navigate('home')">LADI 신입생</h1>
+    <div class="flex items-center gap-2">
+      <div id="header-week" class="text-sm bg-purple-600 px-3 py-1 rounded-full"></div>
+      <button onclick="openModal('modal-user-menu')" class="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
+        <span id="header-user-name" class="text-xs max-w-20 truncate"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="pt-14 pb-20 max-w-2xl mx-auto" id="main-content">
+  <div id="page-home" class="page active p-4 space-y-4"></div>
+  <div id="page-check" class="page p-4 space-y-4"></div>
+  <div id="page-status" class="page p-4 space-y-4"></div>
+  <div id="page-roster" class="page p-4 space-y-4"></div>
+  <div id="page-rules" class="page p-4 space-y-4"></div>
+</main>
+
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg">
+  <div class="flex justify-around items-center max-w-2xl mx-auto py-1">
+    <button class="nav-btn active flex flex-col items-center py-1 px-2" onclick="navigate('home')" id="nav-home">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">홈</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('check')" id="nav-check">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">체크표</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('status')" id="nav-status">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">수료현황</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('roster')" id="nav-roster">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">명단</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('rules')" id="nav-rules">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">기준</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Login -->
+<div id="login-screen" class="fixed inset-0 z-[300] flex items-center justify-center bg-gradient-to-br from-purple-800 to-purple-600">
+  <div id="build-badge" class="absolute bottom-4 left-0 right-0 text-center text-[11px] text-purple-300/70 select-text"></div>
+  <div class="bg-white rounded-3xl w-full max-w-sm mx-4 overflow-hidden shadow-2xl">
+    <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-center">
+      <div class="text-4xl mb-2">🌱</div>
+      <h1 class="text-xl font-bold text-white">수영로고 LADI 신입생</h1>
+      <p class="text-purple-200 text-sm mt-1">8주 수료 과정</p>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="text-xs text-gray-500 font-semibold mb-1 block">이름 선택</label>
+        <select id="login-name-select" class="w-full border rounded-xl p-3 text-sm">
+          <option value="">이름을 선택하세요</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 font-semibold mb-1 block">PIN 번호 (4자리)</label>
+        <input type="password" id="login-pin" maxlength="4" inputmode="numeric" placeholder="● ● ● ●"
+               class="pin-input w-full border rounded-xl p-3" onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <p id="login-error" class="text-xs text-red-500 text-center hidden">PIN 번호가 올바르지 않습니다</p>
+      <button onclick="doLogin()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
+      <p class="text-xs text-gray-400 text-center">처음 PIN은 <span class="font-bold text-purple-600">0000</span> 입니다</p>
+    </div>
+  </div>
+</div>
+
+<!-- User menu -->
+<div id="modal-user-menu" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
+    <div class="p-4 border-b">
+      <p class="font-bold text-gray-800" id="user-menu-name">내 계정</p>
+      <p class="text-xs text-gray-500 mt-0.5" id="user-menu-role"></p>
+    </div>
+    <div class="p-2">
+      <button onclick="closeModal('modal-user-menu');openModal('modal-pin')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50">🔐 PIN 번호 변경</button>
+      <button id="btn-settings" onclick="closeModal('modal-user-menu');openModal('modal-settings')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50 hidden">📅 과정 시작일 설정</button>
+      <button onclick="doLogout()" class="w-full text-left px-4 py-3 text-sm text-red-600 rounded-xl active:bg-gray-50">로그아웃</button>
+      <button onclick="closeModal('modal-user-menu')" class="w-full text-left px-4 py-3 text-sm text-gray-400 rounded-xl active:bg-gray-50">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN change -->
+<div id="modal-pin" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h3 class="font-bold text-gray-800">PIN 변경</h3>
+      <button onclick="closeModal('modal-pin')" class="text-gray-400 text-2xl leading-none">×</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">현재 PIN</label>
+        <input type="password" id="pin-current" maxlength="4" inputmode="numeric" placeholder="● ● ● ●" class="pin-input w-full border rounded-xl p-3"></div>
+      <div><label class="text-xs text-gray-500 font-semibold mb-1 block">새 PIN</label>
+        <input type="password" id="pin-new" maxlength="4" inputmode="numeric" placeholder="● ● ● ●" class="pin-input w-full border rounded-xl p-3"></div>
+      <p id="pin-error" class="text-xs text-red-500 hidden text-center"></p>
+    </div>
+    <div class="p-4 pt-0 flex gap-2">
+      <button onclick="doChangePIN()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">변경</button>
+      <button onclick="closeModal('modal-pin')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings (leader) -->
+<div id="modal-settings" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h3 class="font-bold text-gray-800">과정 시작일</h3>
+      <button onclick="closeModal('modal-settings')" class="text-gray-400 text-2xl leading-none">×</button>
+    </div>
+    <div class="p-4 space-y-2">
+      <p class="text-xs text-gray-500 leading-relaxed">8주 과정이 시작하는 <b>첫 토요일</b>을 고르세요. 한 주차는 토요일부터 다음 금요일까지입니다(토·주일 출석 + 이어지는 월~금 큐티).</p>
+      <input type="date" id="set-start-date">
+      <p id="settings-preview" class="text-xs text-purple-600 font-semibold"></p>
+    </div>
+    <div class="p-4 pt-0 flex gap-2">
+      <button onclick="doSaveStartDate()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">저장</button>
+      <button onclick="closeModal('modal-settings')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 기본 정보
+// ==========================================
+// sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
+const APP_BUILD = '2026-08-25.1';
+const WEEKS = 8;
+const DEFAULT_START = '2026-08-29'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
+
+// 명단. 연락처는 여기 두지 않는다(공개 저장소에 남으므로) — Firestore에서 받아 온다.
+const ROSTER = [
+  { id:'n01', name:'김채은', part:'건반', gender:'여' },
+  { id:'n02', name:'이예빛', part:'드럼', gender:'여' },
+  { id:'n03', name:'남예진', part:'싱어', gender:'여' },
+  { id:'n04', name:'배은채', part:'싱어', gender:'여' },
+  { id:'n05', name:'이태관', part:'싱어', gender:'남' },
+  { id:'n06', name:'김루아', part:'싱어', gender:'여' },
+  { id:'n07', name:'최유주', part:'싱어', gender:'여' },
+  { id:'n08', name:'이윤주', part:'보컬', gender:'여' },
+  { id:'n09', name:'구예림', part:'보컬', gender:'여' },
+  { id:'n10', name:'최지우', part:'싱어', gender:'여', readmit:true },
+  { id:'n11', name:'서찬영', part:'워십', gender:'남', readmit:true },
+  { id:'n12', name:'김윤서', part:'워십', gender:'여' }
+];
+const LEADER = { id:'leader', name:'리더', part:'', gender:'', role:'leader' };
+
+// 수료 기준 — 이 표 하나가 판정의 유일한 근거다.
+const LIMITS = {
+  지각:      { fail:3, label:'지각' },
+  무단지각:  { fail:2, label:'무단 지각(30분 이상)' },
+  결석:      { fail:2, hold:1, label:'결석' },
+  무단결석:  { fail:1, label:'무단 결석' },
+  큐티미달:  { fail:2, label:'큐티 4일 미만' },
+  가테미통과:{ fail:3, label:'가테 미통과' }
+};
+const ATT_CYCLE = ['', '출석', '지각', '무단지각', '결석', '무단결석'];
+const ATT_SHORT = { '':'·', '출석':'O', '지각':'지', '무단지각':'무지', '결석':'결', '무단결석':'무결' };
+const DOW_QT = ['월','화','수','목','금'];
+
+// ==========================================
+// Firebase — 실패해도 앱이 죽지 않고 로컬 전용으로 강등된다
+// ==========================================
+let _db, _stateRef, _FS_OK = false;
+try {
+  if (typeof firebase === 'undefined') throw new Error('firebase SDK 로드 실패');
+  firebase.initializeApp({
+    apiKey: "AIzaSyBH-ogVqi9C63GIrllY2aIK76i5dwFBGgQ",
+    authDomain: "ladi-manager.firebaseapp.com",
+    projectId: "ladi-manager",
+    storageBucket: "ladi-manager.firebasestorage.app",
+    messagingSenderId: "583728554598",
+    appId: "1:583728554598:web:b5127dc45914432eadc3a7"
+  });
+  _db = firebase.firestore();
+  _stateRef = _db.collection('newcomer').doc('state');
+  _FS_OK = true;
+} catch (e) {
+  console.warn('Firebase 초기화 실패 — 로컬 전용 모드:', e);
+}
+
+// ==========================================
+// 상태
+// ==========================================
+const LS_KEY = 'ladi_newcomer_state';
+let state = {
+  schemaVersion: 1,
+  startDate: DEFAULT_START,
+  students: ROSTER.map(s => ({ ...s })),
+  pins: {},
+  att: {},   // `${id}_w${n}_sat` | `_sun`  → 출석/지각/무단지각/결석/무단결석
+  qt: {},    // `${id}_w${n}` → [bool x5] (월~금)
+  gate: {},  // `${id}_w${n}` → 'O' | 'X'
+  memos: {}
+};
+let currentUser = null;   // 로컬 전용 — 서버에 올리지 않는다
+let currentPage = 'home';
+let checkWeek = 0;
+
+function saveLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {}
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) Object.assign(state, JSON.parse(raw));
+  } catch (_) {}
+}
+
+// 바뀐 키만 서버에 병합한다. 문서 전체를 덮어쓰지 않으므로
+// 두 사람이 동시에 체크해도 서로의 입력을 지우지 않는다.
+let _pendingPatch = null, _patchTimer = null, _saveRetry = 0;
+function pushPatch(patch) {
+  Object.assign(state, mergeDeep(state, patch));
+  saveLocal();
+  if (!_FS_OK) return;
+  _pendingPatch = mergeDeep(_pendingPatch || {}, patch);
+  clearTimeout(_patchTimer);
+  _patchTimer = setTimeout(flushPatch, 400);
+}
+function flushPatch() {
+  if (!_pendingPatch) return;
+  const payload = Object.assign({ schemaVersion: 1 }, _pendingPatch);
+  _pendingPatch = null;
+  _stateRef.set(payload, { merge: true })
+    .then(() => { _saveRetry = 0; })
+    .catch(e => {
+      // 저장 실패를 조용히 버리지 않는다 — 다시 큐에 넣고 재시도한다.
+      console.warn('저장 실패 — 재시도합니다:', e);
+      _pendingPatch = mergeDeep(payload, _pendingPatch || {});
+      delete _pendingPatch.schemaVersion;
+      _saveRetry++;
+      setTimeout(flushPatch, Math.min(1500 * _saveRetry, 15000));
+    });
+}
+function mergeDeep(base, patch) {
+  const out = Array.isArray(base) ? base.slice() : Object.assign({}, base);
+  Object.keys(patch || {}).forEach(k => {
+    const v = patch[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+      out[k] = mergeDeep(out[k], v);
+    } else {
+      out[k] = v;
+    }
+  });
+  return out;
+}
+
+let _fsTries = 0;
+function initFirestore() {
+  if (!_FS_OK) return;
+  _stateRef.get().then(doc => {
+    if (doc.exists) {
+      applyRemote(doc.data());
+    } else {
+      // 첫 실행 — 명단을 서버에 올린다
+      _stateRef.set(Object.assign({}, state)).catch(e => console.warn('초기 업로드 실패:', e));
+    }
+    _stateRef.onSnapshot(d => {
+      if (!d.exists) return;
+      applyRemote(d.data());
+      renderAll();
+    }, e => console.warn('실시간 동기화 끊김:', e));
+    renderAll();
+  }).catch(e => {
+    _fsTries++;
+    console.warn(`Firestore 연결 실패 — ${_fsTries}번째 재시도 예정:`, e);
+    setTimeout(initFirestore, Math.min(2000 * _fsTries, 20000));
+  });
+}
+function applyRemote(data) {
+  ['startDate','pins','att','qt','gate','memos'].forEach(k => {
+    if (data[k] !== undefined) state[k] = data[k];
+  });
+  if (Array.isArray(data.students) && data.students.length) {
+    // 서버 명단을 기준으로 하되, 코드에 있는 명단이 더 최신이면 빠진 사람을 채운다.
+    const byId = {};
+    data.students.forEach(s => { byId[s.id] = s; });
+    state.students = ROSTER.map(r => Object.assign({}, r, byId[r.id] || {}));
+  }
+  saveLocal();
+}
+
+// ==========================================
+// 날짜 · 주차
+// ==========================================
+function parseDate(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function fmt(d) { return `${d.getMonth()+1}/${d.getDate()}`; }
+function iso(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function today0() { const t = new Date(); t.setHours(0,0,0,0); return t; }
+
+// 한 주차 = 토요일부터 다음 금요일까지 7일. 토·주일 출석, 이어지는 월~금이 큐티.
+function weekInfo(n) {
+  const sat = addDays(parseDate(state.startDate || DEFAULT_START), n*7);
+  return { n, sat, sun: addDays(sat,1), qtStart: addDays(sat,2), fri: addDays(sat,6) };
+}
+function weekStarted(n) { return today0() >= weekInfo(n).sat; }
+function weekEnded(n) { return today0() > weekInfo(n).fri; }
+function currentWeek() {
+  for (let n = 0; n < WEEKS; n++) if (!weekEnded(n)) return n;
+  return WEEKS - 1;
+}
+
+// ==========================================
+// 집계 · 수료 판정
+// ==========================================
+function attOf(id, n, day) { return state.att[`${id}_w${n}_${day}`] || ''; }
+function qtOf(id, n) { const v = state.qt[`${id}_w${n}`]; return Array.isArray(v) ? v : [false,false,false,false,false]; }
+function qtCount(id, n) { return qtOf(id, n).filter(Boolean).length; }
+function qtHasEntry(id, n) { return state.qt[`${id}_w${n}`] !== undefined; }
+function gateOf(id, n) { return state.gate[`${id}_w${n}`] || ''; }
+
+function tally(id) {
+  const t = { 지각:0, 무단지각:0, 결석:0, 무단결석:0, 큐티미달:0, 가테미통과:0,
+              출석:0, 미입력출석:0, 큐티미입력:0, 가테미입력:0 };
+  for (let n = 0; n < WEEKS; n++) {
+    ['sat','sun'].forEach(day => {
+      const v = attOf(id, n, day);
+      if (v) t[v]++;
+      else if (weekStarted(n)) t.미입력출석++;
+    });
+    // 끝난 주차만 판정한다. 기록이 아예 없는 주차는 '미입력'으로 따로 세고 판정에서 뺀다
+    // — 리더가 아직 못 넣은 것을 아이 잘못으로 만들지 않기 위해서다.
+    if (weekEnded(n)) {
+      if (qtHasEntry(id, n)) { if (qtCount(id, n) < 4) t.큐티미달++; }
+      else t.큐티미입력++;
+      const g = gateOf(id, n);
+      if (g === 'X') t.가테미통과++;
+      else if (!g) t.가테미입력++;
+    }
+  }
+  return t;
+}
+
+// 신호등: red = 수료 불가, yellow = 수료 연기 또는 한 번 남음, green = 이상 없음
+function verdict(id) {
+  const t = tally(id);
+  const fails = [], warns = [];
+  Object.keys(LIMITS).forEach(k => {
+    const lim = LIMITS[k], c = t[k];
+    if (c >= lim.fail) fails.push(`${lim.label} ${c}회 (${lim.fail}회부터 수료 불가)`);
+    // c > 0 조건이 없으면 '1회부터 불가'인 무단결석 때문에 아무 일 없는 아이에게도 경고가 붙는다.
+    else if (c > 0 && c === lim.fail - 1) warns.push(`${lim.label} ${c}회 — 한 번 더면 수료 불가`);
+  });
+  const hold = t.결석 === 1;
+  if (fails.length) return { level:'red', label:'수료 불가', tally:t, fails, warns };
+  // 결석 1회는 '연기'라는 더 강한 말로 이미 알리므로, 같은 내용의 경고를 겹쳐 쓰지 않는다.
+  if (hold) return { level:'yellow', label:'수료 연기', tally:t, fails,
+                     warns: ['결석 1회 — 수료가 연기됩니다'].concat(warns.filter(w => !w.startsWith('결석'))) };
+  if (warns.length) return { level:'yellow', label:'주의', tally:t, fails, warns };
+  return { level:'green', label:'이상 없음', tally:t, fails, warns };
+}
+
+// ==========================================
+// 로그인 · 권한
+// ==========================================
+function allUsers() { return state.students.concat([LEADER]); }
+function findUser(id) { return allUsers().find(u => u.id === id) || null; }
+function isLeader() { return currentUser === 'leader'; }
+function canEditAtt() { return isLeader(); }
+function canEditQT(id) { return isLeader() || currentUser === id; }
+
+function fillLoginSelect() {
+  const sel = document.getElementById('login-name-select');
+  sel.innerHTML = '<option value="">이름을 선택하세요</option>' +
+    state.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('') +
+    `<option value="leader">리더(관리자)</option>`;
+}
+function doLogin() {
+  const id = document.getElementById('login-name-select').value;
+  const pin = document.getElementById('login-pin').value;
+  const err = document.getElementById('login-error');
+  if (!id) { err.textContent = '이름을 선택하세요'; err.classList.remove('hidden'); return; }
+  const stored = state.pins[id] || '0000';
+  if (pin !== stored) {
+    err.textContent = 'PIN 번호가 올바르지 않습니다';
+    err.classList.remove('hidden');
+    document.getElementById('login-pin').value = '';
+    return;
+  }
+  currentUser = id;
+  try { localStorage.setItem('ladi_newcomer_user', id); } catch (_) {}
+  err.classList.add('hidden');
+  document.getElementById('login-pin').value = '';
+  document.getElementById('login-screen').style.display = 'none';
+  checkWeek = currentWeek();
+  renderAll();
+}
+function doLogout() {
+  currentUser = null;
+  try { localStorage.removeItem('ladi_newcomer_user'); } catch (_) {}
+  closeModal('modal-user-menu');
+  fillLoginSelect();
+  document.getElementById('login-screen').style.display = 'flex';
+}
+function doChangePIN() {
+  const cur = document.getElementById('pin-current').value;
+  const nw = document.getElementById('pin-new').value;
+  const err = document.getElementById('pin-error');
+  const stored = state.pins[currentUser] || '0000';
+  if (cur !== stored) { err.textContent = '현재 PIN이 올바르지 않습니다'; err.classList.remove('hidden'); return; }
+  if (!/^\d{4}$/.test(nw)) { err.textContent = '새 PIN은 숫자 4자리여야 합니다'; err.classList.remove('hidden'); return; }
+  pushPatch({ pins: { [currentUser]: nw } });
+  err.classList.add('hidden');
+  document.getElementById('pin-current').value = '';
+  document.getElementById('pin-new').value = '';
+  closeModal('modal-pin');
+  toast('PIN을 변경했습니다');
+}
+function doSaveStartDate() {
+  const v = document.getElementById('set-start-date').value;
+  if (!v) return;
+  const d = parseDate(v);
+  if (d.getDay() !== 6) { toast('토요일을 골라 주세요'); return; }
+  pushPatch({ startDate: v });
+  closeModal('modal-settings');
+  checkWeek = currentWeek();
+  renderAll();
+  toast('과정 시작일을 저장했습니다');
+}
+
+// ==========================================
+// 편집
+// ==========================================
+function cycleAtt(id, n, day) {
+  if (!canEditAtt()) return;
+  const key = `${id}_w${n}_${day}`;
+  const cur = state.att[key] || '';
+  const next = ATT_CYCLE[(ATT_CYCLE.indexOf(cur) + 1) % ATT_CYCLE.length];
+  pushPatch({ att: { [key]: next } });
+  renderAll();
+}
+function toggleQT(id, n, i) {
+  if (!canEditQT(id)) return;
+  const key = `${id}_w${n}`;
+  const arr = qtOf(id, n).slice();
+  arr[i] = !arr[i];
+  pushPatch({ qt: { [key]: arr } });
+  renderAll();
+}
+function cycleGate(id, n) {
+  if (!canEditAtt()) return;
+  const key = `${id}_w${n}`;
+  const cur = state.gate[key] || '';
+  const next = cur === '' ? 'O' : (cur === 'O' ? 'X' : '');
+  pushPatch({ gate: { [key]: next } });
+  renderAll();
+}
+
+// ==========================================
+// 렌더링
+// ==========================================
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + page).classList.add('active');
+  window.scrollTo(0, 0);
+  renderAll();
+}
+
+function renderAll() {
+  if (!currentUser) return;
+  const u = findUser(currentUser);
+  document.getElementById('header-user-name').textContent = u ? u.name : '';
+  document.getElementById('user-menu-name').textContent = u ? u.name : '';
+  document.getElementById('user-menu-role').textContent = isLeader() ? '리더(관리자)' : (u ? `${u.part} · 신입생` : '');
+  document.getElementById('btn-settings').classList.toggle('hidden', !isLeader());
+  const w = weekInfo(currentWeek());
+  document.getElementById('header-week').textContent = `${currentWeek()+1}주차`;
+  ({ home: renderHome, check: renderCheck, status: renderStatus, roster: renderRoster, rules: renderRules }[currentPage] || renderHome)();
+}
+
+function sigChip(v, big) {
+  const dot = { green:'🟢', yellow:'🟡', red:'🔴' }[v.level];
+  return `<span class="sig-${v.level} rounded-full font-bold ${big?'px-4 py-2 text-sm':'px-2.5 py-1 text-xs'}">${dot} ${v.label}</span>`;
+}
+function partBadge(s) {
+  return `<span class="part-${s.part} text-[11px] px-2 py-0.5 rounded-full font-semibold">${s.part}</span>` +
+         (s.readmit ? `<span class="ml-1 text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-600">재입학</span>` : '');
+}
+
+function renderHome() {
+  const el = document.getElementById('page-home');
+  const cw = currentWeek(), wi = weekInfo(cw);
+  const started = weekStarted(0);
+  const header = `
+    <div class="card">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-gray-500 font-semibold">8주 수료 과정</p>
+          <p class="text-lg font-bold text-gray-800 mt-0.5">${started ? `${cw+1}주차 진행 중` : '시작 전'}</p>
+          <p class="text-xs text-gray-500 mt-1">${fmt(wi.sat)}(토) ~ ${fmt(wi.fri)}(금)</p>
+        </div>
+        <div class="text-right">
+          <p class="text-3xl font-bold text-purple-600">${cw+1}<span class="text-base text-gray-400">/${WEEKS}</span></p>
+        </div>
+      </div>
+      <div class="flex gap-1 mt-3">
+        ${Array.from({length:WEEKS}, (_,n) =>
+          `<div class="flex-1 h-2 rounded-full ${weekEnded(n) ? 'bg-purple-600' : (weekStarted(n) ? 'bg-purple-300' : 'bg-gray-200')}"></div>`).join('')}
+      </div>
+    </div>`;
+
+  if (isLeader()) {
+    const rows = state.students.map(s => ({ s, v: verdict(s.id) }));
+    const cnt = { green:0, yellow:0, red:0 };
+    rows.forEach(r => cnt[r.v.level]++);
+    const risky = rows.filter(r => r.v.level !== 'green');
+    el.innerHTML = header + `
+      <div class="grid grid-cols-3 gap-2">
+        <div class="card text-center py-3"><p class="text-2xl font-bold text-green-700">${cnt.green}</p><p class="text-xs text-gray-500 mt-0.5">이상 없음</p></div>
+        <div class="card text-center py-3"><p class="text-2xl font-bold text-amber-600">${cnt.yellow}</p><p class="text-xs text-gray-500 mt-0.5">주의·연기</p></div>
+        <div class="card text-center py-3"><p class="text-2xl font-bold text-red-600">${cnt.red}</p><p class="text-xs text-gray-500 mt-0.5">수료 불가</p></div>
+      </div>
+      <div class="card">
+        <h3 class="font-bold text-gray-800 text-sm mb-3">살펴야 할 아이들</h3>
+        ${risky.length ? risky.map(r => `
+          <div class="py-2 border-b last:border-0">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2"><span class="font-bold text-gray-800 text-sm">${r.s.name}</span>${partBadge(r.s)}</div>
+              ${sigChip(r.v)}
+            </div>
+            <ul class="mt-1 space-y-0.5">
+              ${r.v.fails.map(f => `<li class="text-xs text-red-600">· ${f}</li>`).join('')}
+              ${r.v.warns.map(w => `<li class="text-xs text-amber-600">· ${w}</li>`).join('')}
+            </ul>
+          </div>`).join('') : `<p class="text-sm text-gray-400 text-center py-4">아직 아무도 걸리지 않았습니다. 좋습니다.</p>`}
+      </div>
+      <button onclick="navigate('check')" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">${cw+1}주차 체크하러 가기</button>`;
+    return;
+  }
+
+  // 학생 본인 화면
+  const id = currentUser, v = verdict(id), t = v.tally, me = findUser(id);
+  const line = (k) => {
+    const lim = LIMITS[k], c = t[k], left = lim.fail - c;
+    const color = c >= lim.fail ? 'text-red-600' : (c > 0 && left <= 1 ? 'text-amber-600' : 'text-gray-500');
+    return `<div class="flex items-center justify-between py-1.5 border-b last:border-0">
+      <span class="text-sm text-gray-700">${lim.label}</span>
+      <span class="text-sm font-bold ${color}">${c}회 ${c >= lim.fail ? '· 수료 불가' : `· ${left}회 남음`}</span>
+    </div>`;
+  };
+  el.innerHTML = header + `
+    <div class="card text-center">
+      <p class="text-sm text-gray-500">${me.name}님의 수료 진행</p>
+      <div class="my-3">${sigChip(v, true)}</div>
+      ${v.fails.length ? `<ul class="text-left space-y-1 mt-2">${v.fails.map(f=>`<li class="text-xs text-red-600">· ${f}</li>`).join('')}</ul>` : ''}
+      ${v.warns.length ? `<ul class="text-left space-y-1 mt-2">${v.warns.map(w=>`<li class="text-xs text-amber-600">· ${w}</li>`).join('')}</ul>` : ''}
+      ${v.level === 'green' ? `<p class="text-xs text-gray-400 mt-1">지금까지 걸린 것이 하나도 없습니다.</p>` : ''}
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-1">남은 여유</h3>
+      ${Object.keys(LIMITS).map(line).join('')}
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">이번 주 큐티 (${fmt(wi.qtStart)}~${fmt(wi.fri)})</h3>
+      <div class="flex gap-1.5 justify-between">
+        ${DOW_QT.map((d,i) => `<div class="flex flex-col items-center gap-1">
+          <span class="text-[11px] text-gray-400">${d}</span>
+          <div class="qt-dot ${qtOf(id,cw)[i]?'on':''}" onclick="toggleQT('${id}',${cw},${i})">${qtOf(id,cw)[i]?'✓':''}</div>
+        </div>`).join('')}
+      </div>
+      <p class="text-xs mt-2 ${qtCount(id,cw)>=4?'text-blue-600':'text-gray-400'}">${qtCount(id,cw)}일 / 5일 — 4일 이상이면 통과입니다</p>
+    </div>`;
+}
+
+function renderCheck() {
+  const el = document.getElementById('page-check');
+  const n = checkWeek, wi = weekInfo(n);
+  const tabs = `<div class="scroll-table -mx-1 px-1"><div class="flex gap-1.5 pb-1">
+    ${Array.from({length:WEEKS}, (_,i) => `<button onclick="checkWeek=${i};renderAll()"
+      class="px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 ${i===n?'bg-purple-600 text-white':'bg-white text-gray-600 border'}">${i+1}주</button>`).join('')}
+  </div></div>`;
+
+  const list = isLeader() ? state.students : state.students.filter(s => s.id === currentUser);
+  const rows = list.map(s => {
+    const qa = qtOf(s.id, n), g = gateOf(s.id, n);
+    return `<div class="card !p-3">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2"><span class="font-bold text-gray-800 text-sm">${s.name}</span>${partBadge(s)}</div>
+        <span class="text-xs ${qtCount(s.id,n)>=4?'text-blue-600 font-semibold':'text-gray-400'}">큐티 ${qtCount(s.id,n)}/5</span>
+      </div>
+      <div class="flex items-center gap-2 mb-2">
+        ${['sat','sun'].map(day => {
+          const v = attOf(s.id, n, day);
+          const cls = v ? 'st-'+v : 'st-빈칸';
+          return `<div class="flex-1">
+            <p class="text-[11px] text-gray-400 mb-0.5">${day==='sat'?`토 ${fmt(wi.sat)}`:`주일 ${fmt(wi.sun)}`}</p>
+            <div class="check-cell ${cls} w-full ${canEditAtt()?'':'opacity-70'}" onclick="cycleAtt('${s.id}',${n},'${day}')">${ATT_SHORT[v]}</div>
+          </div>`;
+        }).join('')}
+        <div style="width:74px">
+          <p class="text-[11px] text-gray-400 mb-0.5">가테</p>
+          <div class="check-cell w-full ${g?'gate-'+g:'st-빈칸'} ${canEditAtt()?'':'opacity-70'}" onclick="cycleGate('${s.id}',${n})">${g || '·'}</div>
+        </div>
+      </div>
+      <div class="flex items-end gap-1.5">
+        <span class="text-[11px] text-gray-400 mb-2 w-8">큐티</span>
+        ${DOW_QT.map((d,i) => `<div class="flex flex-col items-center gap-0.5 flex-1">
+          <span class="text-[11px] text-gray-400">${d}</span>
+          <div class="qt-dot w-full ${qa[i]?'on':''} ${canEditQT(s.id)?'':'opacity-70'}" onclick="toggleQT('${s.id}',${n},${i})">${qa[i]?'✓':''}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = tabs + `
+    <div class="card !py-3 bg-purple-50 border border-purple-100">
+      <p class="text-sm font-bold text-purple-800">${n+1}주차 · ${fmt(wi.sat)}(토) ~ ${fmt(wi.fri)}(금)</p>
+      <p class="text-xs text-purple-600 mt-0.5">${canEditAtt() ? '칸을 누르면 상태가 바뀝니다 · 출석 → 지각 → 무단지각 → 결석 → 무단결석' : '큐티는 직접 체크할 수 있어요'}</p>
+    </div>` + rows;
+}
+
+function renderStatus() {
+  const el = document.getElementById('page-status');
+  const list = isLeader() ? state.students : state.students.filter(s => s.id === currentUser);
+  // 가장 중요한 '판정'을 이름 바로 옆에 둔다 — 옆으로 밀지 않아도 보이도록.
+  const head = ['이름','판정','지각','무지','결석','무결','큐티','가테'];
+  const SHORT = { red:'불가', yellow:'주의', green:'정상' };
+  el.innerHTML = `
+    <div class="card !p-0 overflow-hidden">
+      <div class="scroll-table">
+        <table class="w-full text-xs">
+          <thead class="bg-gray-50"><tr>${head.map(h=>`<th class="px-2 py-2 text-gray-500 font-semibold">${h}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${list.map(s => {
+              const v = verdict(s.id), t = v.tally;
+              const cell = (k) => {
+                const lim = LIMITS[k], c = t[k];
+                const cls = c >= lim.fail ? 'text-red-600 font-bold' : (c > 0 && c === lim.fail-1 ? 'text-amber-600 font-bold' : 'text-gray-400');
+                return `<td class="px-2 py-2 text-center ${cls}">${c}</td>`;
+              };
+              const short = v.label === '수료 연기' ? '연기' : SHORT[v.level];
+              return `<tr class="border-t">
+                <td class="px-2 py-2 font-semibold text-gray-800">${s.name}</td>
+                <td class="px-1 py-2 text-center"><span class="sig-${v.level} px-2 py-1 rounded-full font-bold text-[11px]">${short}</span></td>
+                ${cell('지각')}${cell('무단지각')}${cell('결석')}${cell('무단결석')}${cell('큐티미달')}${cell('가테미통과')}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[11px] text-gray-400 px-3 py-2 border-t">무지=무단지각 · 무결=무단결석 · 큐티=4일 미만 주차 · 가테=미통과</p>
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">아직 안 채워진 곳</h3>
+      ${(() => {
+        // 12명이 똑같은 문장으로 도배되지 않도록, 같은 상태끼리 묶어서 한 줄로 보여준다.
+        const groups = {};
+        list.forEach(s => {
+          const t = tally(s.id);
+          const parts = [];
+          if (t.미입력출석) parts.push(`출석 ${t.미입력출석}칸`);
+          if (t.큐티미입력) parts.push(`큐티 ${t.큐티미입력}주`);
+          if (t.가테미입력) parts.push(`가테 ${t.가테미입력}주`);
+          if (!parts.length) return;
+          const key = parts.join(', ');
+          (groups[key] = groups[key] || []).push(s.name);
+        });
+        const keys = Object.keys(groups);
+        if (!keys.length) return `<p class="text-sm text-gray-400 text-center py-2">빠진 칸이 없습니다.</p>`;
+        return `<ul>${keys.map(k => {
+          const who = groups[k];
+          const label = who.length === list.length ? `${who.length}명 모두`
+                      : (who.length > 4 ? `${who.slice(0,4).join(', ')} 외 ${who.length-4}명` : who.join(', '));
+          return `<li class="text-xs text-gray-500 py-0.5">· ${label} — ${k}</li>`;
+        }).join('')}</ul>
+        <p class="text-[11px] text-gray-400 mt-2">기록이 없는 주차는 판정에서 뺐습니다. 채워 넣으면 판정에 반영됩니다.</p>`;
+      })()}
+    </div>`;
+}
+
+function renderRoster() {
+  const el = document.getElementById('page-roster');
+  el.innerHTML = `
+    <div class="card !py-3">
+      <p class="text-sm font-bold text-gray-800">신입생 ${state.students.length}명</p>
+      <p class="text-xs text-gray-500 mt-0.5">${['건반','드럼','싱어','보컬','워십'].map(p => `${p} ${state.students.filter(s=>s.part===p).length}`).join(' · ')}</p>
+    </div>
+    ${state.students.map((s, i) => {
+      const v = verdict(s.id);
+      return `<div class="card !p-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xs text-gray-300 font-bold w-5">${i+1}</span>
+            <span class="font-bold text-gray-800">${s.name}</span>
+            <span class="text-xs text-gray-400">${s.gender}</span>
+            ${partBadge(s)}
+          </div>
+          ${sigChip(v)}
+        </div>
+        ${isLeader() && s.phone ? `<a href="tel:${s.phone}" class="mt-2 inline-flex items-center gap-1 text-xs text-purple-600 font-semibold">📞 ${s.phone}</a>` : ''}
+      </div>`;
+    }).join('')}`;
+}
+
+function renderRules() {
+  const el = document.getElementById('page-rules');
+  el.innerHTML = `
+    <div class="card">
+      <h2 class="font-bold text-gray-800 mb-1">수료 기준</h2>
+      <p class="text-xs text-gray-500">총 8주 과정입니다. 아래 셋을 모두 지켜야 수료합니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-purple-700 text-sm mb-2">1. 출석 — 총 8주 (토/주일)</h3>
+      <ul class="space-y-1.5 text-sm text-gray-700">
+        <li class="flex gap-2"><span class="st-지각 px-2 rounded text-xs flex items-center">지각</span><span>3회 이상 수료 불가</span></li>
+        <li class="flex gap-2"><span class="st-결석 px-2 rounded text-xs flex items-center">결석</span><span>1회 시 수료 연기, 2회 이상 수료 불가</span></li>
+        <li class="flex gap-2"><span class="st-무단지각 px-2 rounded text-xs flex items-center">무단지각</span><span>30분 이상 · 2회 시 수료 불가</span></li>
+        <li class="flex gap-2"><span class="st-무단결석 px-2 rounded text-xs flex items-center">무단결석</span><span>1회 시 수료 불가</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-purple-700 text-sm mb-2">2. 큐티</h3>
+      <p class="text-sm text-gray-700">월~금 5일 중 <b>4일 이상</b></p>
+      <p class="text-sm text-gray-700 mt-1">4일 미만이 <b>2회</b>면 수료 불가</p>
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-purple-700 text-sm mb-2">3. 가테</h3>
+      <p class="text-sm text-gray-700">미통과 <b>3회 이상</b> 수료 불가</p>
+    </div>
+    <div class="card bg-purple-50 border border-purple-100">
+      <p class="text-xs text-purple-800 leading-relaxed">
+        한 주차는 <b>토요일부터 다음 금요일까지</b>입니다. 토·주일 출석을 하고, 이어지는 월~금에 큐티를 합니다.
+        아직 끝나지 않은 주차와 기록이 비어 있는 주차는 판정에서 빼둡니다.
+      </p>
+    </div>`;
+}
+
+// ==========================================
+// 작은 도구들
+// ==========================================
+function openModal(id) {
+  if (id === 'modal-settings') {
+    document.getElementById('set-start-date').value = state.startDate || DEFAULT_START;
+    updateSettingsPreview();
+  }
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function updateSettingsPreview() {
+  const v = document.getElementById('set-start-date').value;
+  const p = document.getElementById('settings-preview');
+  if (!v) { p.textContent = ''; return; }
+  const d = parseDate(v);
+  if (d.getDay() !== 6) { p.textContent = '⚠️ 토요일이 아닙니다'; return; }
+  p.textContent = `1주차 ${fmt(d)}(토) ~ 8주차 ${fmt(addDays(d, 7*7+6))}(금)`;
+}
+function toast(msg, ms) {
+  let el = document.getElementById('_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_toast';
+    el.style.cssText = 'position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:99999;max-width:88%;background:rgba(30,30,40,.94);color:#fff;padding:10px 16px;border-radius:14px;font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);text-align:center;opacity:0;transition:opacity .2s;pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, ms || 2400);
+}
+// 어떤 예외가 나도 앱이 통째로 멈추지 않게 한다.
+window.addEventListener('error', e => console.warn('[전역오류]', e.error || e.message));
+window.addEventListener('unhandledrejection', e => console.warn('[전역오류:promise]', e.reason));
+
+// ==========================================
+// 시작
+// ==========================================
+try {
+  const _badge = document.getElementById('build-badge');
+  if (_badge) _badge.textContent = 'v' + APP_BUILD;
+  window.APP_BUILD = APP_BUILD;
+} catch (_) {}
+
+document.getElementById('set-start-date').addEventListener('change', updateSettingsPreview);
+
+loadLocal();
+// 코드의 명단이 저장본보다 최신이면 빠진 사람을 채운다
+state.students = ROSTER.map(r => Object.assign({}, r, (state.students || []).find(s => s.id === r.id) || {}));
+fillLoginSelect();
+checkWeek = currentWeek();
+
+try {
+  const saved = localStorage.getItem('ladi_newcomer_user');
+  if (saved && findUser(saved)) {
+    currentUser = saved;
+    document.getElementById('login-screen').style.display = 'none';
+    renderAll();
+  }
+} catch (_) {}
+
+initFirestore();
+
+// ==========================================
+// 앱 자동 업데이트 (본 앱과 같은 방식 — 새로고침 루프 차단 포함)
+// ==========================================
+if ('serviceWorker' in navigator) {
+  let _reloading = false;
+  const _hadController = !!navigator.serviceWorker.controller;
+  const _RELOAD_LOG_KEY = 'ladi_newcomer_auto_reloads';
+
+  function _reloadHistory() {
+    try { return JSON.parse(sessionStorage.getItem(_RELOAD_LOG_KEY) || '[]'); } catch (_) { return []; }
+  }
+  function _noteReload(to) {
+    try {
+      const log = _reloadHistory().concat({ t: Date.now(), from: APP_BUILD, to }).slice(-5);
+      sessionStorage.setItem(_RELOAD_LOG_KEY, JSON.stringify(log));
+    } catch (_) {}
+  }
+  async function _serverBuild() {
+    try {
+      const res = await fetch('./sw.js?ts=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return null;
+      const m = (await res.text()).match(/APP_BUILD\s*=\s*['"]([^'"]+)['"]/);
+      return m ? m[1] : null;
+    } catch (_) { return null; }
+  }
+  // 큐티/체크를 누르고 아직 서버에 못 올렸으면 새로고침을 미룬다.
+  function _safeToReload() { return !_pendingPatch; }
+  function _reloadWhenSafe(to) {
+    if (_reloading) return;
+    if (!_safeToReload()) { setTimeout(() => _reloadWhenSafe(to), 4000); return; }
+    _reloading = true;
+    _noteReload(to);
+    location.reload();
+  }
+  async function _maybeReloadForNewBuild() {
+    if (_reloading) return;
+    if (_reloadHistory().filter(r => Date.now() - r.t < 300000).length >= 2) {
+      console.warn('[업데이트] 자동 새로고침이 반복돼 이번 세션에서는 중단합니다.');
+      return;
+    }
+    const server = await _serverBuild();
+    if (!server || server === APP_BUILD) return;
+    _reloadWhenSafe(server);
+  }
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_hadController) _maybeReloadForNewBuild();
+  });
+
+  let _swReg = null;
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .then(reg => {
+      _swReg = reg;
+      reg.update().catch(() => {});
+      const nudge = () => { if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); };
+      nudge();
+      reg.addEventListener('updatefound', () => {
+        if (reg.installing) reg.installing.addEventListener('statechange', nudge);
+      });
+    })
+    .catch(() => {});
+
+  let _lastUpdateCheck = 0;
+  function _checkForUpdate() {
+    if (!_swReg || document.visibilityState !== 'visible') return;
+    if (Date.now() - _lastUpdateCheck < 60000) return;
+    _lastUpdateCheck = Date.now();
+    _swReg.update().catch(() => {});
+  }
+  document.addEventListener('visibilitychange', _checkForUpdate);
+  window.addEventListener('pageshow', _checkForUpdate);
+  window.addEventListener('focus', _checkForUpdate);
+}
+</script>
+</body>
+</html>
