@@ -224,7 +224,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.3';
+const APP_BUILD = '2026-08-26.4';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -258,21 +258,22 @@ const PROGRAM = [
   { name:'YIP 교육',   from:0, to:2, cls:'bg-sky-100 text-sky-700' },
   { name:'신입생 교육', from:3, to:7, cls:'bg-emerald-100 text-emerald-700' }
 ];
-// 신입생 교육을 이미 받아 그 5주 토요일 교육에는 나오지 않는 아이들.
+// YIP 교육(1~3주차)을 이미 받아 그 3주 토요일 교육에는 나오지 않는 아이들.
+// 신입생 교육(4~8주차)은 전원 참석이다.
 // 교육만 면제일 뿐 출석·큐티·가테 기준은 다른 아이들과 똑같이 적용된다.
 // 처음 값일 뿐이고, 리더가 명단 화면에서 언제든 켜고 끌 수 있다.
 const EDU_EXEMPT_DEFAULT = { n03:true, n04:true, n06:true }; // 남예진, 배은채, 김루아
 
 function programOf(n) { return PROGRAM.find(p => n >= p.from && n <= p.to) || PROGRAM[PROGRAM.length-1]; }
 function isEduExempt(id, n) {
-  return programOf(n).name === '신입생 교육' && !!(state.eduExempt || {})[id];
+  return programOf(n).name === 'YIP 교육' && !!(state.eduExempt || {})[id];
 }
 function toggleEduExempt(id) {
   if (!isLeader()) return;
   const cur = !!(state.eduExempt || {})[id];
   pushPatch({ eduExempt: { [id]: !cur } });
   renderAll();
-  toast(`${findUser(id).name} — 신입생 교육 ${!cur ? '면제로 표시했습니다' : '면제를 풀었습니다'}`);
+  toast(`${findUser(id).name} — YIP 교육 ${!cur ? '면제로 표시했습니다' : '면제를 풀었습니다'}`);
 }
 
 // 수료 기준 — 이 표 하나가 판정의 유일한 근거다.
@@ -790,7 +791,7 @@ function renderHome() {
           <p class="text-lg font-bold text-gray-800 mt-0.5">${started ? `${cw+1}주차 진행 중` : '시작 전'}</p>
           <p class="text-xs text-gray-500 mt-1">${fmt(wi.sat)}(토) ~ ${fmt(wi.fri)}(금)</p>
           <span class="inline-block mt-1.5 text-[11px] px-2 py-0.5 rounded-full font-semibold ${programOf(cw).cls}">토요일 ${programOf(cw).name}</span>
-          ${!isLeader() && isEduExempt(currentUser, cw) ? `<p class="text-[11px] text-gray-400 mt-1">이 교육은 이미 받아서 안 나와도 됩니다</p>` : ''}
+          ${!isLeader() && isEduExempt(currentUser, cw) ? `<p class="text-[11px] text-gray-400 mt-1">YIP 교육은 이미 받아서 안 나와도 됩니다</p>` : ''}
         </div>
         <div class="text-right">
           <p class="text-3xl font-bold text-purple-600">${cw+1}<span class="text-base text-gray-400">/${WEEKS}</span></p>
@@ -1122,7 +1123,7 @@ function renderCheck() {
     return `<div class="card !p-3">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2"><span class="font-bold text-gray-800 text-sm">${s.name}</span>${partBadge(s)}${
-          isEduExempt(s.id, n) ? `<span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">교육 면제</span>` : ''}</div>
+          isEduExempt(s.id, n) ? `<span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">YIP 면제</span>` : ''}</div>
         <span class="text-xs ${qtCount(s.id,n)>=4?'text-blue-600 font-semibold':'text-gray-400'}">큐티 ${qtCount(s.id,n)}/5</span>
       </div>
       <div class="flex items-center gap-1.5 mb-2">
@@ -1253,8 +1254,8 @@ function renderRoster() {
           ${isLeader()
             ? `<button onclick="toggleEduExempt('${s.id}')" style="min-height:28px"
                  class="text-[11px] px-2.5 py-1 rounded-full font-semibold ${(state.eduExempt||{})[s.id] ? 'bg-gray-200 text-gray-700' : 'bg-white border text-gray-400'}">
-                 ${(state.eduExempt||{})[s.id] ? '✓ 신입생 교육 면제' : '신입생 교육 면제'}</button>`
-            : ((state.eduExempt||{})[s.id] ? `<span class="text-[11px] text-gray-400">신입생 교육 면제</span>` : '')}
+                 ${(state.eduExempt||{})[s.id] ? '✓ YIP 면제' : 'YIP 면제'}</button>`
+            : ((state.eduExempt||{})[s.id] ? `<span class="text-[11px] text-gray-400">YIP 교육 면제</span>` : '')}
         </div>
       </div>`;
     }).join('')}
@@ -1288,13 +1289,13 @@ function renderRules() {
       ${(() => {
         if (!isLeader()) {
           return (state.eduExempt||{})[currentUser]
-            ? `<p class="text-xs text-gray-500 mt-2 leading-relaxed">신입생 교육은 이미 받아서 그 5주 토요일 교육에는 나오지 않아도 됩니다.
-               다만 출석·큐티·가테 기준은 <b>똑같이</b> 적용됩니다.</p>` : '';
+            ? `<p class="text-xs text-gray-500 mt-2 leading-relaxed">YIP 교육은 이미 받아서 1~3주차 교육에는 나오지 않아도 됩니다.
+               신입생 교육 5주는 나와야 하고, 출석·큐티·가테 기준도 <b>똑같이</b> 적용됩니다.</p>` : '';
         }
         const ex = state.students.filter(s => (state.eduExempt||{})[s.id]);
         return ex.length ? `<p class="text-xs text-gray-500 mt-2 leading-relaxed">
-          <b>${ex.map(s=>s.name).join(', ')}</b>는 신입생 교육을 이미 받아 그 5주 토요일 교육에는 나오지 않아도 됩니다.
-          다만 출석·큐티·가테 기준은 다른 아이들과 <b>똑같이</b> 적용됩니다.</p>` : '';
+          <b>${ex.map(s=>s.name).join(', ')}</b>는 YIP 교육을 이미 받아 1~3주차 교육에는 나오지 않아도 됩니다.
+          <b>신입생 교육 5주는 전원 참석</b>이고, 출석·큐티·가테 기준도 다른 아이들과 똑같이 적용됩니다.</p>` : '';
       })()}
     </div>
     <div class="card">
