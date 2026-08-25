@@ -1,7 +1,7 @@
 {
   "name": "LADI 찬양팀",
   "short_name": "LADI",
-  "description": "수영로고 LADI 찬양팀 관리",
+  "description": "수영로 LADI 찬양팀 관리",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
