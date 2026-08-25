@@ -92,6 +92,7 @@
 
 <main class="pt-14 pb-20 max-w-2xl mx-auto" id="main-content">
   <div id="page-home" class="page active p-4 space-y-4"></div>
+  <div id="page-qt" class="page p-4 space-y-4"></div>
   <div id="page-check" class="page p-4 space-y-4"></div>
   <div id="page-status" class="page p-4 space-y-4"></div>
   <div id="page-roster" class="page p-4 space-y-4"></div>
@@ -104,6 +105,10 @@
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">홈</span>
     </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('qt')" id="nav-qt">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">큐티</span>
+    </button>
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('check')" id="nav-check">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">체크표</span>
@@ -112,7 +117,7 @@
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">수료현황</span>
     </button>
-    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('roster')" id="nav-roster">
+    <button class="nav-btn flex flex-col items-center py-1 px-2 hidden" onclick="navigate('roster')" id="nav-roster">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">명단</span>
     </button>
@@ -148,6 +153,13 @@
       <button onclick="doLogin()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
       <p class="text-xs text-gray-400 text-center">처음 PIN은 <span class="font-bold text-purple-600">0000</span> 입니다</p>
     </div>
+  </div>
+</div>
+
+<!-- 지면 크게 보기 -->
+<div id="modal-img" class="modal" onclick="closeModal('modal-img')">
+  <div class="flex items-center justify-center w-full h-full p-3">
+    <img id="modal-img-src" src="" class="max-w-full max-h-[92vh] rounded-xl object-contain shadow-2xl">
   </div>
 </div>
 
@@ -212,7 +224,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-25.4';
+const APP_BUILD = '2026-08-26.1';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -271,6 +283,143 @@ const LIMITS = {
   큐티미달:  { fail:2, label:'큐티 4일 미만' },
   가테미통과:{ fail:3, label:'가테 미통과' }
 };
+// 큐티 본문 — 성서유니온 「청소년 매일성경」 진도표(본 앱 QT_SCHEDULE에서 가져옴)
+const QT_SCHEDULE = {
+  // 9월
+  '2026-09-01':'사사기 1:1-10',
+  '2026-09-02':'사사기 1:11-21',
+  '2026-09-03':'사사기 1:22-36',
+  '2026-09-04':'사사기 2:1-10',
+  '2026-09-05':'사사기 2:11-23',
+  '2026-09-06':'사사기 3:1-11',
+  '2026-09-07':'사사기 3:12-31',
+  '2026-09-08':'사사기 4:1-10',
+  '2026-09-09':'사사기 4:11-24',
+  '2026-09-10':'사사기 5:1-18',
+  '2026-09-11':'사사기 5:19-31',
+  '2026-09-12':'사사기 6:1-10',
+  '2026-09-13':'사사기 6:11-24',
+  '2026-09-14':'사사기 6:25-40',
+  '2026-09-15':'사사기 7:1-14',
+  '2026-09-16':'사사기 7:15-25',
+  '2026-09-17':'사사기 8:1-21',
+  '2026-09-18':'사사기 8:22-35',
+  '2026-09-19':'사사기 9:1-6',
+  '2026-09-20':'사사기 9:7-21',
+  '2026-09-21':'사사기 9:22-45',
+  '2026-09-22':'사사기 9:46-57',
+  '2026-09-23':'사사기 10:1-18',
+  '2026-09-24':'사사기 11:1-11',
+  '2026-09-25':'사사기 11:12-28',
+  '2026-09-26':'사사기 11:29-40',
+  '2026-09-27':'사사기 12:1-15',
+  '2026-09-28':'사사기 13:1-14',
+  '2026-09-29':'사사기 13:15-25',
+  '2026-09-30':'사사기 14:1-20',
+  // 10월
+  '2026-10-01':'사사기 15:1-20',
+  '2026-10-02':'사사기 16:1-14',
+  '2026-10-03':'사사기 16:15-31',
+  '2026-10-04':'사사기 17:1-13',
+  '2026-10-05':'사사기 18:1-20',
+  '2026-10-06':'사사기 18:21-31',
+  '2026-10-07':'사사기 19:1-10',
+  '2026-10-08':'사사기 19:11-21',
+  '2026-10-09':'사사기 19:22-30',
+  '2026-10-10':'사사기 20:1-7',
+  '2026-10-11':'사사기 20:8-28',
+  '2026-10-12':'사사기 20:29-48',
+  '2026-10-13':'사사기 21:1-12',
+  '2026-10-14':'사사기 21:13-25',
+  '2026-10-15':'야고보서 1:1-11',
+  '2026-10-16':'야고보서 1:12-18',
+  '2026-10-17':'야고보서 1:19-27',
+  '2026-10-18':'야고보서 2:1-13',
+  '2026-10-19':'야고보서 2:14-26',
+  '2026-10-20':'야고보서 3:1-12',
+  '2026-10-21':'야고보서 3:13-18',
+  '2026-10-22':'야고보서 4:1-12',
+  '2026-10-23':'야고보서 4:13-5:6',
+  '2026-10-24':'야고보서 5:7-12',
+  '2026-10-25':'야고보서 5:13-20',
+  '2026-10-26':'시편 16:1-11',
+  '2026-10-27':'시편 17:1-15',
+  '2026-10-28':'시편 18:1-15',
+  '2026-10-29':'시편 18:16-29',
+  '2026-10-30':'시편 18:30-50',
+  '2026-10-31':'시편 19:1-14',
+  // 11월
+  '2026-11-01':'고린도후서 1:1-11',
+  '2026-11-02':'고린도후서 1:12-22',
+  '2026-11-03':'고린도후서 1:23-2:17',
+  '2026-11-04':'고린도후서 3:1-18',
+  '2026-11-05':'고린도후서 4:1-18',
+  '2026-11-06':'고린도후서 5:1-10',
+  '2026-11-07':'고린도후서 5:11-21',
+  '2026-11-08':'고린도후서 6:1-7:1',
+  '2026-11-09':'고린도후서 7:2-16',
+  '2026-11-10':'고린도후서 8:1-15',
+  '2026-11-11':'고린도후서 8:16-24',
+  '2026-11-12':'고린도후서 9:1-15',
+  '2026-11-13':'고린도후서 10:1-18',
+  '2026-11-14':'고린도후서 11:1-15',
+  '2026-11-15':'고린도후서 11:16-33',
+  '2026-11-16':'고린도후서 12:1-13',
+  '2026-11-17':'고린도후서 12:14-21',
+  '2026-11-18':'고린도후서 13:1-13',
+  '2026-11-19':'시편 20:1-9',
+  '2026-11-20':'시편 21:1-13',
+  '2026-11-21':'시편 22:1-21',
+  '2026-11-22':'시편 22:22-31',
+  '2026-11-23':'시편 23:1-6',
+  '2026-11-24':'시편 24:1-10',
+  '2026-11-25':'시편 25:1-22',
+  '2026-11-26':'이사야 40:1-11',
+  '2026-11-27':'이사야 40:12-31',
+  '2026-11-28':'이사야 41:1-20',
+  '2026-11-29':'이사야 41:21-29',
+  '2026-11-30':'이사야 42:1-25',
+  // 12월
+  '2026-12-01':'이사야 43:1-13',
+  '2026-12-02':'이사야 43:14-28',
+  '2026-12-03':'이사야 44:1-20',
+  '2026-12-04':'이사야 44:21-45:7',
+  '2026-12-05':'이사야 45:8-17',
+  '2026-12-06':'이사야 45:18-25',
+  '2026-12-07':'이사야 46:1-13',
+  '2026-12-08':'이사야 47:1-15',
+  '2026-12-09':'이사야 48:1-11',
+  '2026-12-10':'이사야 48:12-22',
+  '2026-12-11':'이사야 49:1-13',
+  '2026-12-12':'이사야 49:14-50:3',
+  '2026-12-13':'이사야 50:4-51:8',
+  '2026-12-14':'이사야 51:9-16',
+  '2026-12-15':'이사야 51:17-52:12',
+  '2026-12-16':'이사야 52:13-53:12',
+  '2026-12-17':'이사야 54:1-17',
+  '2026-12-18':'이사야 55:1-13',
+  '2026-12-19':'이사야 56:1-8',
+  '2026-12-20':'이사야 56:9-57:13',
+  '2026-12-21':'이사야 57:14-21',
+  '2026-12-22':'이사야 58:1-14',
+  '2026-12-23':'이사야 59:1-21',
+  '2026-12-24':'이사야 60:1-22',
+  '2026-12-25':'이사야 61:1-11',
+  '2026-12-26':'이사야 62:1-12',
+  '2026-12-27':'이사야 63:1-14',
+  '2026-12-28':'이사야 63:15-64:12',
+  '2026-12-29':'이사야 65:1-16',
+  '2026-12-30':'이사야 65:17-25',
+  '2026-12-31':'이사야 66:1-24'
+};
+
+// 지면 이미지 — 날짜만 알면 주소가 정해진다. 본 앱이 쓰는 것과 같은 주소.
+function suYouthImgUrl(dateStr, slot) {
+  return `https://sum.su.or.kr:8888/Bible_Attach/QT2/J${dateStr.replace(/-/g,'')}-${slot+1}.jpg`;
+}
+// 월별 큐티 PDF — 본 앱의 files/ 아래 실물을 그대로 쓴다.
+const QT_PDF = { '2026-09':'9월', '2026-10':'10월' };
+
 const ATT_CYCLE = ['', '출석', '지각', '무단지각', '결석', '무단결석'];
 const ATT_SHORT = { '':'·', '출석':'O', '지각':'지', '무단지각':'무지', '결석':'결', '무단결석':'무결' };
 const DOW_QT = ['월','화','수','목','금'];
@@ -314,6 +463,7 @@ let state = {
 let currentUser = null;   // 로컬 전용 — 서버에 올리지 않는다
 let currentPage = 'home';
 let checkWeek = 0;
+let qtDate = '';   // 큐티 화면에서 보고 있는 날짜
 
 function saveLocal() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {}
@@ -503,6 +653,7 @@ function doLogin() {
   document.getElementById('login-pin').value = '';
   document.getElementById('login-screen').style.display = 'none';
   checkWeek = currentWeek();
+  qtDate = qtSlotOf(iso(today0())) ? iso(today0()) : qtDateOf(currentWeek(), 0);
   renderAll();
 }
 function doLogout() {
@@ -570,6 +721,8 @@ function cycleGate(id, n) {
 // 렌더링
 // ==========================================
 function navigate(page) {
+  // 명단은 팀장 전용 — 아이들에게 다른 아이들 명단·판정을 보여주지 않는다.
+  if (page === 'roster' && !isLeader()) page = 'home';
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -586,9 +739,10 @@ function renderAll() {
   document.getElementById('user-menu-name').textContent = u ? u.name : '';
   document.getElementById('user-menu-role').textContent = isLeader() ? (u ? u.title : '팀장') : (u ? `${u.part} · 신입생` : '');
   document.getElementById('btn-settings').classList.toggle('hidden', !isLeader());
+  document.getElementById('nav-roster').classList.toggle('hidden', !isLeader());
   const w = weekInfo(currentWeek());
   document.getElementById('header-week').textContent = `${currentWeek()+1}주차`;
-  ({ home: renderHome, check: renderCheck, status: renderStatus, roster: renderRoster, rules: renderRules }[currentPage] || renderHome)();
+  ({ home: renderHome, qt: renderQT, check: renderCheck, status: renderStatus, roster: renderRoster, rules: renderRules }[currentPage] || renderHome)();
 }
 
 function sigChip(v, big) {
@@ -675,15 +829,128 @@ function renderHome() {
       <h3 class="font-bold text-gray-800 text-sm mb-1">남은 여유</h3>
       ${Object.keys(LIMITS).map(line).join('')}
     </div>
-    <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm mb-2">이번 주 큐티 (${fmt(wi.qtStart)}~${fmt(wi.fri)})</h3>
-      <div class="flex gap-1.5 justify-between">
+    <div class="card cursor-pointer" onclick="navigate('qt')">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-bold text-gray-800 text-sm">오늘의 큐티</h3>
+        <span class="text-xs text-purple-600 font-semibold">지면 보기 ›</span>
+      </div>
+      ${(() => {
+        const t = iso(today0()), s = qtSlotOf(t);
+        const ref = QT_SCHEDULE[t];
+        if (!ref) return `<p class="text-sm text-gray-400">오늘은 진도표에 없는 날이에요</p>`;
+        return `<p class="text-base font-bold text-purple-700">${ref}</p>
+                <p class="text-xs text-gray-400 mt-0.5">${s ? `${s.n+1}주차 ${DOW_QT[s.i]}요일` : '토·주일은 큐티를 세지 않아요'}</p>`;
+      })()}
+      <div class="flex gap-1.5 justify-between mt-3" onclick="event.stopPropagation()">
         ${DOW_QT.map((d,i) => `<div class="flex flex-col items-center gap-1">
           <span class="text-[11px] text-gray-400">${d}</span>
           <div class="qt-dot ${qtOf(id,cw)[i]?'on':''}" onclick="toggleQT('${id}',${cw},${i})">${qtOf(id,cw)[i]?'✓':''}</div>
         </div>`).join('')}
       </div>
-      <p class="text-xs mt-2 ${qtCount(id,cw)>=4?'text-blue-600':'text-gray-400'}">${qtCount(id,cw)}일 / 5일 — 4일 이상이면 통과입니다</p>
+      <p class="text-xs mt-2 ${qtCount(id,cw)>=4?'text-blue-600':'text-gray-400'}">이번 주 ${qtCount(id,cw)}일 / 5일 — 4일 이상이면 통과입니다</p>
+    </div>`;
+}
+
+// 날짜 → 몇 주차 며칠째 큐티인지. 토·주일이나 과정 밖 날짜면 null.
+function qtSlotOf(dateISO) {
+  const diff = Math.round((parseDate(dateISO) - parseDate(state.startDate || DEFAULT_START)) / 86400000);
+  if (diff < 0) return null;
+  const n = Math.floor(diff / 7), i = (diff % 7) - 2; // 0=토, 1=주일, 2~6=월~금
+  if (n >= WEEKS || i < 0) return null;
+  return { n, i };
+}
+function qtDateOf(n, i) { return iso(addDays(weekInfo(n).sat, 2 + i)); }
+function shiftQtDate(step) {
+  const s = qtSlotOf(qtDate);
+  if (!s) return;
+  let n = s.n, i = s.i + step;
+  if (i > 4) { n++; i = 0; }
+  if (i < 0) { n--; i = 4; }
+  if (n < 0 || n >= WEEKS) return;
+  qtDate = qtDateOf(n, i);
+  renderAll();
+}
+function showImg(src) {
+  document.getElementById('modal-img-src').src = src;
+  openModal('modal-img');
+}
+
+function renderQT() {
+  const el = document.getElementById('page-qt');
+  const slot = qtSlotOf(qtDate);
+  if (!slot) { qtDate = qtDateOf(currentWeek(), 0); }
+  const { n, i } = qtSlotOf(qtDate);
+  const d = parseDate(qtDate);
+  const ref = QT_SCHEDULE[qtDate] || '';
+  const meId = isLeader() ? null : currentUser;
+  const done = meId ? qtOf(meId, n)[i] : false;
+
+  const dayChips = DOW_QT.map((dw, k) => {
+    const ds = qtDateOf(n, k), on = ds === qtDate;
+    const checked = meId ? qtOf(meId, n)[k] : false;
+    return `<button onclick="qtDate='${ds}';renderAll()" style="min-height:56px"
+      class="flex-1 flex flex-col items-center justify-center rounded-xl py-1.5 ${on ? 'bg-purple-600 text-white' : 'bg-white border text-gray-600'}">
+      <span class="text-[11px] ${on?'text-purple-200':'text-gray-400'}">${dw}</span>
+      <span class="text-sm font-bold">${parseDate(ds).getDate()}</span>
+      ${checked ? `<span class="text-[10px] ${on?'text-white':'text-blue-600'}">✓</span>` : '<span class="text-[10px] opacity-0">·</span>'}
+    </button>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="card !py-3">
+      <div class="flex items-center justify-between">
+        <button onclick="shiftQtDate(-1)" class="text-gray-400 px-2 text-xl" style="min-height:32px">‹</button>
+        <div class="text-center">
+          <p class="text-xs text-gray-500">${n+1}주차 · ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW_QT[i]})</p>
+          <p class="text-base font-bold text-purple-700 mt-0.5">${ref || '진도표에 없는 날'}</p>
+        </div>
+        <button onclick="shiftQtDate(1)" class="text-gray-400 px-2 text-xl" style="min-height:32px">›</button>
+      </div>
+      <div class="flex gap-1.5 mt-3">${dayChips}</div>
+    </div>
+
+    <div class="card !p-3">
+      <div class="flex gap-2">
+        ${[0,1].map(s => `
+          <div class="su-img flex-1">
+            <img src="${suYouthImgUrl(qtDate, s)}" onclick="showImg(this.src)"
+                 onerror="this.closest('.su-img').style.display='none'"
+                 class="w-full rounded-lg border cursor-pointer active:opacity-80" style="display:block">
+          </div>`).join('')}
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2 text-center">사진을 누르면 크게 볼 수 있어요 · 성서유니온 「청소년 매일성경」</p>
+    </div>
+
+    ${meId ? `
+    <button onclick="toggleQT('${meId}',${n},${i})"
+      class="w-full py-4 rounded-xl font-bold text-sm ${done ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-purple-600 text-white'}">
+      ${done ? '✓ 오늘 큐티 완료' : '큐티 다 했어요'}
+    </button>
+    <div class="card !py-3 text-center">
+      <p class="text-sm ${qtCount(meId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(meId,n)}일 / 5일</p>
+      <p class="text-xs text-gray-400 mt-0.5">${qtCount(meId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(meId,n)}일 남았어요`}</p>
+    </div>` : `
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">${n+1}주차 큐티 현황</h3>
+      ${state.students.map(s => {
+        const c = qtCount(s.id, n);
+        return `<div class="flex items-center justify-between py-1 border-b last:border-0">
+          <span class="text-sm text-gray-700">${s.name}</span>
+          <span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">${c}/5</span>
+        </div>`;
+      }).join('')}
+      <p class="text-[11px] text-gray-400 mt-2">체크는 체크표에서 고칠 수 있습니다.</p>
+    </div>`}
+
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">월별 큐티 PDF</h3>
+      <div class="flex gap-2">
+        ${Object.keys(QT_PDF).map(ym => `
+          <a href="../files/${ym}/youth-qt-${ym}.pdf" target="_blank" rel="noopener"
+             class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-semibold text-gray-700">
+            📕 ${QT_PDF[ym]}</a>`).join('')}
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2">한 달치를 통째로 받아 인쇄할 수 있어요 (20MB 남짓)</p>
     </div>`;
 }
 
@@ -853,6 +1120,11 @@ function renderRules() {
           <span class="text-xs text-gray-400 ml-auto">${fmt(weekInfo(p.from).sat)} ~ ${fmt(weekInfo(p.to).sat)}</span>
         </div>`).join('')}
       ${(() => {
+        if (!isLeader()) {
+          return (state.eduExempt||{})[currentUser]
+            ? `<p class="text-xs text-gray-500 mt-2 leading-relaxed">신입생 교육은 이미 받아서 그 5주 토요일 교육에는 나오지 않아도 됩니다.
+               다만 출석·큐티·가테 기준은 <b>똑같이</b> 적용됩니다.</p>` : '';
+        }
         const ex = state.students.filter(s => (state.eduExempt||{})[s.id]);
         return ex.length ? `<p class="text-xs text-gray-500 mt-2 leading-relaxed">
           <b>${ex.map(s=>s.name).join(', ')}</b>는 신입생 교육을 이미 받아 그 5주 토요일 교육에는 나오지 않아도 됩니다.
@@ -937,6 +1209,8 @@ loadLocal();
 state.students = ROSTER.map(r => Object.assign({}, r, (state.students || []).find(s => s.id === r.id) || {}));
 fillLoginSelect();
 checkWeek = currentWeek();
+// 큐티 화면은 오늘 자로 연다. 오늘이 토·주일이면 그 주 월요일부터.
+qtDate = qtSlotOf(iso(today0())) ? iso(today0()) : qtDateOf(currentWeek(), 0);
 
 try {
   const saved = localStorage.getItem('ladi_newcomer_user');
