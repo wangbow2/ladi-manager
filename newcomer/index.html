@@ -212,7 +212,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-25.2';
+const APP_BUILD = '2026-08-25.3';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -231,7 +231,15 @@ const ROSTER = [
   { id:'n11', name:'서찬영', part:'워십', gender:'남', readmit:true },
   { id:'n12', name:'김윤서', part:'워십', gender:'여' }
 ];
-const LEADER = { id:'leader', name:'리더', part:'', gender:'', role:'leader' };
+// 팀장단 — 본 앱(radi/state)과 같은 id·이름을 쓴다. 전원 전체 조회·체크 권한.
+const LEADERS = [
+  { id:'t1', name:'황영환', title:'인도자 / 목사' },
+  { id:'t2', name:'김희원', title:'팀장' },
+  { id:'t3', name:'김예찬', title:'인도자' },
+  { id:'t4', name:'정민지', title:'팀장' },
+  { id:'t5', name:'정여명', title:'워십 / 팀장' },
+  { id:'t6', name:'손민수', title:'팀장 · 군복무' }
+];
 
 // 8주 일정 — 앞 3주는 YIP 교육, 뒤 5주는 신입생 교육(토요일).
 const PROGRAM = [
@@ -466,17 +474,17 @@ function verdict(id) {
 // ==========================================
 // 로그인 · 권한
 // ==========================================
-function allUsers() { return state.students.concat([LEADER]); }
+function allUsers() { return state.students.concat(LEADERS); }
 function findUser(id) { return allUsers().find(u => u.id === id) || null; }
-function isLeader() { return currentUser === 'leader'; }
+function isLeader() { return LEADERS.some(l => l.id === currentUser); }
 function canEditAtt() { return isLeader(); }
 function canEditQT(id) { return isLeader() || currentUser === id; }
 
 function fillLoginSelect() {
   const sel = document.getElementById('login-name-select');
   sel.innerHTML = '<option value="">이름을 선택하세요</option>' +
-    state.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('') +
-    `<option value="leader">리더(관리자)</option>`;
+    `<optgroup label="신입생">${state.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</optgroup>` +
+    `<optgroup label="팀장단">${LEADERS.map(l => `<option value="${l.id}">${l.name} (${l.title})</option>`).join('')}</optgroup>`;
 }
 function doLogin() {
   const id = document.getElementById('login-name-select').value;
@@ -577,7 +585,7 @@ function renderAll() {
   const u = findUser(currentUser);
   document.getElementById('header-user-name').textContent = u ? u.name : '';
   document.getElementById('user-menu-name').textContent = u ? u.name : '';
-  document.getElementById('user-menu-role').textContent = isLeader() ? '리더(관리자)' : (u ? `${u.part} · 신입생` : '');
+  document.getElementById('user-menu-role').textContent = isLeader() ? (u ? u.title : '팀장') : (u ? `${u.part} · 신입생` : '');
   document.getElementById('btn-settings').classList.toggle('hidden', !isLeader());
   const w = weekInfo(currentWeek());
   document.getElementById('header-week').textContent = `${currentWeek()+1}주차`;
@@ -818,7 +826,16 @@ function renderRoster() {
             : ((state.eduExempt||{})[s.id] ? `<span class="text-[11px] text-gray-400">신입생 교육 면제</span>` : '')}
         </div>
       </div>`;
-    }).join('')}`;
+    }).join('')}
+    ${isLeader() ? `
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">팀장단 ${LEADERS.length}명</h3>
+      <p class="text-xs text-gray-500 mb-2">아래 분들은 전체 조회와 체크가 모두 가능합니다.</p>
+      ${LEADERS.map(l => `<div class="flex items-center justify-between py-1.5 border-b last:border-0">
+        <span class="text-sm font-semibold text-gray-800">${l.name}</span>
+        <span class="text-xs text-gray-400">${l.title}</span>
+      </div>`).join('')}
+    </div>` : ''}`;
 }
 
 function renderRules() {
