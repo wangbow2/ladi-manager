@@ -3289,9 +3289,7 @@ function renderDashboard() {
           </div>` : '<p class="text-xs text-gray-400">이번 달 생일자 없음</p>'}
       </div>
 
-      ${renderWeeklyFiles()}
 
-      ${renderFeedbackSection()}
     </div>
   `;
   document.getElementById('dashboard-content').innerHTML = `<div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer mb-2" style="background:#000">
@@ -3304,7 +3302,6 @@ function renderDashboard() {
         <span class="text-white/50 text-2xl">›</span>
       </div>
     </div>` + html;
-  renderFeedbackList();
 }
 
 function getCurrentWeekRef() {
@@ -3572,9 +3569,7 @@ function renderMemberDashboard() {
         ${weekRows}
       </div>
 
-      ${renderWeeklyFiles()}
 
-      ${renderFeedbackSection()}
 
       ${commentsSection}
 
@@ -3600,7 +3595,6 @@ function renderMemberDashboard() {
       </div>
     </div>` + html;
   _initTodayBirthdayBanner();
-  renderFeedbackList();
   markQTCommentsAsRead();
   updateNotificationBadge();
 }
@@ -6634,7 +6628,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.3';
+const APP_BUILD = '2026-08-26.4';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
