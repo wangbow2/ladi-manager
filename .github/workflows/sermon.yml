@@ -1,0 +1,56 @@
+name: 주일 설교 갱신
+
+# 수영로교회 '이규현 담임목사 주일 설교' 재생목록에서 최신 영상을 받아
+# sermon.json에 적어 둔다. 유튜브 재생목록은 임베드가 막혀 있어서
+# 앱이 단일 영상을 띄워야 하고, 그 영상 번호를 여기서 갱신해 준다.
+on:
+  schedule:
+    - cron: '0 3 * * 1'      # 매주 월요일 12:00 (KST)
+    - cron: '0 6 * * 0'      # 주일 15:00 (KST) — 설교가 올라온 당일에도 한 번
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 재생목록에서 최신 설교 가져오기
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request, datetime
+          PL = 'PLihs4cM8uzB2zfICO5Er3DwfdA59RI_mm'
+          url = f'https://www.youtube.com/feeds/videos.xml?playlist_id={PL}'
+          req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+          xml = urllib.request.urlopen(req, timeout=30).read().decode('utf-8')
+          items = []
+          for m in re.finditer(r'<entry>(.*?)</entry>', xml, re.S):
+              e = m.group(1)
+              vid = re.search(r'<yt:videoId>(.*?)</yt:videoId>', e)
+              ttl = re.search(r'<title>(.*?)</title>', e, re.S)
+              pub = re.search(r'<published>(.*?)</published>', e)
+              if vid and ttl:
+                  t = ttl.group(1).replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                  items.append({'id': vid.group(1), 'title': t,
+                                'date': (pub.group(1)[:10] if pub else '')})
+          if not items:
+              raise SystemExit('설교를 못 받아왔습니다')
+          out = {'playlist': PL,
+                 'updatedAt': datetime.datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+                 'items': items[:6]}
+          json.dump(out, open('sermon.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+          print('최신:', items[0]['date'], items[0]['title'])
+          PY
+      - name: 바뀌었으면 올리기
+        run: |
+          if git diff --quiet -- sermon.json; then
+            echo "새 설교 없음"
+          else
+            git config user.name 'github-actions'
+            git config user.email 'github-actions@users.noreply.github.com'
+            git add sermon.json
+            git commit -m "주일 설교 갱신 $(date -u +%Y-%m-%d)"
+            git push
+          fi
