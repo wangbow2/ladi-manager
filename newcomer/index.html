@@ -74,6 +74,55 @@
   button, .btn { min-height:44px; }
   .nav-btn { min-height:unset; }
   .card { background:#fff; border-radius:12px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04); padding:16px; }
+
+  /* ── LADI 소개 ── */
+  #page-about { background:#000; color:#fff; margin:-3.5rem 0 -5rem; padding:3.5rem 0 5rem; }
+  .ab { padding:0 22px; max-width:520px; margin:0 auto; }
+  .ab-sec { padding:54px 0; border-top:1px solid rgba(255,255,255,.10); }
+  .ab-sec:first-child { border-top:0; }
+  .ab-kicker { font-size:11px; letter-spacing:.28em; color:rgba(255,255,255,.42); font-weight:700; margin-bottom:14px; }
+  .ab h2 { font-size:23px; font-weight:800; letter-spacing:-.01em; line-height:1.3; margin:0 0 14px; color:#fff; }
+  .ab p { font-size:15px; line-height:1.85; color:rgba(255,255,255,.80); margin:0 0 14px; }
+  .ab p.lead { font-size:17px; color:#fff; font-weight:600; line-height:1.75; }
+  .ab .dim { color:rgba(255,255,255,.45); }
+  .ab .hl { color:#fff; font-weight:700; }
+
+  /* 십자가 타이포 — 이미지 대신 글자로 그린다(어느 화면에서도 또렷하게) */
+  .cross { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:18px 0 8px; }
+  .cross .ln { position:relative; display:flex; justify-content:center; width:100%; height:38px; align-items:center; }
+  .cross .ch { font-size:34px; font-weight:300; letter-spacing:.02em; line-height:1; width:34px; text-align:center; display:inline-block; }
+  .cross .arm { position:absolute; top:50%; transform:translateY(-50%); display:flex; }
+  .cross .arm.l { right:calc(50% + 17px); }
+  .cross .arm.r { left:calc(50% + 17px); }
+  .cross .waves { position:absolute; left:calc(50% + 58px); top:50%; transform:translateY(-50%);
+                  font-size:9px; font-weight:800; line-height:1.4; letter-spacing:.06em; text-align:left; color:#fff; }
+  .ladi-mark { font-size:44px; font-weight:900; letter-spacing:.10em; text-align:center; margin-top:26px; color:#fff; }
+  .ladi-sub { text-align:center; font-size:11px; letter-spacing:.34em; color:rgba(255,255,255,.5); margin-top:8px; font-weight:700; }
+
+  .chant { text-align:center; padding:6px 0 2px; }
+  .chant .c1 { font-size:17px; font-weight:800; line-height:1.9; color:#fff; }
+  .chant .c2 { font-size:13px; letter-spacing:.22em; color:rgba(255,255,255,.5); margin-top:12px; font-weight:700; }
+  .chant .c3 { font-size:30px; font-weight:900; letter-spacing:.14em; margin-top:2px; color:#fff; }
+
+  .sched { border-left:2px solid rgba(255,255,255,.16); margin-left:6px; padding-left:16px; }
+  .sched .it { padding:9px 0; border-bottom:1px solid rgba(255,255,255,.07); display:flex; gap:10px; align-items:baseline; }
+  .sched .it:last-child { border-bottom:0; }
+  .sched .tm { font-size:11px; color:rgba(255,255,255,.45); font-variant-numeric:tabular-nums; white-space:nowrap; min-width:88px; font-weight:600; }
+  .sched .nm { font-size:14px; color:rgba(255,255,255,.9); }
+
+  .part { padding:20px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+  .part:last-child { border-bottom:0; }
+  .part .pn { font-size:21px; font-weight:900; letter-spacing:.03em; color:#fff; }
+  .part .pe { font-size:10px; letter-spacing:.26em; color:rgba(255,255,255,.42); font-weight:700; margin-top:3px; }
+  .part .pd { font-size:14px; color:rgba(255,255,255,.75); line-height:1.75; margin-top:8px; }
+
+  .steps { counter-reset:st; }
+  .steps .st { position:relative; padding:11px 0 11px 34px; font-size:14.5px; color:rgba(255,255,255,.85); }
+  .steps .st::before { counter-increment:st; content:counter(st); position:absolute; left:0; top:11px;
+    width:21px; height:21px; border-radius:50%; border:1px solid rgba(255,255,255,.3);
+    font-size:10px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.6); font-weight:700; }
+  .steps .st.last { color:#fff; font-weight:800; }
+  .steps .st.last::before { background:#fff; color:#000; border-color:#fff; }
 </style>
 </head>
 <body class="bg-gray-50">
@@ -103,6 +152,7 @@
   <div id="page-docs" class="page p-4 space-y-4"></div>
   <div id="page-audition" class="page p-4 space-y-4"></div>
   <div id="page-applicants" class="page p-4 space-y-4"></div>
+  <div id="page-about" class="page"></div>
 </main>
 
 <nav id="nav-member" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg" style="overflow-x:auto">
@@ -295,7 +345,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.7';
+const APP_BUILD = '2026-08-26.8';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -1076,7 +1126,7 @@ function renderAll() {
     // 로그인 전이라 헤더의 계정·주차 표시는 숨긴다
     document.getElementById('header-user-btn').style.display = 'none';
     document.getElementById('header-week').style.display = 'none';
-    ({ notice: renderNotice, apply: renderApply }[currentPage] || renderNotice)();
+    ({ notice: renderNotice, apply: renderApply, about: renderAbout }[currentPage] || renderNotice)();
     return;
   }
   document.getElementById('header-user-btn').style.display = '';
@@ -1090,7 +1140,7 @@ function renderAll() {
     document.getElementById('user-menu-role').textContent = '지원자 · ' + currentApplicant.code;
     document.getElementById('btn-settings').classList.add('hidden');
     document.getElementById('btn-pin').classList.add('hidden');
-    ({ myapp: renderMyApp, docs: renderDocs, audition: renderAudition }[currentPage] || renderMyApp)();
+    ({ myapp: renderMyApp, docs: renderDocs, audition: renderAudition, about: renderAbout }[currentPage] || renderMyApp)();
     return;
   }
   navA.classList.add('hidden'); navM.classList.remove('hidden');
@@ -1106,7 +1156,7 @@ function renderAll() {
   const w = weekInfo(currentWeek());
   document.getElementById('header-week').textContent = `${currentWeek()+1}주차`;
   ({ home: renderHome, qt: renderQT, check: renderCheck, status: renderStatus, roster: renderRoster,
-     rules: renderRules, applicants: renderApplicants }[currentPage] || renderHome)();
+     rules: renderRules, applicants: renderApplicants, about: renderAbout }[currentPage] || renderHome)();
 }
 
 function sigChip(v, big) {
@@ -1139,6 +1189,16 @@ function renderHome() {
       <div class="flex gap-1 mt-3">
         ${Array.from({length:WEEKS}, (_,n) =>
           `<div class="flex-1 h-2 rounded-full ${weekEnded(n) ? 'bg-purple-600' : (weekStarted(n) ? 'bg-purple-300' : 'bg-gray-200')}"></div>`).join('')}
+      </div>
+    </div>
+    <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
+      <div class="px-4 py-5 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
+          <p class="text-white font-black text-2xl tracking-widest mt-1">LADI</p>
+          <p class="text-white/60 text-xs mt-1.5">우리가 어떤 팀인지 · 한 주 · 파트 · 훈련</p>
+        </div>
+        <span class="text-white/50 text-2xl">›</span>
       </div>
     </div>`;
 
@@ -1654,6 +1714,16 @@ function renderNotice() {
         <p class="text-sm text-gray-700 whitespace-pre-wrap mt-0.5">${partPrep(pt) ? esc(partPrep(pt)) : '<span class="text-gray-300">준비되는 대로 올라옵니다</span>'}</p>
       </div>`).join('')}
     </div>
+    <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
+      <div class="px-4 py-5 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
+          <p class="text-white font-black text-2xl tracking-widest mt-1">LADI</p>
+          <p class="text-white/60 text-xs mt-1.5">지원하기 전에 우리가 어떤 팀인지 읽어보세요</p>
+        </div>
+        <span class="text-white/50 text-2xl">›</span>
+      </div>
+    </div>
     ${c.open ? `<button onclick="navigate('apply')" class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold">지원 신청하기</button>` : ''}
     <button onclick="closePublic();openModal('modal-applicant-login')" class="w-full bg-white border py-3 rounded-xl font-bold text-sm text-gray-600">이미 지원했어요 (지원자 로그인)</button>`;
 }
@@ -1697,6 +1767,15 @@ function renderMyApp() {
       ${info.desc ? `<p class="text-xs text-gray-500 mt-2">${info.desc}</p>` : ''}
     </div>
 
+    <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
+      <div class="px-4 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
+          <p class="text-white font-black text-xl tracking-widest mt-0.5">LADI</p>
+        </div>
+        <span class="text-white/50 text-2xl">›</span>
+      </div>
+    </div>
     <div class="card">
       <div class="flex items-center justify-between">
         <h3 class="font-bold text-gray-800 text-sm">1차 서류</h3>
@@ -1861,6 +1940,117 @@ function renderApplicants() {
         </div>` : ''}
       </div>`;
     }).join('') : `<div class="card"><p class="text-sm text-gray-400 text-center py-6">아직 지원자가 없습니다</p></div>`}`;
+}
+
+function renderAbout() {
+  const CROSS = 'DISCIPLES';
+  const cross = CROSS.split('').map((ch, i) => i === 2
+    ? `<div class="ln">
+         <span class="arm l"><span class="ch">L</span><span class="ch">A</span></span>
+         <span class="ch">S</span>
+         <span class="arm r"><span class="ch">T</span></span>
+         <span class="waves">WE<br>ARE THE<br>NEW WAVES</span>
+       </div>`
+    : `<div class="ln"><span class="ch">${ch}</span></div>`).join('');
+
+  const sat = [['11:00','가사 테스트'],['11:20','전체 모임 &amp; 기도회'],
+    ['11:40–12:20','SOLADI · 액기스 · LADIS 파트 연습'],
+    ['12:30–13:00','전체 리허설 &amp; 기도회'],['13:00–14:00','간식 &amp; 사랑모임']];
+  const sun = [['08:10–08:40','리허설 &amp; 골방 기도회'],['08:40–08:50','전체 기도회 · 1부'],
+    ['08:55–09:20','예배 찬양 · 1부'],['10:40–10:50','파트별 기도회 · 2부'],
+    ['10:55–11:20','예배 찬양 · 2부'],['12:50–13:10','마무리 모임 · 라모']];
+  const row = a => a.map(([t, n]) => `<div class="it"><span class="tm">${t}</span><span class="nm">${n}</span></div>`).join('');
+
+  const parts = [
+    ['SOLADI','VOCAL','목소리로 예배를 세워가는 LADI의 보컬 파트입니다.',''],
+    ['액기스','BAND','각자의 소리를 모아 하나의 예배를 세워가는 LADI의 밴드 파트입니다.','건반 · 신스 · 기타 · 베이스 · 드럼'],
+    ['LADIS','WORSHIP','몸과 움직임으로 하나님을 찬양하는 LADI의 워십 파트입니다.','']
+  ];
+  const steps = ['수련회 이후 모집','서류 지원','면접 &amp; 오디션','수습 훈련','YIP &amp; 예배자 교육','LADI 정식 멤버'];
+
+  document.getElementById('page-about').innerHTML = `
+    <div class="ab">
+      <div class="ab-sec" style="padding-top:34px">
+        ${currentApplicant || publicView
+          ? `<button onclick="${publicView ? "navigate('notice')" : "navigate('myapp')"}" style="min-height:32px" class="text-sm" >
+               <span class="dim">‹ 돌아가기</span></button>`
+          : `<button onclick="navigate('home')" style="min-height:32px" class="text-sm"><span class="dim">‹ 돌아가기</span></button>`}
+        <div class="cross">${cross}</div>
+        <div class="ladi-mark">LADI</div>
+        <div class="ladi-sub">LAST DISCIPLES</div>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">LADI</div>
+        <h2>마지막 제자</h2>
+        <p>LADI는 수영로교회 고등부 찬양팀입니다.</p>
+        <p class="lead">우리가 꿈꾸는 마지막 제자는 그저 무대 위에서 찬양하는 사람이 아닙니다.</p>
+        <p>주님의 마음을 알고, 주님의 소원과 꿈인 예배를 품고,<br>
+           그 예배를 우리의 찬양과 삶을 통해 이 세상에 흘려보내는 사람.</p>
+        <p class="hl">그것이 LADI가 꿈꾸는 마지막 제자입니다.</p>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">OUR IDENTITY</div>
+        <div class="chant">
+          <div class="c1">사랑의 공동체 LADI<br>예배하는 공동체 LADI<br>마지막 제자 LADI</div>
+          <div class="c2">어이! 어이! 어이!</div>
+          <div class="c3">LADI!</div>
+        </div>
+        <p style="margin-top:26px">LADI는 함께 예배하기 전에, 먼저 <span class="hl">함께 사랑하는 공동체</span>가 되기를 원합니다.</p>
+        <p>서로를 세워주고, 함께 기도하고, 함께 자라며<br>
+           무대 위에서뿐 아니라 우리의 모든 삶으로 하나님을 예배합니다.</p>
+        <p>그리고 우리가 받은 예배를 우리 안에만 머물게 하지 않습니다.<br>
+           학교로, 가정으로, 친구들에게로, 우리가 살아가는 모든 자리로 흘려보냅니다.</p>
+        <p class="lead">사랑하고, 예배하고,<br>그 예배를 흘려보내는 사람들.</p>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">LADI WEEKLY</div>
+        <h2>한 주</h2>
+        <p>함께 준비하고, 함께 기도하고, 함께 사랑하며 예배를 세워가는 시간입니다.</p>
+        <p class="ab-kicker" style="margin-top:28px">SATURDAY · 토요일</p>
+        <div class="sched">${row(sat)}</div>
+        <p class="ab-kicker" style="margin-top:30px">LORD'S DAY · 주일</p>
+        <div class="sched">${row(sun)}</div>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">LADI PARTS</div>
+        <h2>서 있는 자리는 다르지만<br>향하는 곳은 하나입니다</h2>
+        <p class="hl" style="margin-bottom:24px">하나님을 예배하는 것.</p>
+        ${parts.map(([n, e, d, sub]) => `<div class="part">
+          <div class="pn">${n}</div><div class="pe">${e}</div>
+          ${sub ? `<div class="pd dim" style="font-size:13px">${sub}</div>` : ''}
+          <div class="pd">${d}</div></div>`).join('')}
+        <p class="dim" style="margin-top:22px;font-size:13.5px">서로 다른 자리와 역할이 모여 하나의 LADI가 됩니다.</p>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">JOIN LADI</div>
+        <h2>처음부터 완벽할 필요는 없습니다</h2>
+        <p>찬양을 사랑하고, 예배자로 살아가고 싶고,<br>공동체 안에서 함께 자라고 싶은 학생이라면 도전할 수 있습니다.</p>
+        <p>LADI는 <span class="hl">지금 얼마나 잘하는지만</span> 보지 않습니다.<br>
+           예배를 향한 마음, 함께하는 사람을 사랑하는 태도,<br>
+           맡겨진 자리를 책임지는 자세, 그리고 배우고 자라려는 마음을 함께 봅니다.</p>
+        <p class="ab-kicker" style="margin-top:30px">HOW TO JOIN</p>
+        <div class="steps">${steps.map((t, i) => `<div class="st${i === steps.length - 1 ? ' last' : ''}">${t}</div>`).join('')}</div>
+        <p style="margin-top:24px">LADI가 세우고 싶은 사람은 좋은 보컬, 좋은 연주자, 좋은 워십퍼에서 멈추지 않습니다.</p>
+        <p class="lead">한 사람의 예배자.<br>한 사람의 제자.</p>
+        <p class="dim">그것이 LADI의 훈련이 향하는 곳입니다.</p>
+      </div>
+
+      <div class="ab-sec" style="padding-bottom:46px">
+        <div class="ab-kicker">LAST DISCIPLES</div>
+        <p class="lead">우리는 노래만 남기고 싶은 팀이 아닙니다.<br>예배를 남기고 싶습니다.</p>
+        <p>우리가 드린 예배가 또 다른 예배를 일으키고,<br>
+           우리가 살아낸 예배가 누군가의 삶으로 흘러가고,<br>
+           그렇게 이 세상 곳곳에 하나님을 예배하는 사람들이 세워지기를 꿈꿉니다.</p>
+        <p>주님의 소원과 꿈인 예배를<br>이 세상에 흘려보내는 마지막 제자.</p>
+        <div class="ladi-mark" style="font-size:34px;margin-top:30px">LADI</div>
+        <div class="ladi-sub">LAST DISCIPLES</div>
+      </div>
+    </div>`;
 }
 
 function renderRules() {
