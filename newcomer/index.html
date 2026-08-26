@@ -395,7 +395,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.10';
+const APP_BUILD = '2026-08-26.11';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -1291,7 +1291,7 @@ function renderHome() {
         <div class="card text-center py-3"><p class="text-2xl font-bold text-red-600">${cnt.red}</p><p class="text-xs text-gray-500 mt-0.5">수료 불가</p></div>
       </div>
       <div class="card">
-        <h3 class="font-bold text-gray-800 text-sm mb-3">살펴야 할 아이들</h3>
+        <h3 class="font-bold text-gray-800 text-sm mb-3">위기의 아이들</h3>
         ${risky.length ? risky.map(r => `
           <div class="py-2 border-b last:border-0">
             <div class="flex items-center justify-between">
