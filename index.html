@@ -1350,7 +1350,7 @@ let _fsHasPendingChanges = false;
 const _FS_MAP_FIELDS = new Set([
   'checks', 'lineups', 'memos', 'pins', 'qtComments', 'qtCommentsReadAt',
   'qtDayChecks', 'pastoralApprovals', 'adminRestrictions', 'loveMeetingRecords',
-  'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles'
+  'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles', 'worshipClips'
 ]);
 const _FS_ARRAY_FIELDS = new Set(['students', 'qtPosts', 'editLogs', 'loveMeetings', 'feedbacks']);
 
@@ -1526,6 +1526,7 @@ function _getFsData() {
     qrUsage: state.qrUsage,
     lineupConfirmed: state.lineupConfirmed,
     qtPassageTexts: state.qtPassageTexts,
+    worshipClips: state.worshipClips,
     _may2026Attendance: state._may2026Attendance,
     _phoneMigrated2026: state._phoneMigrated2026,
     _birthMigrated2026: state._birthMigrated2026,
@@ -3238,6 +3239,114 @@ function renderAbout() {
     </div>`;
 }
 
+// ── 이번 주 찬양 ──
+// 고등부 예배 영상은 매주 유튜브에 통째로 올라온다. 내려받아 자르지 않고,
+// 재생 구간(시작·끝)만 지정해 찬양 부분만 틀어 준다. worship.json은
+// GitHub Actions가 채널을 훑어 채워 넣고, 구간은 팀장이 앱에서 넣는다.
+const WORSHIP_CHANNEL = 'UC1FSCHLW7t8Yuq6g2-NH4kA';
+let _worship = null;
+function loadWorship() {
+  if (_worship !== null) return;
+  _worship = [];
+  fetch('worship.json?ts=' + Date.now(), { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (d && Array.isArray(d.items) && d.items.length) {
+        _worship = d.items;
+        if (state.page === 'dashboard') renderDashboard();
+      }
+    })
+    .catch(e => console.warn('찬양 목록 실패:', e));
+}
+function clipOf(id) { return (state.worshipClips || {})[id] || null; }
+// "3:20" / "1:02:30" / "200" 모두 초로 바꾼다
+function toSec(v) {
+  const t = String(v || '').trim();
+  if (!t) return null;
+  if (/^\d+$/.test(t)) return parseInt(t, 10);
+  const p = t.split(':').map(x => parseInt(x, 10));
+  if (p.some(isNaN)) return null;
+  return p.reduce((a, b) => a * 60 + b, 0);
+}
+function fmtSec(n) {
+  if (n == null) return '';
+  const h = Math.floor(n / 3600), m = Math.floor(n % 3600 / 60), s = n % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+}
+function worshipTitle(t) {
+  // "수영로교회 고등부 | 제목 | 본문 | 목사 | 날짜" 꼴에서 제목만
+  const p = String(t).split('|').map(x => x.trim()).filter(Boolean);
+  return p.length > 1 ? p[1] : p[0] || t;
+}
+function worshipDate(d) {
+  if (!d || d.length < 10) return '';
+  return `${Number(d.slice(5,7))}월 ${Number(d.slice(8,10))}일`;
+}
+function openClipEditor(id) {
+  if (!isLeader()) return;
+  const c = clipOf(id) || {};
+  const st = prompt('찬양이 시작하는 시각 (예: 3:20)', c.start != null ? fmtSec(c.start) : '');
+  if (st === null) return;
+  const en = prompt('찬양이 끝나는 시각 (예: 21:05)', c.end != null ? fmtSec(c.end) : '');
+  if (en === null) return;
+  const S = toSec(st), E = toSec(en);
+  if (st && S == null) { alert('시작 시각을 알아듣지 못했어요'); return; }
+  if (en && E == null) { alert('끝 시각을 알아듣지 못했어요'); return; }
+  if (S != null && E != null && E <= S) { alert('끝이 시작보다 빨라요'); return; }
+  if (!state.worshipClips) state.worshipClips = {};
+  if (S == null && E == null) delete state.worshipClips[id];
+  else state.worshipClips[id] = { start: S || 0, end: E || null };
+  saveState();
+  renderDashboard();
+}
+function renderWorshipCard() {
+  loadWorship();
+  const list = (_worship || []).filter(v => !/후기|수련회 영상/.test(v.title));
+  const top = list[0];
+  if (!top) {
+    return `<div class="surface px-3 py-3">
+      <p class="sec mb-2">이번 주 찬양</p>
+      <a href="https://www.youtube.com/channel/${WORSHIP_CHANNEL}/videos" target="_blank" rel="noopener"
+         class="block text-center bg-gray-50 border rounded-xl py-6 text-sm text-gray-500 font-semibold">고등부 채널에서 보기 ›</a>
+    </div>`;
+  }
+  const c = clipOf(top.id);
+  const q = c ? `?start=${c.start || 0}${c.end ? '&end=' + c.end : ''}` : '';
+  const past = list.slice(1, 4);
+  return `
+    <div class="surface px-3 py-3">
+      <div class="flex items-center justify-between mb-2">
+        <p class="sec">이번 주 찬양</p>
+        ${isLeader() ? `<button onclick="openClipEditor('${top.id}')" style="min-height:unset" class="text-xs text-gray-500 font-semibold">${c ? '구간 수정' : '찬양 구간 지정'}</button>` : ''}
+      </div>
+      <div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000">
+        <iframe src="https://www.youtube.com/embed/${top.id}${q}"
+          style="position:absolute;inset:0;width:100%;height:100%;border:0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"
+          title="고등부 찬양"></iframe>
+      </div>
+      <p class="text-sm font-bold text-gray-800 mt-2 leading-snug">${worshipTitle(top.title)}</p>
+      <p class="text-[11px] text-gray-400 mt-0.5">
+        ${worshipDate(top.date)}${c ? ` · 찬양 ${fmtSec(c.start || 0)}${c.end ? '~' + fmtSec(c.end) : '부터'}` : ' · 전체 영상'}
+      </p>
+      ${!c && isLeader() ? `<p class="text-[11px] text-amber-600 mt-1">찬양 구간을 지정하면 그 부분만 재생됩니다</p>` : ''}
+      ${past.length ? `
+      <div class="mt-2 pt-2 border-t">
+        ${past.map(v => {
+          const pc = clipOf(v.id);
+          const pq = pc ? `&t=${pc.start || 0}` : '';
+          return `<div class="flex items-center gap-2 py-1.5">
+            <span class="text-[10px] text-gray-400 font-semibold" style="min-width:44px">${worshipDate(v.date)}</span>
+            <a href="https://www.youtube.com/watch?v=${v.id}${pq}" target="_blank" rel="noopener"
+               class="text-xs text-gray-700 truncate flex-1">${worshipTitle(v.title)}</a>
+            ${isLeader() ? `<button onclick="openClipEditor('${v.id}')" style="min-height:unset" class="text-[10px] text-gray-400 flex-shrink-0">${pc ? '구간' : '지정'}</button>` : ''}
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+    </div>`;
+}
+
 function renderDashboard() {
   _initTodayBirthdayBanner();
   if (isMember()) { renderMemberDashboard(); return; }
@@ -3259,6 +3368,8 @@ function renderDashboard() {
           <button onclick="navigate('birthday')"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span>생일</span></button>
         </div>
       </div>
+
+      ${renderWorshipCard()}
 
       <!-- 목양 알림 -->
       ${renderPastoralAlerts()}
@@ -3525,6 +3636,7 @@ function renderMemberDashboard() {
 
   const html = `
     <div class="space-y-3">
+      ${renderWorshipCard()}
       ${todayBirthdays.length ? `
         <div class="bg-gradient-to-r from-pink-500 to-gray-900 rounded-2xl px-4 py-2.5 text-white">
           <p class="text-xs opacity-80 font-semibold mb-1">🎂 오늘의 생일자</p>
@@ -6620,7 +6732,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.8';
+const APP_BUILD = '2026-08-26.9';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;

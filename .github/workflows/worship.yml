@@ -1,0 +1,55 @@
+name: 고등부 찬양 영상 갱신
+
+# 수영로교회 고등부 채널에 올라오는 예배 영상 목록을 worship.json에 적어 둔다.
+# 영상을 자르지 않고 앱에서 재생 구간만 지정하므로, 여기서는 목록만 챙기면 된다.
+on:
+  schedule:
+    - cron: '0 6 * * 0'      # 주일 15:00 (KST)
+    - cron: '0 3 * * 1'      # 월요일 12:00 (KST)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 채널에서 최근 영상 가져오기
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request, datetime
+          CH = 'UC1FSCHLW7t8Yuq6g2-NH4kA'   # 수영로교회 고등부
+          url = f'https://www.youtube.com/feeds/videos.xml?channel_id={CH}'
+          req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+          xml = urllib.request.urlopen(req, timeout=30).read().decode('utf-8')
+          items = []
+          for m in re.finditer(r'<entry>(.*?)</entry>', xml, re.S):
+              e = m.group(1)
+              vid = re.search(r'<yt:videoId>(.*?)</yt:videoId>', e)
+              ttl = re.search(r'<title>(.*?)</title>', e, re.S)
+              pub = re.search(r'<published>(.*?)</published>', e)
+              if vid and ttl:
+                  t = ttl.group(1).replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                  items.append({'id': vid.group(1), 'title': t,
+                                'date': (pub.group(1)[:10] if pub else '')})
+          if not items:
+              raise SystemExit('영상을 못 받아왔습니다')
+          out = {'channel': CH,
+                 'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+                 'items': items[:10]}
+          json.dump(out, open('worship.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+          print('최신:', items[0]['date'], items[0]['title'][:50])
+          PY
+      - name: 바뀌었으면 올리기
+        run: |
+          if git diff --quiet -- worship.json; then
+            echo "새 영상 없음"
+          else
+            git config user.name 'github-actions'
+            git config user.email 'github-actions@users.noreply.github.com'
+            git add worship.json
+            git commit -m "고등부 찬양 영상 갱신 $(date -u +%Y-%m-%d)"
+            git push
+          fi
