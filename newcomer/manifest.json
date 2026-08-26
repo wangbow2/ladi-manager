@@ -1,7 +1,7 @@
 {
-  "name": "LADI 신입생",
-  "short_name": "LADI 신입생",
-  "description": "수영로 LADI 신입생 8주 수료 관리",
+  "name": "LADI 오디션",
+  "short_name": "LADI",
+  "description": "수영로교회 고등부 찬양팀 LADI — 오디션과 수습",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

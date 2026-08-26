@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>수영로 LADI 신입생</title>
+<title>LADI 오디션 · 수영로교회 고등부</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="LADI 신입생">
+<meta name="apple-mobile-web-app-title" content="LADI">
 <meta name="theme-color" content="#000000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="apple-touch-icon" href="../icons/icon-152x152.png">
@@ -25,7 +25,7 @@
   .part-건반 { background:#DBEAFE; color:#1e40af; }
   .part-드럼 { background:#FFE4D6; color:#9a3412; }
   .part-싱어 { background:#FEF9C3; color:#92400e; }
-  .part-보컬 { background:#F3E8FF; color:#6D28D9; }
+  .part-보컬 { background:#E5E7EB; color:#374151; }
   .part-워십 { background:#DCFCE7; color:#166534; }
 
   /* 출석 상태 — 본 앱과 같은 색 언어 */
@@ -56,12 +56,12 @@
   }
   .qt-dot.on { background:#DBEAFE; border-color:#93C5FD; color:#1D4ED8; }
 
-  .nav-btn.active svg { stroke:#7C3AED; }
-  .nav-btn.active span { color:#7C3AED; }
+  .nav-btn.active svg { stroke:#111827; }
+  .nav-btn.active span { color:#111827; }
   .scroll-table { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   table th, table td { white-space:nowrap; }
 
-  #login-screen { display:flex; }
+  #login-screen { display:block; }
   .pin-input { letter-spacing:0.5em; font-size:1.5rem; text-align:center; }
 
   .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
@@ -70,7 +70,7 @@
   input[type="text"], input[type="date"], input[type="tel"], select, textarea {
     border:1px solid #D1D5DB; border-radius:8px; padding:8px 12px; font-size:14px; width:100%; outline:none;
   }
-  input:focus, select:focus, textarea:focus { border-color:#7C3AED; box-shadow:0 0 0 2px rgba(124,58,237,0.2); }
+  input:focus, select:focus, textarea:focus { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,0.15); }
   button, .btn { min-height:44px; }
   .nav-btn { min-height:unset; }
   .card { background:#fff; border-radius:12px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04); padding:16px; }
@@ -127,12 +127,12 @@
 </head>
 <body class="bg-gray-50">
 
-<header class="bg-purple-700 text-white px-4 py-3 fixed top-0 left-0 right-0 z-50 shadow-md">
+<header class="text-white px-4 py-3 fixed top-0 left-0 right-0 z-50 shadow-md" style="background:#0B0B0C">
   <div class="flex items-center justify-between max-w-2xl mx-auto">
-    <h1 class="text-lg font-bold cursor-pointer active:opacity-70" onclick="navigate('home')">LADI 신입생</h1>
+    <h1 class="text-lg font-bold cursor-pointer active:opacity-70" onclick="navigate('home')">LADI</h1>
     <div class="flex items-center gap-2">
-      <div id="header-week" class="text-sm bg-purple-600 px-3 py-1 rounded-full"></div>
-      <button id="header-user-btn" onclick="openModal('modal-user-menu')" class="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
+      <div id="header-week" class="text-sm px-3 py-1 rounded-full" style="background:rgba(255,255,255,.12)"></div>
+      <button id="header-user-btn" onclick="openModal('modal-user-menu')" class="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm" style="background:rgba(255,255,255,.12)">
         <span id="header-user-name" class="text-xs max-w-20 truncate"></span>
       </button>
     </div>
@@ -188,62 +188,80 @@
   </div>
 </nav>
 
-<nav id="nav-applicant" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg hidden">
-  <div class="flex justify-around items-center max-w-2xl mx-auto py-1">
+<nav id="nav-applicant" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg hidden" style="overflow-x:auto">
+  <div class="flex justify-around items-center max-w-2xl mx-auto py-1" style="min-width:max-content">
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('myapp')" id="nav-myapp">
-      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      <span class="text-xs mt-0.5 font-medium text-gray-500">내 전형</span>
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">홈</span>
     </button>
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('docs')" id="nav-docs">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">서류</span>
     </button>
-    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('audition')" id="nav-audition">
-      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-      <span class="text-xs mt-0.5 font-medium text-gray-500">실기</span>
+    <button onclick="lockedTap()" class="nav-btn flex flex-col items-center py-1 px-2 opacity-40" style="cursor:not-allowed">
+      <svg class="w-6 h-6 stroke-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-400">큐티</span>
+    </button>
+    <button onclick="lockedTap()" class="nav-btn flex flex-col items-center py-1 px-2 opacity-40" style="cursor:not-allowed">
+      <svg class="w-6 h-6 stroke-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-400">체크표</span>
+    </button>
+    <button onclick="lockedTap()" class="nav-btn flex flex-col items-center py-1 px-2 opacity-40" style="cursor:not-allowed">
+      <svg class="w-6 h-6 stroke-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-400">수료현황</span>
+    </button>
+    <button onclick="lockedTap()" class="nav-btn flex flex-col items-center py-1 px-2 opacity-40" style="cursor:not-allowed">
+      <svg class="w-6 h-6 stroke-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-400">기준</span>
     </button>
   </div>
 </nav>
 
-<!-- Login -->
-<div id="login-screen" class="fixed inset-0 z-[300] flex items-center justify-center bg-gradient-to-br from-purple-800 to-purple-600">
-  <div id="build-badge" class="absolute bottom-4 left-0 right-0 text-center text-[11px] text-purple-300/70 select-text"></div>
-  <div class="bg-white rounded-3xl w-full max-w-sm mx-4 overflow-hidden shadow-2xl">
-    <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-center">
-      <div class="text-4xl mb-2">🌱</div>
-      <h1 class="text-xl font-bold text-white">수영로 LADI 신입생</h1>
-      <p class="text-purple-200 text-sm mt-1">8주 수료 과정</p>
-    </div>
-    <div class="p-6 space-y-4">
-      <div>
-        <label class="text-xs text-gray-500 font-semibold mb-1 block">이름 선택</label>
-        <select id="login-name-select" class="w-full border rounded-xl p-3 text-sm">
-          <option value="">이름을 선택하세요</option>
-        </select>
+<!-- Landing : LADI 오디션 -->
+<div id="login-screen" class="fixed inset-0 z-[300] overflow-y-auto" style="background:#000">
+  <div class="min-h-full flex flex-col justify-center" style="padding:44px 24px 32px">
+    <div style="max-width:420px;margin:0 auto;width:100%">
+      <div class="cross">
+        <div class="ln"><span class="ch">D</span></div>
+        <div class="ln"><span class="ch">I</span></div>
+        <div class="ln">
+          <span class="arm l"><span class="ch">L</span><span class="ch">A</span></span>
+          <span class="ch">S</span>
+          <span class="arm r"><span class="ch">T</span></span>
+          <span class="waves">WE<br>ARE THE<br>NEW WAVES</span>
+        </div>
+        <div class="ln"><span class="ch">C</span></div>
+        <div class="ln"><span class="ch">I</span></div>
+        <div class="ln"><span class="ch">P</span></div>
+        <div class="ln"><span class="ch">L</span></div>
+        <div class="ln"><span class="ch">E</span></div>
+        <div class="ln"><span class="ch">S</span></div>
       </div>
-      <div>
-        <label class="text-xs text-gray-500 font-semibold mb-1 block">PIN 번호 (4자리)</label>
-        <input type="password" id="login-pin" maxlength="4" inputmode="numeric" placeholder="● ● ● ●"
-               class="pin-input w-full border rounded-xl p-3" onkeydown="if(event.key==='Enter') doLogin()">
-      </div>
-      <p id="login-error" class="text-xs text-red-500 text-center hidden">PIN 번호가 올바르지 않습니다</p>
-      <button onclick="doLogin()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
-      <p class="text-xs text-gray-400 text-center">처음 PIN은 <span class="font-bold text-purple-600">0000</span> 입니다</p>
-    </div>
-    <div class="border-t bg-gray-50 p-4 space-y-2">
-      <p class="text-xs text-gray-500 text-center font-semibold" id="apply-entry-title">26년 하반기 라디 찬양팀 모집</p>
-      <div class="flex gap-2">
-        <button onclick="openNotice()" class="flex-1 bg-white border border-purple-200 text-purple-700 py-3 rounded-xl font-bold text-sm">모집 안내 · 지원하기</button>
-        <button onclick="openModal('modal-applicant-login')" class="flex-1 bg-white border py-3 rounded-xl font-bold text-sm text-gray-600">지원자 로그인</button>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- 지면 크게 보기 -->
-<div id="modal-img" class="modal" onclick="closeModal('modal-img')">
-  <div class="flex items-center justify-center w-full h-full p-3">
-    <img id="modal-img-src" src="" class="max-w-full max-h-[92vh] rounded-xl object-contain shadow-2xl">
+      <div class="ladi-mark" style="margin-top:22px">LADI</div>
+      <div class="ladi-sub">수영로교회 고등부 찬양팀</div>
+
+      <div style="text-align:center;margin-top:40px">
+        <p style="font-size:11px;letter-spacing:.3em;color:rgba(255,255,255,.45);font-weight:700">AUDITION</p>
+        <p style="font-size:26px;font-weight:800;color:#fff;margin-top:8px;letter-spacing:-.01em">26년 하반기 오디션</p>
+        <p id="land-deadline" style="font-size:13px;color:rgba(255,255,255,.55);margin-top:8px"></p>
+      </div>
+
+      <div style="margin-top:36px;display:flex;flex-direction:column;gap:10px">
+        <button id="land-apply" onclick="openNotice()"
+          style="background:#fff;color:#000;padding:17px;border-radius:14px;font-weight:800;font-size:15px">지원하기</button>
+        <button onclick="openModal('modal-applicant-login')"
+          style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.28);padding:15px;border-radius:14px;font-weight:700;font-size:14px">이미 지원했어요</button>
+        <button onclick="openAboutFromLanding()"
+          style="background:transparent;color:rgba(255,255,255,.6);padding:12px;font-size:13px;font-weight:600">LADI는 어떤 팀인가요 ›</button>
+      </div>
+
+      <div style="margin-top:44px;text-align:center">
+        <button onclick="openModal('modal-member-login')"
+          style="color:rgba(255,255,255,.32);font-size:12px;padding:8px;min-height:32px">팀원 로그인</button>
+      </div>
+      <div id="build-badge" style="text-align:center;font-size:10px;color:rgba(255,255,255,.15);margin-top:6px" class="select-text"></div>
+    </div>
   </div>
 </div>
 
@@ -259,6 +277,38 @@
       <button id="btn-settings" onclick="closeModal('modal-user-menu');openModal('modal-settings')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50 hidden">📅 과정 시작일 설정</button>
       <button onclick="doLogout()" class="w-full text-left px-4 py-3 text-sm text-red-600 rounded-xl active:bg-gray-50">로그아웃</button>
       <button onclick="closeModal('modal-user-menu')" class="w-full text-left px-4 py-3 text-sm text-gray-400 rounded-xl active:bg-gray-50">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 팀원(수습·팀장) 로그인 -->
+<div id="modal-member-login" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
+    <div class="p-4 border-b flex items-center justify-between">
+      <h3 class="font-bold text-gray-800">팀원 로그인</h3>
+      <button onclick="closeModal('modal-member-login')" class="text-gray-400 text-2xl leading-none">×</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div>
+        <label class="text-xs text-gray-500 font-semibold mb-1 block">이름</label>
+        <select id="login-name-select" class="w-full border rounded-xl p-3 text-sm">
+          <option value="">이름을 선택하세요</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 font-semibold mb-1 block">PIN 번호 (4자리)</label>
+        <input type="password" id="login-pin" maxlength="4" inputmode="numeric" placeholder="● ● ● ●"
+               class="pin-input w-full border rounded-xl p-3" onkeydown="if(event.key===\'Enter\') doLogin()">
+      </div>
+      <p id="login-error" class="text-xs text-red-500 text-center hidden">PIN 번호가 올바르지 않습니다</p>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+        <p class="text-xs text-amber-800 leading-relaxed">처음 PIN은 <b>0000</b>입니다.
+        누구나 눌러볼 수 있는 번호이니 <b>로그인하면 꼭 바꿔주세요.</b> 계정 메뉴 → PIN 번호 변경.</p>
+      </div>
+    </div>
+    <div class="p-4 pt-0 flex gap-2">
+      <button onclick="doLogin()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
+      <button onclick="closeModal('modal-member-login')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
 </div>
@@ -279,7 +329,7 @@
       <p class="text-[11px] text-gray-400 leading-relaxed">실기번호는 지원할 때 화면에 나온 6자리 숫자입니다. 잊어버렸으면 팀장에게 물어보세요.</p>
     </div>
     <div class="p-4 pt-0 flex gap-2">
-      <button onclick="doApplicantLogin()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">들어가기</button>
+      <button onclick="doApplicantLogin()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">들어가기</button>
       <button onclick="closeModal('modal-applicant-login')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
@@ -300,7 +350,7 @@
       <p id="pin-error" class="text-xs text-red-500 hidden text-center"></p>
     </div>
     <div class="p-4 pt-0 flex gap-2">
-      <button onclick="doChangePIN()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">변경</button>
+      <button onclick="doChangePIN()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">변경</button>
       <button onclick="closeModal('modal-pin')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
@@ -315,7 +365,7 @@
     </div>
     <div class="p-4 space-y-3" id="notice-edit-body"></div>
     <div class="p-4 pt-0 flex gap-2 sticky bottom-0 bg-white">
-      <button onclick="saveNotice()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">저장</button>
+      <button onclick="saveNotice()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">저장</button>
       <button onclick="closeModal('modal-notice-edit')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
@@ -331,10 +381,10 @@
     <div class="p-4 space-y-2">
       <p class="text-xs text-gray-500 leading-relaxed">8주 과정이 시작하는 <b>첫 토요일</b>을 고르세요. 한 주차는 토요일부터 다음 금요일까지입니다(토·주일 출석 + 이어지는 월~금 큐티).</p>
       <input type="date" id="set-start-date">
-      <p id="settings-preview" class="text-xs text-purple-600 font-semibold"></p>
+      <p id="settings-preview" class="text-xs text-gray-700 font-semibold"></p>
     </div>
     <div class="p-4 pt-0 flex gap-2">
-      <button onclick="doSaveStartDate()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">저장</button>
+      <button onclick="doSaveStartDate()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">저장</button>
       <button onclick="closeModal('modal-settings')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
@@ -345,7 +395,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.8';
+const APP_BUILD = '2026-08-26.10';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -673,6 +723,7 @@ function initFirestore() {
   });
 }
 function applyRemote(data) {
+  setTimeout(() => { try { paintLanding(); } catch (_) {} }, 0);
   ['startDate','pins','eduExempt','att','qt','gate','edu','memos','apply'].forEach(k => {
     if (data[k] !== undefined) state[k] = data[k];
   });
@@ -794,6 +845,7 @@ function doLogin() {
   currentUser = id;
   try { localStorage.setItem('ladi_newcomer_user', id); } catch (_) {}
   err.classList.add('hidden');
+  closeModal('modal-member-login');
   document.getElementById('login-pin').value = '';
   document.getElementById('login-screen').style.display = 'none';
   checkWeek = currentWeek();
@@ -806,7 +858,7 @@ function doLogout() {
   try { localStorage.removeItem('ladi_newcomer_user'); } catch (_) {}
   closeModal('modal-user-menu');
   fillLoginSelect();
-  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = '';
 }
 function doChangePIN() {
   const cur = document.getElementById('pin-current').value;
@@ -911,6 +963,9 @@ function deadlinePassed() {
   return !!d && today0() > parseDate(d);
 }
 
+function lockedTap() {
+  toast('오디션에 합격하면 열립니다');
+}
 function openNotice() {
   publicView = true;
   document.getElementById('login-screen').style.display = 'none';
@@ -918,7 +973,29 @@ function openNotice() {
 }
 function closePublic() {
   publicView = false;
-  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = '';
+}
+// 랜딩에서 바로 LADI 소개 보기
+function openAboutFromLanding() {
+  publicView = true;
+  document.getElementById('login-screen').style.display = 'none';
+  navigate('about');
+}
+// 랜딩에 마감일·접수 상태를 채운다
+function paintLanding() {
+  const c = applyCfg();
+  const d = document.getElementById('land-deadline');
+  const b = document.getElementById('land-apply');
+  if (!d || !b) return;
+  if (!c.open) {
+    d.textContent = '지금은 접수를 받지 않습니다';
+    b.style.display = 'none';
+  } else {
+    b.style.display = '';
+    d.textContent = c.docDeadline
+      ? `서류 마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}`
+      : '';
+  }
 }
 
 // ── 지원 신청 ──
@@ -995,7 +1072,7 @@ function applicantLogout() {
   _applyDraft = {}; _applyPendingPhoto = null;
   try { localStorage.removeItem('ladi_applicant'); } catch (_) {}
   closeModal('modal-user-menu');
-  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = '';
   document.getElementById('nav-applicant').classList.add('hidden');
   document.getElementById('nav-member').classList.remove('hidden');
 }
@@ -1140,7 +1217,7 @@ function renderAll() {
     document.getElementById('user-menu-role').textContent = '지원자 · ' + currentApplicant.code;
     document.getElementById('btn-settings').classList.add('hidden');
     document.getElementById('btn-pin').classList.add('hidden');
-    ({ myapp: renderMyApp, docs: renderDocs, audition: renderAudition, about: renderAbout }[currentPage] || renderMyApp)();
+    ({ myapp: renderMyApp, docs: renderDocs, about: renderAbout }[currentPage] || renderMyApp)();
     return;
   }
   navA.classList.add('hidden'); navM.classList.remove('hidden');
@@ -1183,12 +1260,12 @@ function renderHome() {
           ${!isLeader() && isEduExempt(currentUser, cw) ? `<p class="text-[11px] text-gray-400 mt-1">YIP 교육은 이미 받아서 안 나와도 됩니다</p>` : ''}
         </div>
         <div class="text-right">
-          <p class="text-3xl font-bold text-purple-600">${cw+1}<span class="text-base text-gray-400">/${WEEKS}</span></p>
+          <p class="text-3xl font-bold text-gray-700">${cw+1}<span class="text-base text-gray-400">/${WEEKS}</span></p>
         </div>
       </div>
       <div class="flex gap-1 mt-3">
         ${Array.from({length:WEEKS}, (_,n) =>
-          `<div class="flex-1 h-2 rounded-full ${weekEnded(n) ? 'bg-purple-600' : (weekStarted(n) ? 'bg-purple-300' : 'bg-gray-200')}"></div>`).join('')}
+          `<div class="flex-1 h-2 rounded-full ${weekEnded(n) ? 'bg-gray-900' : (weekStarted(n) ? 'bg-gray-300' : 'bg-gray-200')}"></div>`).join('')}
       </div>
     </div>
     <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
@@ -1227,7 +1304,7 @@ function renderHome() {
             </ul>
           </div>`).join('') : `<p class="text-sm text-gray-400 text-center py-4">아직 아무도 걸리지 않았습니다. 좋습니다.</p>`}
       </div>
-      <button onclick="navigate('check')" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">${cw+1}주차 체크하러 가기</button>`;
+      <button onclick="navigate('check')" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">${cw+1}주차 체크하러 가기</button>`;
     return;
   }
 
@@ -1256,13 +1333,13 @@ function renderHome() {
     <div class="card cursor-pointer" onclick="navigate('qt')">
       <div class="flex items-center justify-between mb-2">
         <h3 class="font-bold text-gray-800 text-sm">오늘의 큐티</h3>
-        <span class="text-xs text-purple-600 font-semibold">지면 보기 ›</span>
+        <span class="text-xs text-gray-700 font-semibold">지면 보기 ›</span>
       </div>
       ${(() => {
         const t = iso(today0()), s = qtSlotOf(t);
         const ref = QT_SCHEDULE[t];
         if (!ref) return `<p class="text-sm text-gray-400">오늘은 진도표에 없는 날이에요</p>`;
-        return `<p class="text-base font-bold text-purple-700">${ref}</p>
+        return `<p class="text-base font-bold text-gray-900">${ref}</p>
                 <p class="text-xs text-gray-400 mt-0.5">${s ? `${s.n+1}주차 ${DOW_QT[s.i]}요일` : '토·주일은 큐티를 세지 않아요'}</p>`;
       })()}
       <div class="flex gap-1.5 justify-between mt-3">
@@ -1306,6 +1383,11 @@ const _qtLoading = {};
 let _qtPendingImg = null;      // 아직 안 올린 사진(미리보기용)
 
 function qtKey(id, date) { return `${id}_${date}`; }
+// 공지 안의 링크를 누를 수 있게 — 이스케이프한 뒤에만 링크로 바꾼다.
+function linkify(t) {
+  return esc(t).replace(/(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener" class="text-blue-600 underline break-all">$1</a>');
+}
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1400,8 +1482,8 @@ function renderQT() {
     const ds = qtDateOf(n, k), on = ds === qtDate;
     const checked = meId ? qtOf(meId, n)[k] : false;
     return `<button onclick="qtDate='${ds}';renderAll()" style="min-height:56px"
-      class="flex-1 flex flex-col items-center justify-center rounded-xl py-1.5 ${on ? 'bg-purple-600 text-white' : 'bg-white border text-gray-600'}">
-      <span class="text-[11px] ${on?'text-purple-200':'text-gray-400'}">${dw}</span>
+      class="flex-1 flex flex-col items-center justify-center rounded-xl py-1.5 ${on ? 'bg-gray-900 text-white' : 'bg-white border text-gray-600'}">
+      <span class="text-[11px] ${on?'text-white/70':'text-gray-400'}">${dw}</span>
       <span class="text-sm font-bold">${parseDate(ds).getDate()}</span>
       ${checked ? `<span class="text-[10px] ${on?'text-white':'text-blue-600'}">✓</span>` : '<span class="text-[10px] opacity-0">·</span>'}
     </button>`;
@@ -1413,7 +1495,7 @@ function renderQT() {
         <button onclick="shiftQtDate(-1)" class="text-gray-400 px-2 text-xl" style="min-height:32px">‹</button>
         <div class="text-center">
           <p class="text-xs text-gray-500">${n+1}주차 · ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW_QT[i]})</p>
-          <p class="text-base font-bold text-purple-700 mt-0.5">${ref || '진도표에 없는 날'}</p>
+          <p class="text-base font-bold text-gray-900 mt-0.5">${ref || '진도표에 없는 날'}</p>
         </div>
         <button onclick="shiftQtDate(1)" class="text-gray-400 px-2 text-xl" style="min-height:32px">›</button>
       </div>
@@ -1452,13 +1534,13 @@ function renderQT() {
         ${_qtPendingImg ? `<p class="text-[11px] text-amber-600 mt-1">아직 안 올렸어요 — 아래 버튼을 눌러야 저장됩니다</p>` : ''}
       </div>` : ''}
 
-      <label class="mt-3 flex items-center justify-center gap-2 border-2 border-dashed border-purple-200 rounded-xl py-3 text-sm font-semibold text-purple-500 cursor-pointer active:bg-purple-50">
+      <label class="mt-3 flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm font-semibold text-gray-500 cursor-pointer active:bg-gray-50">
         📷 ${shownImg ? '사진 바꾸기' : '큐티 노트 사진 올리기'}
         <input type="file" accept="image/*" class="hidden" onchange="pickQtImage(this)">
       </label>
 
       <button onclick="submitQT('${meId}',${n},${i},'${qtDate}')"
-        class="w-full mt-3 py-4 rounded-xl font-bold text-sm ${saved ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'}">
+        class="w-full mt-3 py-4 rounded-xl font-bold text-sm ${saved ? 'bg-blue-600 text-white' : 'bg-gray-900 text-white'}">
         ${saved ? '고쳐서 다시 올리기' : '큐티 올리기'}
       </button>
       ${saved && saved.updatedAt ? `<p class="text-[11px] text-gray-400 mt-2 text-center">${new Date(saved.updatedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}에 올렸어요 ${done?'· 체크 완료':''}</p>` : ''}
@@ -1513,7 +1595,7 @@ function renderCheck() {
   const n = checkWeek, wi = weekInfo(n);
   const tabs = `<div class="scroll-table -mx-1 px-1"><div class="flex gap-1.5 pb-1">
     ${Array.from({length:WEEKS}, (_,i) => `<button onclick="checkWeek=${i};renderAll()"
-      class="px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 ${i===n?'bg-purple-600 text-white':'bg-white text-gray-600 border'}">${i+1}주</button>`).join('')}
+      class="px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 ${i===n?'bg-gray-900 text-white':'bg-white text-gray-600 border'}">${i+1}주</button>`).join('')}
   </div></div>`;
 
   const list = isLeader() ? state.students : state.students.filter(s => s.id === currentUser);
@@ -1559,12 +1641,12 @@ function renderCheck() {
   }).join('');
 
   el.innerHTML = tabs + `
-    <div class="card !py-3 bg-purple-50 border border-purple-100">
+    <div class="card !py-3 bg-gray-50 border border-gray-200">
       <div class="flex items-center gap-2 flex-wrap">
-        <p class="text-sm font-bold text-purple-800">${n+1}주차 · ${fmt(wi.sat)}(토) ~ ${fmt(wi.fri)}(금)</p>
+        <p class="text-sm font-bold text-gray-900">${n+1}주차 · ${fmt(wi.sat)}(토) ~ ${fmt(wi.fri)}(금)</p>
         <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold ${programOf(n).cls}">토요일 ${programOf(n).name}</span>
       </div>
-      <p class="text-xs text-purple-600 mt-0.5">${canEditAtt() ? '칸을 누르면 상태가 바뀝니다 · 출석 → 지각 → 무단지각 → 결석 → 무단결석' : '큐티는 큐티 화면에서 올리면 자동으로 체크됩니다'}</p>
+      <p class="text-xs text-gray-700 mt-0.5">${canEditAtt() ? '칸을 누르면 상태가 바뀝니다 · 출석 → 지각 → 무단지각 → 결석 → 무단결석' : '큐티는 큐티 화면에서 올리면 자동으로 체크됩니다'}</p>
     </div>` + rows;
 }
 
@@ -1633,7 +1715,7 @@ function renderRoster() {
   const el = document.getElementById('page-roster');
   el.innerHTML = `
     <div class="card !py-3">
-      <p class="text-sm font-bold text-gray-800">신입생 ${state.students.length}명</p>
+      <p class="text-sm font-bold text-gray-800">수습 ${state.students.length}명</p>
       <p class="text-xs text-gray-500 mt-0.5">${['건반','드럼','싱어','보컬','워십'].map(p => `${p} ${state.students.filter(s=>s.part===p).length}`).join(' · ')}</p>
     </div>
     ${state.students.map((s, i) => {
@@ -1649,7 +1731,7 @@ function renderRoster() {
           ${sigChip(v)}
         </div>
         <div class="flex items-center justify-between mt-2">
-          ${isLeader() && s.phone ? `<a href="tel:${s.phone}" class="inline-flex items-center gap-1 text-xs text-purple-600 font-semibold">📞 ${s.phone}</a>` : '<span></span>'}
+          ${isLeader() && s.phone ? `<a href="tel:${s.phone}" class="inline-flex items-center gap-1 text-xs text-gray-700 font-semibold">📞 ${s.phone}</a>` : '<span></span>'}
           ${isLeader()
             ? `<button onclick="toggleEduExempt('${s.id}')" style="min-height:28px"
                  class="text-[11px] px-2.5 py-1 rounded-full font-semibold ${(state.eduExempt||{})[s.id] ? 'bg-gray-200 text-gray-700' : 'bg-white border text-gray-400'}">
@@ -1688,16 +1770,16 @@ function renderNotice() {
     <div class="card text-center">
       <div class="text-3xl mb-1">🎵</div>
       <h2 class="text-lg font-bold text-gray-800">26년 하반기 라디 찬양팀 모집</h2>
-      ${c.docDeadline ? `<p class="text-sm text-purple-600 font-bold mt-2">서류 마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}</p>` : ''}
+      ${c.docDeadline ? `<p class="text-sm text-gray-700 font-bold mt-2">서류 마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}</p>` : ''}
       ${!c.open ? `<p class="text-sm text-red-600 font-bold mt-2">지금은 접수를 받지 않습니다</p>` : ''}
     </div>
     ${c.notice ? `<div class="card"><p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${esc(c.notice)}</p></div>` : ''}
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">전형은 이렇게 진행됩니다</h3>
       <div class="space-y-2">
-        <div class="flex gap-2"><span class="text-purple-600 font-bold text-sm w-10">1차</span><span class="text-sm text-gray-700">서류 — 다섯 문항을 정직하게, 구체적으로</span></div>
-        <div class="flex gap-2"><span class="text-purple-600 font-bold text-sm w-10">2차</span><span class="text-sm text-gray-700">실기(5분) · 면접(5분)</span></div>
-        <div class="flex gap-2"><span class="text-purple-600 font-bold text-sm w-10">3차</span><span class="text-sm text-gray-700">수습 8주 — 출석 · 큐티 · 가테를 지켜야 수료합니다</span></div>
+        <div class="flex gap-2"><span class="text-gray-700 font-bold text-sm w-10">1차</span><span class="text-sm text-gray-700">서류 — 다섯 문항을 정직하게, 구체적으로</span></div>
+        <div class="flex gap-2"><span class="text-gray-700 font-bold text-sm w-10">2차</span><span class="text-sm text-gray-700">실기(5분) · 면접(5분)</span></div>
+        <div class="flex gap-2"><span class="text-gray-700 font-bold text-sm w-10">3차</span><span class="text-sm text-gray-700">수습 8주 — 출석 · 큐티 · 가테를 지켜야 수료합니다</span></div>
       </div>
     </div>
     ${(c.auditionDate || c.auditionPlace) ? `
@@ -1708,11 +1790,12 @@ function renderNotice() {
       ${c.auditionNote ? `<p class="text-xs text-gray-500 mt-1 whitespace-pre-wrap">${esc(c.auditionNote)}</p>` : ''}
     </div>` : ''}
     <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm mb-2">파트별 준비</h3>
-      ${APPLY_PARTS.map(pt => `<div class="py-2 border-b last:border-0">
-        <p class="text-sm font-bold text-purple-700">${pt}</p>
-        <p class="text-sm text-gray-700 whitespace-pre-wrap mt-0.5">${partPrep(pt) ? esc(partPrep(pt)) : '<span class="text-gray-300">준비되는 대로 올라옵니다</span>'}</p>
-      </div>`).join('')}
+      <h3 class="font-bold text-gray-800 text-sm mb-2">모집 파트</h3>
+      <div class="flex gap-2">
+        ${APPLY_PARTS.map(pt => `<div class="flex-1 text-center bg-gray-50 border rounded-xl py-3">
+          <p class="text-sm font-bold text-gray-800">${pt}</p></div>`).join('')}
+      </div>
+      <p class="text-xs text-gray-400 mt-2">실기에 무엇을 준비하는지는 <b>지원한 뒤 내 파트 화면</b>에서 볼 수 있습니다.</p>
     </div>
     <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
       <div class="px-4 py-5 flex items-center justify-between">
@@ -1724,7 +1807,17 @@ function renderNotice() {
         <span class="text-white/50 text-2xl">›</span>
       </div>
     </div>
-    ${c.open ? `<button onclick="navigate('apply')" class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold">지원 신청하기</button>` : ''}
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-1">지원서 양식 받기</h3>
+      <p class="text-xs text-gray-500 mb-3">앱에서 바로 써도 되고, 양식을 받아 쓴 뒤 옮겨 적어도 됩니다.
+        <b>문항과 최소 분량은 아래 양식이 기준</b>입니다.</p>
+      <div class="flex gap-2">
+        <a href="files/26하반기_라디_지원서_양식.hwpx" download class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-bold text-gray-700">한글 HWP</a>
+        <a href="files/26하반기_라디_지원서_양식.docx" download class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-bold text-gray-700">워드 DOC</a>
+        <a href="files/26하반기_라디_지원서_양식.pdf" target="_blank" rel="noopener" class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-bold text-gray-700">PDF 보기</a>
+      </div>
+    </div>
+    ${c.open ? `<button onclick="navigate('apply')" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">지원 신청하기</button>` : ''}
     <button onclick="closePublic();openModal('modal-applicant-login')" class="w-full bg-white border py-3 rounded-xl font-bold text-sm text-gray-600">이미 지원했어요 (지원자 로그인)</button>`;
 }
 
@@ -1748,7 +1841,7 @@ function renderApply() {
       <div id="ap-detail-wrap" style="display:none"><label class="text-xs text-gray-500 font-semibold mb-1 block">어떤 악기인가요</label>
         <input type="text" id="ap-detail" placeholder="건반 / 드럼 / 베이스 / 일렉 / 어쿠스틱"></div>
       <p id="ap-error" class="text-xs text-red-500 hidden"></p>
-      <button id="ap-submit" onclick="doApply()" class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-sm">지원 접수하기</button>
+      <button id="ap-submit" onclick="doApply()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-sm">지원 접수하기</button>
     </div>`;
 }
 
@@ -1757,46 +1850,81 @@ function renderMyApp() {
   if (!a) return;
   const c = applyCfg(), info = STAGE_INFO[a.stage] || STAGE_INFO['접수'];
   const submitted = !!a.submittedAt;
+  const passed = a.stage === '서류합격' || a.stage === '최종합격';
+
   document.getElementById('page-myapp').innerHTML = `
-    <div class="card text-center">
+    <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
+      <div class="px-4 py-5 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
+          <p class="text-white font-black text-2xl tracking-widest mt-1">LADI</p>
+          <p class="text-white/60 text-xs mt-1.5">우리가 어떤 팀인지 · 한 주 · 파트 · 훈련</p>
+        </div>
+        <span class="text-white/50 text-2xl">›</span>
+      </div>
+    </div>
+
+    <div class="card text-center !py-4">
       <p class="text-xs text-gray-500">${esc(a.name)}${a.grade ? ` · ${esc(a.grade)}학년 ${esc(a.cls||'')}반` : ''} · ${esc(a.part)}${a.detail ? `(${esc(a.detail)})` : ''}</p>
-      <p class="text-xs text-gray-400 mt-2">내 실기번호</p>
-      <p class="text-3xl font-bold text-purple-700 tracking-widest select-text">${esc(a.code)}</p>
+      <p class="text-[11px] text-gray-400 mt-2">내 실기번호</p>
+      <p class="text-3xl font-bold text-gray-900 tracking-widest select-text">${esc(a.code)}</p>
       <p class="text-[11px] text-gray-400 mt-1">로그인할 때 쓰는 번호예요. 꼭 적어두세요</p>
       <div class="mt-3">${stageChip(a.stage, true)}</div>
       ${info.desc ? `<p class="text-xs text-gray-500 mt-2">${info.desc}</p>` : ''}
     </div>
 
-    <div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer" style="background:#000">
-      <div class="px-4 py-4 flex items-center justify-between">
-        <div>
-          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
-          <p class="text-white font-black text-xl tracking-widest mt-0.5">LADI</p>
-        </div>
-        <span class="text-white/50 text-2xl">›</span>
-      </div>
-    </div>
-    <div class="card">
+    <div onclick="navigate('docs')" class="card cursor-pointer">
       <div class="flex items-center justify-between">
-        <h3 class="font-bold text-gray-800 text-sm">1차 서류</h3>
-        <span class="text-xs font-bold ${submitted ? 'text-blue-600' : 'text-amber-600'}">${submitted ? '제출 완료' : '작성 중'}</span>
+        <h3 class="font-bold text-gray-800 text-sm">내 파트 공지 · ${esc(a.part)}${a.detail ? ` (${esc(a.detail)})` : ''}</h3>
+        <span class="text-xs text-gray-400">${partPrep(a.part) ? '공지 있음 ›' : '아직 ›'}</span>
       </div>
-      ${c.docDeadline ? `<p class="text-xs text-gray-500 mt-1">마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}</p>` : ''}
-      <p class="text-xs text-gray-400 mt-1">${docsChars(a).toLocaleString()}자 썼어요</p>
-      <button onclick="navigate('docs')" class="w-full mt-3 ${submitted ? 'bg-gray-100 text-gray-700' : 'bg-purple-600 text-white'} py-3 rounded-xl font-bold text-sm">${submitted ? '서류 다시 보기' : '서류 쓰러 가기'}</button>
+      ${partPrep(a.part)
+        ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mt-2">${linkify(partPrep(a.part))}</p>`
+        : `<p class="text-sm text-gray-400 mt-2">준비사항이 올라오면 여기에 뜹니다</p>`}
     </div>
 
-    ${a.stage === '서류합격' || a.stage === '최종합격' ? `
     <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm">2차 실기·면접</h3>
-      <p class="text-xs text-gray-500 mt-1">${c.auditionDate ? `${fmt(parseDate(c.auditionDate))} ${esc(c.auditionTime||'')}` : '일정은 곧 안내됩니다'}</p>
-      <button onclick="navigate('audition')" class="w-full mt-3 bg-white border py-3 rounded-xl font-bold text-sm text-gray-700">실기 안내 보기</button>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">1차 서류 — 이렇게 씁니다</h3>
+      ${c.docDeadline ? `<p class="text-xs font-bold text-gray-900 mb-2">마감 ${fmt(parseDate(c.docDeadline))} · ${dday(c.docDeadline)}</p>` : ''}
+      <ul class="space-y-1 mb-3">
+        ${APPLY_Q.map(q => {
+          const n = ((a.docs||{})[q.key] || '').trim().length, ok = n >= q.min;
+          return `<li class="flex items-center justify-between text-xs">
+            <span class="${ok ? 'text-gray-700' : 'text-gray-500'}">${esc(q.title)}</span>
+            <span class="${ok ? 'text-blue-600 font-bold' : 'text-gray-400'} whitespace-nowrap ml-2">${ok ? '✓ ' : ''}${n}/${q.min}자</span>
+          </li>`;
+        }).join('')}
+      </ul>
+      <p class="text-xs text-gray-500 leading-relaxed mb-3">
+        <b>'구체적으로'가 전부입니다.</b> "은혜받았습니다" 한 줄 대신, 언제 어디서 무슨 일이 있었는지 적어주세요.
+        흔들렸던 때를 정직하게 적은 글이 훨씬 좋습니다. 문항마다 최소 글자 수를 채워야 제출됩니다.</p>
+      <div class="flex gap-2 mb-3">
+        <a href="files/26하반기_라디_지원서_양식.hwpx" download class="flex-1 text-center bg-gray-50 border rounded-xl py-2.5 text-xs font-bold text-gray-700">한글 HWP</a>
+        <a href="files/26하반기_라디_지원서_양식.docx" download class="flex-1 text-center bg-gray-50 border rounded-xl py-2.5 text-xs font-bold text-gray-700">워드 DOC</a>
+        <a href="files/26하반기_라디_지원서_양식.pdf" target="_blank" rel="noopener" class="flex-1 text-center bg-gray-50 border rounded-xl py-2.5 text-xs font-bold text-gray-700">PDF</a>
+      </div>
+      <button onclick="navigate('docs')" class="w-full ${submitted ? 'bg-gray-100 text-gray-700' : 'bg-gray-900 text-white'} py-3 rounded-xl font-bold text-sm">${submitted ? '서류 다시 보기 · 고치기' : '서류 쓰러 가기'}</button>
+      <p class="text-[11px] text-gray-400 mt-2 text-center">${submitted ? '마감 전까지 고칠 수 있어요' : '앱에서 바로 써도 되고, 양식을 받아 쓴 뒤 옮겨 적어도 됩니다'}</p>
+    </div>
+
+    ${passed ? `
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-2">2차 실기·면접</h3>
+      <p class="text-sm text-gray-700">${c.auditionDate ? `${fmt(parseDate(c.auditionDate))} ${esc(c.auditionTime || '')}` : '일정이 정해지면 여기에 올라옵니다'}</p>
+      ${c.auditionPlace ? `<p class="text-sm text-gray-700 mt-0.5">${esc(c.auditionPlace)}</p>` : ''}
+      ${c.auditionNote ? `<p class="text-xs text-gray-500 mt-2 whitespace-pre-wrap">${esc(c.auditionNote)}</p>` : ''}
+      <div class="flex gap-2 mt-3">
+        <div class="flex-1 bg-gray-50 border rounded-xl py-2 text-center"><p class="text-[11px] text-gray-400">실기</p><p class="text-sm font-bold text-gray-800">5분</p></div>
+        <div class="flex-1 bg-gray-50 border rounded-xl py-2 text-center"><p class="text-[11px] text-gray-400">면접</p><p class="text-sm font-bold text-gray-800">5분</p></div>
+        <div class="flex-1 bg-gray-50 border rounded-xl py-2 text-center"><p class="text-[11px] text-gray-400">내 번호</p><p class="text-sm font-bold text-gray-800">${esc(a.code)}</p></div>
+      </div>
     </div>` : ''}
 
     ${a.stage === '최종합격' ? `
     <div class="card bg-green-50 border border-green-200">
       <p class="text-sm text-green-800 font-bold">최종 합격입니다. 축하합니다!</p>
-      <p class="text-xs text-green-700 mt-1 leading-relaxed">이제 수습 8주가 시작됩니다. 수습 페이지는 <b>이름 + PIN 0000</b>으로 들어가면 됩니다(이 번호가 아니라요). 첫 로그인 뒤 PIN을 꼭 바꾸세요.</p>
+      <p class="text-xs text-green-700 mt-1 leading-relaxed">이제 수습 8주가 시작됩니다. 잠겨 있던 메뉴가 열립니다.
+        <b>이름 + PIN 0000</b>으로 팀원 로그인을 하면 됩니다(이 번호가 아니라요). 첫 로그인 뒤 PIN을 꼭 바꾸세요.</p>
     </div>` : ''}
     ${(a.stage === '서류불합격' || a.stage === '최종불합격') ? `
     <div class="card">
@@ -1810,10 +1938,20 @@ function renderDocs() {
   const locked = a.stage !== '접수' || deadlinePassed();
   const photo = _applyPendingPhoto || a.photo || '';
   document.getElementById('page-docs').innerHTML = `
-    <div class="card !py-3 bg-purple-50 border border-purple-100">
-      <p class="text-sm font-bold text-purple-800">'구체적으로'가 이 서류의 전부입니다</p>
-      <p class="text-xs text-purple-700 mt-1 leading-relaxed">"은혜받았습니다" 한 줄 대신, 언제 어디서 무슨 일이 있었는지를 적어주세요. 흔들렸던 때를 정직하게 적은 글이 훨씬 좋습니다. 문항마다 최소 글자 수를 채워야 제출됩니다.</p>
+    <div class="card !py-3 bg-gray-50 border border-gray-200">
+      <p class="text-sm font-bold text-gray-900">'구체적으로'가 이 서류의 전부입니다</p>
+      <p class="text-xs text-gray-900 mt-1 leading-relaxed">"은혜받았습니다" 한 줄 대신, 언제 어디서 무슨 일이 있었는지를 적어주세요. 흔들렸던 때를 정직하게 적은 글이 훨씬 좋습니다. 문항마다 최소 글자 수를 채워야 제출됩니다.</p>
       ${locked ? `<p class="text-xs text-red-600 font-bold mt-2">${deadlinePassed() ? '마감이 지나 고칠 수 없습니다' : '심사가 시작되어 고칠 수 없습니다'}</p>` : ''}
+    </div>
+    <div class="card">
+      <h3 class="font-bold text-gray-800 text-sm mb-1">지원서 양식 받기</h3>
+      <p class="text-xs text-gray-500 mb-3">앱에서 바로 써도 되고, 양식을 받아 쓴 뒤 옮겨 적어도 됩니다.
+        <b>문항과 최소 분량은 아래 양식이 기준</b>입니다.</p>
+      <div class="flex gap-2">
+        <a href="files/26하반기_라디_지원서_양식.hwpx" download class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-bold text-gray-700">한글 HWP</a>
+        <a href="files/26하반기_라디_지원서_양식.docx" download class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-bold text-gray-700">워드 DOC</a>
+        <a href="files/26하반기_라디_지원서_양식.pdf" target="_blank" rel="noopener" class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-bold text-gray-700">PDF 보기</a>
+      </div>
     </div>
     ${APPLY_Q.map(q => {
       const val = _applyDraft[q.key] !== undefined ? _applyDraft[q.key] : ((a.docs||{})[q.key] || '');
@@ -1832,7 +1970,7 @@ function renderDocs() {
         <img src="${photo}" onclick="showImg(this.src)" class="w-full rounded-xl border cursor-pointer" style="max-height:280px;object-fit:contain;background:#F9FAFB">
         ${locked ? '' : `<button onclick="clearApplyPhoto()" style="min-height:32px" class="absolute top-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>`}
       </div>` : ''}
-      ${locked ? '' : `<label class="flex items-center justify-center gap-2 border-2 border-dashed border-purple-200 rounded-xl py-3 text-sm font-semibold text-purple-500 cursor-pointer active:bg-purple-50">
+      ${locked ? '' : `<label class="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm font-semibold text-gray-500 cursor-pointer active:bg-gray-50">
         📷 ${photo ? '사진 바꾸기' : '사진 올리기'}
         <input type="file" accept="image/*" class="hidden" onchange="pickApplyPhoto(this)">
       </label>`}
@@ -1842,9 +1980,22 @@ function renderDocs() {
     ${locked ? '' : `
     <div class="flex gap-2">
       <button onclick="saveDocs(false)" class="flex-1 bg-white border py-4 rounded-xl font-bold text-sm text-gray-700">임시 저장</button>
-      <button onclick="saveDocs(true)" class="flex-1 bg-purple-600 text-white py-4 rounded-xl font-bold text-sm">${a.submittedAt ? '고쳐서 다시 제출' : '제출하기'}</button>
+      <button onclick="saveDocs(true)" class="flex-1 bg-gray-900 text-white py-4 rounded-xl font-bold text-sm">${a.submittedAt ? '고쳐서 다시 제출' : '제출하기'}</button>
     </div>
     <p class="text-[11px] text-gray-400 text-center">제출한 뒤에도 마감 전까지는 고칠 수 있어요</p>`}`;
+}
+
+// 자기 파트 공지만 보여준다 — 남의 파트 준비사항은 뜨지 않는다.
+function partCard(a) {
+  return `<div class="card">
+    <div class="flex items-center justify-between">
+      <h3 class="font-bold text-gray-800 text-sm">${esc(a.part)} 준비사항</h3>
+      <span class="text-[11px] text-gray-400">내 파트</span>
+    </div>
+    ${partPrep(a.part)
+      ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mt-2">${linkify(partPrep(a.part))}</p>`
+      : `<p class="text-sm text-gray-400 mt-2">준비되는 대로 여기에 올라옵니다</p>`}
+  </div>`;
 }
 
 function renderAudition() {
@@ -1854,7 +2005,7 @@ function renderAudition() {
   document.getElementById('page-audition').innerHTML = allowed ? `
     <div class="card text-center">
       <p class="text-xs text-gray-400">내 실기번호</p>
-      <p class="text-3xl font-bold text-purple-700 tracking-widest select-text">${esc(a.code)}</p>
+      <p class="text-3xl font-bold text-gray-900 tracking-widest select-text">${esc(a.code)}</p>
       <p class="text-[11px] text-gray-400 mt-1">이 번호로 부릅니다</p>
     </div>
     <div class="card">
@@ -1865,15 +2016,13 @@ function renderAudition() {
     </div>
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">어떻게 진행되나요</h3>
-      <div class="flex gap-2 py-1"><span class="text-purple-600 font-bold text-sm w-14">실기 5분</span><span class="text-sm text-gray-700">준비한 곡을 합니다</span></div>
-      <div class="flex gap-2 py-1"><span class="text-purple-600 font-bold text-sm w-14">면접 5분</span><span class="text-sm text-gray-700">서류에 쓴 내용을 두고 이야기합니다</span></div>
+      <div class="flex gap-2 py-1"><span class="text-gray-700 font-bold text-sm w-14">실기 5분</span><span class="text-sm text-gray-700">준비한 곡을 합니다</span></div>
+      <div class="flex gap-2 py-1"><span class="text-gray-700 font-bold text-sm w-14">면접 5분</span><span class="text-sm text-gray-700">서류에 쓴 내용을 두고 이야기합니다</span></div>
     </div>
-    <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm mb-1">${esc(a.part)} 준비사항</h3>
-      <p class="text-sm text-gray-700 whitespace-pre-wrap">${partPrep(a.part) ? esc(partPrep(a.part)) : '<span class="text-gray-300">준비되는 대로 여기에 올라옵니다</span>'}</p>
-    </div>` : `
+    ${partCard(a)}` : `
+    ${partCard(a)}
     <div class="card text-center">
-      <p class="text-sm text-gray-500 py-6">서류 결과가 나온 뒤에 열립니다</p>
+      <p class="text-sm text-gray-500 py-5">실기 일정과 장소, 순서는 <b>서류 결과가 나온 뒤</b>에 열립니다</p>
     </div>`;
 }
 
@@ -1891,7 +2040,7 @@ function renderApplicants() {
           <p class="text-sm font-bold text-gray-800">26년 하반기 지원자 ${list.length}명</p>
           <p class="text-xs text-gray-500 mt-0.5">접수 ${cnt.접수} · 서류합격 ${cnt.서류합격} · 최종합격 ${cnt.최종합격}</p>
         </div>
-        <button onclick="openModal('modal-notice-edit')" style="min-height:36px" class="text-xs bg-purple-600 text-white px-3 py-2 rounded-xl font-bold">공고 편집</button>
+        <button onclick="openModal('modal-notice-edit')" style="min-height:36px" class="text-xs bg-gray-900 text-white px-3 py-2 rounded-xl font-bold">공고 편집</button>
       </div>
       <p class="text-[11px] text-gray-400 mt-2">${c.open ? '접수를 받고 있습니다' : '접수를 닫아 두었습니다'}${c.docDeadline ? ` · 서류 마감 ${fmt(parseDate(c.docDeadline))}` : ''}</p>
     </div>
@@ -1912,13 +2061,13 @@ function renderApplicants() {
           ${APPLY_Q.map(q => {
             const t = (a.docs||{})[q.key] || '';
             return `<div>
-              <p class="text-xs font-bold text-purple-700">${q.title} <span class="text-gray-300 font-normal">${t.trim().length}자</span></p>
+              <p class="text-xs font-bold text-gray-900">${q.title} <span class="text-gray-300 font-normal">${t.trim().length}자</span></p>
               <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3 mt-1">${t ? esc(t) : '<span class="text-gray-300">아직 안 씀</span>'}</p>
             </div>`;
           }).join('')}
           ${a.photo ? `<img src="${a.photo}" onclick="showImg(this.src)" class="w-full rounded-xl border cursor-pointer" style="max-height:280px;object-fit:contain;background:#F9FAFB">` : ''}
-          ${a.videoUrl ? `<p class="text-xs">영상: <a href="${esc(a.videoUrl)}" target="_blank" rel="noopener" class="text-purple-600 underline break-all">${esc(a.videoUrl)}</a></p>` : ''}
-          ${a.phone ? `<a href="tel:${esc(a.phone)}" class="text-xs text-purple-600 font-semibold">📞 ${esc(a.phone)}</a>` : ''}
+          ${a.videoUrl ? `<p class="text-xs">영상: <a href="${esc(a.videoUrl)}" target="_blank" rel="noopener" class="text-gray-700 underline break-all">${esc(a.videoUrl)}</a></p>` : ''}
+          ${a.phone ? `<a href="tel:${esc(a.phone)}" class="text-xs text-gray-700 font-semibold">📞 ${esc(a.phone)}</a>` : ''}
           <div>
             <p class="text-[11px] text-gray-400 mb-1">1차 서류</p>
             <div class="flex gap-2">
@@ -1934,7 +2083,7 @@ function renderApplicants() {
             </div>
           </div>
           ${a.stage === '최종합격' ? `<button onclick="moveToTrainee('${a.code}')" ${moved?'disabled':''}
-            class="w-full py-3 rounded-xl text-sm font-bold ${moved ? 'bg-gray-100 text-gray-400' : 'bg-purple-600 text-white'}">
+            class="w-full py-3 rounded-xl text-sm font-bold ${moved ? 'bg-gray-100 text-gray-400' : 'bg-gray-900 text-white'}">
             ${moved ? '✓ 수습 명단에 있음' : '수습 명단으로 넣기'}</button>` : ''}
           <button onclick="setStage('${a.code}','접수')" class="w-full py-2 text-xs text-gray-400" style="min-height:32px">심사 전으로 되돌리기</button>
         </div>` : ''}
@@ -2061,7 +2210,7 @@ function renderRules() {
       <p class="text-xs text-gray-500">총 8주 과정입니다. 아래 셋을 모두 지켜야 수료합니다.</p>
     </div>
     <div class="card">
-      <h3 class="font-bold text-purple-700 text-sm mb-2">8주 일정 (토요일)</h3>
+      <h3 class="font-bold text-gray-900 text-sm mb-2">8주 일정 (토요일)</h3>
       ${PROGRAM.map(p => `
         <div class="flex items-center gap-2 py-1.5 border-b last:border-0">
           <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold ${p.cls} flex-shrink-0">${p.name}</span>
@@ -2082,7 +2231,7 @@ function renderRules() {
       })()}
     </div>
     <div class="card">
-      <h3 class="font-bold text-purple-700 text-sm mb-2">1. 출석 — 총 8주 (토/주일)</h3>
+      <h3 class="font-bold text-gray-900 text-sm mb-2">1. 출석 — 총 8주 (토/주일)</h3>
       <ul class="space-y-1.5 text-sm text-gray-700">
         <li class="flex gap-2"><span class="st-지각 px-2 rounded text-xs flex items-center">지각</span><span>3회 이상 수료 불가</span></li>
         <li class="flex gap-2"><span class="st-결석 px-2 rounded text-xs flex items-center">결석</span><span>1회 시 수료 연기, 2회 이상 수료 불가</span></li>
@@ -2091,16 +2240,16 @@ function renderRules() {
       </ul>
     </div>
     <div class="card">
-      <h3 class="font-bold text-purple-700 text-sm mb-2">2. 큐티</h3>
+      <h3 class="font-bold text-gray-900 text-sm mb-2">2. 큐티</h3>
       <p class="text-sm text-gray-700">월~금 5일 중 <b>4일 이상</b></p>
       <p class="text-sm text-gray-700 mt-1">4일 미만이 <b>2회</b>면 수료 불가</p>
     </div>
     <div class="card">
-      <h3 class="font-bold text-purple-700 text-sm mb-2">3. 가테</h3>
+      <h3 class="font-bold text-gray-900 text-sm mb-2">3. 가테</h3>
       <p class="text-sm text-gray-700">미통과 <b>3회 이상</b> 수료 불가</p>
     </div>
-    <div class="card bg-purple-50 border border-purple-100">
-      <p class="text-xs text-purple-800 leading-relaxed">
+    <div class="card bg-gray-50 border border-gray-200">
+      <p class="text-xs text-gray-900 leading-relaxed">
         한 주차는 <b>토요일부터 다음 금요일까지</b>입니다. 토·주일 출석을 하고, 이어지는 월~금에 큐티를 합니다.
         아직 끝나지 않은 주차와 기록이 비어 있는 주차는 판정에서 빼둡니다.
       </p>
@@ -2131,7 +2280,7 @@ function openModal(id) {
         <input type="text" id="nt-place" value="${esc(c.auditionPlace)}" placeholder="본당 3층 소예배실"></div>
       <div><label class="text-xs text-gray-500 font-semibold mb-1 block">실기 안내 (준비물·주의사항)</label>
         <textarea id="nt-note" rows="3" class="w-full border rounded-xl p-3 text-sm resize-none">${esc(c.auditionNote)}</textarea></div>
-      <p class="text-xs font-bold text-purple-700 pt-2">파트별 준비사항 — 어떤 곡을 어떻게 준비할지</p>
+      <p class="text-xs font-bold text-gray-900 pt-2">파트별 준비사항 — 어떤 곡을 어떻게 준비할지</p>
       ${APPLY_PARTS.map(pt => `<div><label class="text-xs text-gray-500 font-semibold mb-1 block">${pt}</label>
         <textarea id="nt-part-${pt}" rows="4" class="w-full border rounded-xl p-3 text-sm resize-none" placeholder="곡 · 준비 방법 · 반주 여부 등">${esc(partPrep(pt))}</textarea></div>`).join('')}`;
   }
@@ -2164,6 +2313,14 @@ function toast(msg, ms) {
   el._t = setTimeout(() => { el.style.opacity = '0'; }, ms || 2400);
 }
 // 어떤 예외가 나도 앱이 통째로 멈추지 않게 한다.
+// PC에서 ESC를 누르면 열려 있는 팝업이 닫힌다.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = document.querySelectorAll('.modal.open');
+  if (!open.length) return;
+  e.preventDefault();
+  open.forEach(m => m.classList.remove('open'));
+});
 window.addEventListener('error', e => console.warn('[전역오류]', e.error || e.message));
 window.addEventListener('unhandledrejection', e => console.warn('[전역오류:promise]', e.reason));
 
@@ -2182,6 +2339,7 @@ loadLocal();
 // 코드의 명단이 저장본보다 최신이면 빠진 사람을 채운다
 state.students = ROSTER.map(r => Object.assign({}, r, (state.students || []).find(s => s.id === r.id) || {}));
 fillLoginSelect();
+paintLanding();
 checkWeek = currentWeek();
 // 큐티 화면은 오늘 자로 연다. 오늘이 토·주일이면 그 주 월요일부터.
 qtDate = qtSlotOf(iso(today0())) ? iso(today0()) : qtDateOf(currentWeek(), 0);
