@@ -83,7 +83,7 @@
     <h1 class="text-lg font-bold cursor-pointer active:opacity-70" onclick="navigate('home')">LADI 신입생</h1>
     <div class="flex items-center gap-2">
       <div id="header-week" class="text-sm bg-purple-600 px-3 py-1 rounded-full"></div>
-      <button onclick="openModal('modal-user-menu')" class="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
+      <button id="header-user-btn" onclick="openModal('modal-user-menu')" class="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
         <span id="header-user-name" class="text-xs max-w-20 truncate"></span>
       </button>
     </div>
@@ -295,7 +295,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.6';
+const APP_BUILD = '2026-08-26.7';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -1073,9 +1073,14 @@ function renderAll() {
   // 로그인 전 모집 안내·지원 신청
   if (publicView) {
     navM.classList.add('hidden'); navA.classList.add('hidden');
+    // 로그인 전이라 헤더의 계정·주차 표시는 숨긴다
+    document.getElementById('header-user-btn').style.display = 'none';
+    document.getElementById('header-week').style.display = 'none';
     ({ notice: renderNotice, apply: renderApply }[currentPage] || renderNotice)();
     return;
   }
+  document.getElementById('header-user-btn').style.display = '';
+  document.getElementById('header-week').style.display = '';
   // 지원자 세션
   if (currentApplicant) {
     navM.classList.add('hidden'); navA.classList.remove('hidden');
