@@ -25,7 +25,7 @@
   .group-솔라디 { background-color: #FEF9C3 !important; }
   .group-라디스 { background-color: #FFE4D6 !important; }
   .group-액기스 { background-color: #DCFCE7 !important; }
-  .badge-팀장 { background:#DBEAFE; color:#1e40af; }
+  .badge-팀장 { background:#111827; color:#fff; }
   .badge-솔라디 { background:#FEF9C3; color:#92400e; }
   .badge-라디스 { background:#FFE4D6; color:#9a3412; }
   .badge-액기스 { background:#DCFCE7; color:#166534; }
@@ -48,12 +48,12 @@
   .lineup-조건부 { background:#FEF9C3; color:#B45309; font-weight:700; }
   .lineup-제외 { background:#FEE2E2; color:#DC2626; font-weight:700; }
   .lineup-무단 { background:#FEE2E2; color:#7C2D12; font-weight:700; }
-  .lineup-확인필요 { background:#F3E8FF; color:#7C3AED; font-weight:700; }
+  .lineup-확인필요 { background:#F3E8FF; color:#111827; font-weight:700; }
 
   /* ── 네비게이션 활성 상태 ── */
-  .nav-btn.active { color: #7C3AED; }
-  .nav-btn.active svg { stroke: #7C3AED; }
-  .nav-btn.active span { color: #7C3AED; }
+  .nav-btn.active { color: #111827; }
+  .nav-btn.active svg { stroke: #111827; }
+  .nav-btn.active span { color: #111827; }
   .nav-btn span { font-size: 12px; }
 
   /* ── 라인업 흐림 처리 ── */
@@ -62,7 +62,7 @@
 
   .love-photo-thumb { width:72px; height:72px; object-fit:cover; border-radius:8px; }
   #qr-video { width:100%; max-width:340px; border-radius:12px; }
-  #qr-scan-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:200px; height:200px; border:3px solid #7C3AED; border-radius:12px; pointer-events:none; }
+  #qr-scan-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:200px; height:200px; border:3px solid #111827; border-radius:12px; pointer-events:none; }
   nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   /* ── 체크셀 터치 영역 확대 ── */
@@ -105,7 +105,7 @@
     border:1px solid #D1D5DB; border-radius:8px; padding:8px 12px;
     font-size:14px; width:100%; outline:none;
   }
-  input:focus, select:focus, textarea:focus { border-color:#7C3AED; box-shadow:0 0 0 2px rgba(124,58,237,0.2); }
+  input:focus, select:focus, textarea:focus { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,0.15); }
 
   /* ── 버튼 최소 높이 44px ── */
   button, .btn { min-height: 44px; }
@@ -141,7 +141,7 @@
   /* ── 오늘 생일 배너 ── */
   #today-birthday-banner {
     display: none;
-    background: linear-gradient(90deg, #EC4899 0%, #7C3AED 100%);
+    background: linear-gradient(90deg, #EC4899 0%, #111827 100%);
     color: #fff;
     padding: 10px 16px;
     font-size: 13px;
@@ -156,6 +156,55 @@
   #today-birthday-banner.show { display: block; }
   body.has-birthday-banner main { padding-top: calc(3.5rem + 36px); }
   body.has-birthday-banner.has-kakao-banner main { padding-top: calc(3.5rem + 48px + 36px); }
+
+  /* ── LADI 소개 ── */
+  #page-about { background:#000; color:#fff; margin:-3.5rem 0 -5rem; padding:3.5rem 0 5rem; }
+  .ab { padding:0 22px; max-width:520px; margin:0 auto; }
+  .ab-sec { padding:54px 0; border-top:1px solid rgba(255,255,255,.10); }
+  .ab-sec:first-child { border-top:0; }
+  .ab-kicker { font-size:11px; letter-spacing:.28em; color:rgba(255,255,255,.42); font-weight:700; margin-bottom:14px; }
+  .ab h2 { font-size:23px; font-weight:800; letter-spacing:-.01em; line-height:1.3; margin:0 0 14px; color:#fff; }
+  .ab p { font-size:15px; line-height:1.85; color:rgba(255,255,255,.80); margin:0 0 14px; }
+  .ab p.lead { font-size:17px; color:#fff; font-weight:600; line-height:1.75; }
+  .ab .dim { color:rgba(255,255,255,.45); }
+  .ab .hl { color:#fff; font-weight:700; }
+
+  /* 십자가 타이포 — 이미지 대신 글자로 그린다(어느 화면에서도 또렷하게) */
+  .cross { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:18px 0 8px; }
+  .cross .ln { position:relative; display:flex; justify-content:center; width:100%; height:38px; align-items:center; }
+  .cross .ch { font-size:34px; font-weight:300; letter-spacing:.02em; line-height:1; width:34px; text-align:center; display:inline-block; }
+  .cross .arm { position:absolute; top:50%; transform:translateY(-50%); display:flex; }
+  .cross .arm.l { right:calc(50% + 17px); }
+  .cross .arm.r { left:calc(50% + 17px); }
+  .cross .waves { position:absolute; left:calc(50% + 58px); top:50%; transform:translateY(-50%);
+                  font-size:9px; font-weight:800; line-height:1.4; letter-spacing:.06em; text-align:left; color:#fff; }
+  .ladi-mark { font-size:44px; font-weight:900; letter-spacing:.10em; text-align:center; margin-top:26px; color:#fff; }
+  .ladi-sub { text-align:center; font-size:11px; letter-spacing:.34em; color:rgba(255,255,255,.5); margin-top:8px; font-weight:700; }
+
+  .chant { text-align:center; padding:6px 0 2px; }
+  .chant .c1 { font-size:17px; font-weight:800; line-height:1.9; color:#fff; }
+  .chant .c2 { font-size:13px; letter-spacing:.22em; color:rgba(255,255,255,.5); margin-top:12px; font-weight:700; }
+  .chant .c3 { font-size:30px; font-weight:900; letter-spacing:.14em; margin-top:2px; color:#fff; }
+
+  .sched { border-left:2px solid rgba(255,255,255,.16); margin-left:6px; padding-left:16px; }
+  .sched .it { padding:9px 0; border-bottom:1px solid rgba(255,255,255,.07); display:flex; gap:10px; align-items:baseline; }
+  .sched .it:last-child { border-bottom:0; }
+  .sched .tm { font-size:11px; color:rgba(255,255,255,.45); font-variant-numeric:tabular-nums; white-space:nowrap; min-width:88px; font-weight:600; }
+  .sched .nm { font-size:14px; color:rgba(255,255,255,.9); }
+
+  .part { padding:20px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+  .part:last-child { border-bottom:0; }
+  .part .pn { font-size:21px; font-weight:900; letter-spacing:.03em; color:#fff; }
+  .part .pe { font-size:10px; letter-spacing:.26em; color:rgba(255,255,255,.42); font-weight:700; margin-top:3px; }
+  .part .pd { font-size:14px; color:rgba(255,255,255,.75); line-height:1.75; margin-top:8px; }
+
+  .steps { counter-reset:st; }
+  .steps .st { position:relative; padding:11px 0 11px 34px; font-size:14.5px; color:rgba(255,255,255,.85); }
+  .steps .st::before { counter-increment:st; content:counter(st); position:absolute; left:0; top:11px;
+    width:21px; height:21px; border-radius:50%; border:1px solid rgba(255,255,255,.3);
+    font-size:10px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.6); font-weight:700; }
+  .steps .st.last { color:#fff; font-weight:800; }
+  .steps .st.last::before { background:#fff; color:#000; border-color:#fff; }
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -171,7 +220,7 @@
 <div id="today-birthday-banner"></div>
 
 <!-- Header -->
-<header class="bg-purple-700 text-white px-4 py-3 fixed top-0 left-0 right-0 z-50 shadow-md">
+<header class="text-white px-4 py-3 fixed top-0 left-0 right-0 z-50 shadow-md" style="background:#0B0B0C">
   <div class="flex items-center justify-between max-w-2xl mx-auto">
     <div class="flex items-center gap-2">
       <button id="header-back-btn" onclick="goBack()" class="text-white opacity-80 active:opacity-60 pr-1" style="display:none">
@@ -180,9 +229,9 @@
       <h1 class="text-lg font-bold cursor-pointer active:opacity-70" onclick="navigate('dashboard')">수영로 LADI</h1>
     </div>
     <div class="flex items-center gap-2">
-      <div id="header-month" class="text-sm bg-purple-600 px-3 py-1 rounded-full cursor-pointer" onclick="showMonthPicker()">2026-06</div>
-      <button id="header-user-btn" onclick="showUserMenu()" class="flex items-center gap-1 bg-purple-600 px-2 py-1 rounded-full text-sm">
-        <div class="header-user-icon w-5 h-5 rounded-full bg-purple-400 overflow-hidden flex items-center justify-center text-xs font-bold" id="header-user-icon"></div>
+      <div id="header-month" class="text-sm px-3 py-1 rounded-full cursor-pointer" style="background:rgba(255,255,255,.12)" onclick="showMonthPicker()">2026-06</div>
+      <button id="header-user-btn" onclick="showUserMenu()" class="flex items-center gap-1 px-2 py-1 rounded-full text-sm" style="background:rgba(255,255,255,.12)">
+        <div class="header-user-icon w-5 h-5 rounded-full bg-white/25 overflow-hidden flex items-center justify-center text-xs font-bold" id="header-user-icon"></div>
         <span id="header-user-name" class="text-xs max-w-16 truncate"></span>
       </button>
     </div>
@@ -197,21 +246,23 @@
     <div id="dashboard-content"></div>
   </div>
 
+  <div id="page-about" class="page"></div>
+
   <!-- ==================== STUDENTS ==================== -->
   <div id="page-students" class="page">
     <!-- 상단 고정 검색 + 필터 영역 -->
     <div class="sticky top-14 z-40 bg-gray-50 px-4 pt-3 pb-2 border-b border-gray-100">
       <div class="relative mb-2">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input type="text" id="student-search" placeholder="이름으로 검색..." class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-purple-400" oninput="filterStudentSearch(this.value)">
+        <input type="text" id="student-search" placeholder="이름으로 검색..." class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:border-gray-400" oninput="filterStudentSearch(this.value)">
       </div>
       <div class="flex gap-2 flex-wrap items-center">
-        <button onclick="filterGroup('전체')" id="grp-전체" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-purple-100 text-purple-800 font-semibold border border-purple-300" style="min-height:32px">전체</button>
+        <button onclick="filterGroup('전체')" id="grp-전체" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-900 font-semibold border border-gray-400" style="min-height:32px">전체</button>
         <button onclick="filterGroup('팀장')" id="grp-팀장" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 font-semibold border border-blue-300" style="min-height:32px">팀장</button>
         <button onclick="filterGroup('솔라디')" id="grp-솔라디" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-800 font-semibold border border-yellow-300" style="min-height:32px">솔라디</button>
         <button onclick="filterGroup('라디스')" id="grp-라디스" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-orange-100 text-orange-800 font-semibold border border-orange-300" style="min-height:32px">라디스</button>
         <button onclick="filterGroup('액기스')" id="grp-액기스" class="grp-btn text-xs px-3 py-1.5 rounded-full bg-green-100 text-green-800 font-semibold border border-green-300" style="min-height:32px">액기스</button>
-        <button onclick="openAddStudent()" id="btn-add-student" class="ml-auto text-xs px-3 py-1.5 rounded-full bg-purple-600 text-white font-semibold" style="min-height:32px">+ 추가</button>
+        <button onclick="openAddStudent()" id="btn-add-student" class="ml-auto text-xs px-3 py-1.5 rounded-full bg-gray-900 text-white font-semibold" style="min-height:32px">+ 추가</button>
       </div>
     </div>
     <div id="student-list" class="p-4"></div>
@@ -227,7 +278,7 @@
         <button onclick="selectCheckMonth('2026-03')" data-cm="2026-03" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">3월</button>
         <button onclick="selectCheckMonth('2026-04')" data-cm="2026-04" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">4월</button>
         <button onclick="selectCheckMonth('2026-05')" data-cm="2026-05" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">5월</button>
-        <button onclick="selectCheckMonth('2026-06')" data-cm="2026-06" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-purple-600 text-white">6월</button>
+        <button onclick="selectCheckMonth('2026-06')" data-cm="2026-06" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-900 text-white">6월</button>
         <button onclick="selectCheckMonth('2026-07')" data-cm="2026-07" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">7월</button>
         <button onclick="selectCheckMonth('2026-08')" data-cm="2026-08" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">8월</button>
         <button onclick="selectCheckMonth('2026-09')" data-cm="2026-09" class="cm-tab text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">9월</button>
@@ -243,7 +294,7 @@
       </div>
       <div class="flex gap-2">
         <button onclick="openJuneWeek1Recovery()" id="june-recovery-btn" class="hidden text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">1주차 복구</button>
-        <button onclick="toggleView()" id="view-toggle" class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">카드뷰</button>
+        <button onclick="toggleView()" id="view-toggle" class="text-xs bg-gray-900 text-white px-3 py-1 rounded-full font-semibold" style="min-height:32px">카드뷰</button>
         <button onclick="exportCSV()" class="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-semibold" style="min-height:32px">내보내기</button>
       </div>
     </div>
@@ -267,7 +318,7 @@
 
   <!-- ==================== STUDENT DETAIL ==================== -->
   <div id="page-detail" class="page p-4">
-    <button onclick="navigate('students')" class="flex items-center gap-1 text-purple-700 mb-4 font-semibold text-sm">
+    <button onclick="navigate('students')" class="flex items-center gap-1 text-gray-900 mb-4 font-semibold text-sm">
       ← 목록으로
     </button>
     <div id="detail-content"></div>
@@ -421,7 +472,7 @@
       </div>
     </div>
     <div class="p-4 border-t flex gap-2">
-      <button onclick="saveStudent()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
+      <button onclick="saveStudent()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">저장</button>
       <button onclick="closeModal('modal-student')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
     </div>
   </div>
@@ -438,7 +489,7 @@
       <p class="text-xs text-gray-500">개역개정 본문을 붙여넣거나 직접 입력하세요</p>
       <textarea id="passage-text-input" rows="10" placeholder="본문 내용을 입력하세요..." class="w-full border rounded-xl p-3 text-sm resize-none leading-relaxed"></textarea>
       <div class="flex gap-2">
-        <button onclick="savePassageText()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
+        <button onclick="savePassageText()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">저장</button>
         <button onclick="closeModal('modal-passage')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
       </div>
     </div>
@@ -454,7 +505,7 @@
     </div>
     <div class="p-4 space-y-3">
       <div class="flex gap-2">
-        <button onclick="setQRType('토요일')" id="qr-sat" class="flex-1 py-2 rounded-lg bg-purple-600 text-white font-semibold text-sm">토요일</button>
+        <button onclick="setQRType('토요일')" id="qr-sat" class="flex-1 py-2 rounded-lg bg-gray-900 text-white font-semibold text-sm">토요일</button>
         <button onclick="setQRType('주일')" id="qr-sun" class="flex-1 py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold text-sm">주일</button>
       </div>
       <div class="flex gap-2">
@@ -477,7 +528,7 @@
           <input type="date" id="qr-date" class="mt-1">
         </div>
       </div>
-      <button onclick="generateQR()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold">QR 생성</button>
+      <button onclick="generateQR()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold">QR 생성</button>
       <div id="qr-output" class="text-center py-2"></div>
       <p class="text-xs text-gray-500 text-center" id="qr-info"></p>
     </div>
@@ -493,7 +544,7 @@
     </div>
     <div class="p-4 space-y-3 overflow-y-auto flex-1" id="modal-check-body"></div>
     <div class="p-4 border-t flex gap-2 flex-shrink-0">
-      <button onclick="saveCheck()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
+      <button onclick="saveCheck()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">저장</button>
       <button onclick="closeModal('modal-check')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
     </div>
   </div>
@@ -511,14 +562,14 @@
 </div>
 
 <!-- Login Screen -->
-<div id="login-screen" class="fixed inset-0 z-[300] flex items-center justify-center bg-gradient-to-br from-purple-800 to-purple-600">
+<div id="login-screen" class="fixed inset-0 z-[300] flex items-center justify-center bg-black">
   <!-- 어느 버전이 돌고 있는지 눈으로 확인하는 곳. 폰이 옛 버전에 갇혔는지 여기서 바로 보인다. -->
-  <div id="build-badge" class="absolute bottom-4 left-0 right-0 text-center text-[11px] text-purple-300/70 select-text"></div>
+  <div id="build-badge" class="absolute bottom-4 left-0 right-0 text-center text-[11px] text-white/40/70 select-text"></div>
   <div class="bg-white rounded-3xl w-full max-w-sm mx-4 overflow-hidden shadow-2xl">
-    <div class="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-center">
+    <div class="bg-black p-6 text-center">
       <div class="text-4xl mb-2">🎵</div>
       <h1 class="text-xl font-bold text-white">수영로 LADI 찬양팀</h1>
-      <p class="text-purple-200 text-sm mt-1">OT 체크 관리 시스템</p>
+      <p class="text-white/70 text-sm mt-1">OT 체크 관리 시스템</p>
     </div>
     <div class="p-6 space-y-4">
       <div>
@@ -534,8 +585,8 @@
                onkeydown="if(event.key==='Enter') doLogin()">
       </div>
       <p id="login-error" class="text-xs text-red-500 text-center hidden">PIN 번호가 올바르지 않습니다</p>
-      <button onclick="doLogin()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
-      <p class="text-xs text-gray-400 text-center">처음 PIN은 <span class="font-bold text-purple-600">0000</span> 입니다</p>
+      <button onclick="doLogin()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">로그인</button>
+      <p class="text-xs text-gray-400 text-center">처음 PIN은 <span class="font-bold text-gray-700">0000</span> 입니다</p>
     </div>
   </div>
 </div>
@@ -551,7 +602,7 @@
 <div id="modal-user-menu" class="modal">
   <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
     <div class="p-4 border-b flex items-center gap-3">
-      <div id="usermenu-profile-photo" class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer" onclick="closeModal('modal-user-menu');navigate('mypage')"></div>
+      <div id="usermenu-profile-photo" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer" onclick="closeModal('modal-user-menu');navigate('mypage')"></div>
       <div>
         <p class="font-bold text-gray-800" id="user-menu-name">내 계정</p>
         <p class="text-xs text-gray-500 mt-0.5" id="user-menu-role"></p>
@@ -588,7 +639,7 @@
       <p id="pin-error" class="text-xs text-red-500 hidden text-center"></p>
     </div>
     <div class="p-4 border-t flex gap-2">
-      <button onclick="doChangePIN()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm">변경</button>
+      <button onclick="doChangePIN()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">변경</button>
       <button onclick="closeModal('modal-pin')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">취소</button>
     </div>
   </div>
@@ -623,7 +674,7 @@
         <textarea id="pastoral-reason" rows="3" placeholder="목양적 판단 사유를 입력해 주세요..." class="w-full border rounded-xl p-3 text-sm"></textarea>
       </div>
       <div class="flex gap-2">
-        <button onclick="pastoralStep2Confirm()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">승인 완료</button>
+        <button onclick="pastoralStep2Confirm()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">승인 완료</button>
         <button onclick="closeModal('modal-pastoral')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
       </div>
     </div>
@@ -652,7 +703,7 @@
       <div><label class="text-xs text-gray-500 font-semibold mb-1 block">비고</label><textarea id="lm-note" rows="2" placeholder="특이사항"></textarea></div>
     </div>
     <div class="p-4 border-t flex gap-2">
-      <button onclick="saveLoveMeeting()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
+      <button onclick="saveLoveMeeting()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">저장</button>
       <button onclick="closeModal('modal-love-meeting')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
     </div>
   </div>
@@ -689,7 +740,7 @@
       <div><label class="text-xs text-gray-500 font-semibold mb-1 block">팀장 메모</label><textarea id="lr-memo" rows="2" placeholder="메모"></textarea></div>
     </div>
     <div class="p-4 border-t flex gap-2">
-      <button onclick="saveLoveRecord()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
+      <button onclick="saveLoveRecord()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">저장</button>
       <button onclick="closeModal('modal-love-record')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
     </div>
   </div>
@@ -706,7 +757,7 @@
       <textarea id="memo-text" rows="5" placeholder="메모를 입력하세요..." class="w-full border rounded-xl p-3 text-sm"></textarea>
     </div>
     <div class="p-4 border-t flex gap-2">
-      <button onclick="saveMemo()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">저장</button>
+      <button onclick="saveMemo()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">저장</button>
       <button onclick="closeModal('modal-memo')" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
     </div>
   </div>
@@ -916,7 +967,7 @@ const GROUP_ORDER = ['팀장','솔라디','라디스','액기스'];
 const PURPLE_ROLES = ['인도자','워십'];
 function roleBadge(r, size='xs') {
   const isPurple = PURPLE_ROLES.includes(r);
-  return `<span class="text-${size} ${isPurple?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-600'} px-1.5 py-0.5 rounded-full">${r}</span>`;
+  return `<span class="text-${size} ${isPurple?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'} px-1.5 py-0.5 rounded-full">${r}</span>`;
 }
 const QT_SCHEDULE = {
   '2026-06-01':'고린도전서 1:1-9','2026-06-02':'고린도전서 1:10-17','2026-06-03':'고린도전서 1:18-31',
@@ -2139,7 +2190,7 @@ function showUserMenu() {
       menuPhoto.innerHTML = '';
     } else {
       menuPhoto.style.backgroundImage = '';
-      menuPhoto.innerHTML = `<span class="text-lg font-bold text-purple-500">${u.name[0]}</span>`;
+      menuPhoto.innerHTML = `<span class="text-lg font-bold text-gray-500">${u.name[0]}</span>`;
     }
   }
   openModal('modal-user-menu');
@@ -2438,7 +2489,8 @@ function navigate(page, extra, isBack) {
   const nb = document.getElementById('nav-'+page);
   if (nb) nb.classList.add('active');
   // Render
-  if (page==='dashboard') renderDashboard();
+  if (page==='about') renderAbout();
+  else if (page==='dashboard') renderDashboard();
   else if (page==='students') renderStudents();
   else if (page==='check') { syncCheckTabs(); renderCheckTable(); }
   else if (page==='birthday') renderBirthday();
@@ -2517,15 +2569,15 @@ function renderMyPage() {
   const photoBg = photo
     ? `background-image:url(${photo});background-size:cover;background-position:center`
     : '';
-  const photoInner = photo ? '' : `<span class="text-3xl font-bold text-purple-400">${u.name[0]}</span>`;
+  const photoInner = photo ? '' : `<span class="text-3xl font-bold text-gray-400">${u.name[0]}</span>`;
 
   if (mypageEditMode) {
     document.getElementById('mypage-content').innerHTML = `
       <div class="space-y-4">
         <div class="bg-white rounded-2xl p-5 shadow-sm text-center">
           <div class="relative inline-block mb-3">
-            <div class="w-24 h-24 rounded-full bg-purple-100 mx-auto overflow-hidden flex items-center justify-center${photo?' cursor-pointer':''}" style="${photoBg}" ${photo?`onclick="zoomProfilePhoto('${uid}')"`:''}>${photoInner}</div>
-            <label for="mypage-photo-cam" class="absolute bottom-0 right-0 bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-lg" title="사진 변경">
+            <div class="w-24 h-24 rounded-full bg-gray-100 mx-auto overflow-hidden flex items-center justify-center${photo?' cursor-pointer':''}" style="${photoBg}" ${photo?`onclick="zoomProfilePhoto('${uid}')"`:''}>${photoInner}</div>
+            <label for="mypage-photo-cam" class="absolute bottom-0 right-0 bg-gray-900 text-white rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-lg" title="사진 변경">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </label>
             <input type="file" id="mypage-photo-cam" accept="image/*" capture="environment" class="hidden" onchange="changeProfilePhoto(this)">
@@ -2533,21 +2585,21 @@ function renderMyPage() {
           <h2 class="font-bold text-xl text-gray-800">${u.name}</h2>
           <p class="text-sm text-gray-400 mt-0.5">${u.grade||''} · ${u.group}</p>
           <div class="flex gap-2 justify-center mt-3">
-            <label for="mypage-photo-cam" class="text-xs text-purple-600 border border-purple-300 px-3 py-1.5 rounded-full cursor-pointer active:bg-purple-50">📷 카메라</label>
-            <label for="mypage-photo-gallery" class="text-xs text-purple-600 border border-purple-300 px-3 py-1.5 rounded-full cursor-pointer active:bg-purple-50">🖼 갤러리</label>
+            <label for="mypage-photo-cam" class="text-xs text-gray-700 border border-gray-400 px-3 py-1.5 rounded-full cursor-pointer active:bg-gray-50">📷 카메라</label>
+            <label for="mypage-photo-gallery" class="text-xs text-gray-700 border border-gray-400 px-3 py-1.5 rounded-full cursor-pointer active:bg-gray-50">🖼 갤러리</label>
             <input type="file" id="mypage-photo-gallery" accept="image/*" class="hidden" onchange="changeProfilePhoto(this)">
             ${photo?`<button onclick="removeProfilePhoto()" class="text-xs text-red-500 border border-red-200 px-3 py-1.5 rounded-full">삭제</button>`:''}
           </div>
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-          <p class="text-xs font-bold text-purple-400 mb-1">기본 정보</p>
+          <p class="text-xs font-bold text-gray-400 mb-1">기본 정보</p>
           ${mpField('학교','mp-school',p.school||'')}
           ${mpField('고등부 반','mp-grade-class',p.grade_class||'','예: 1부 3반')}
           ${mpField('맡은 포지션','mp-position',p.position||(u.role||u.instrument||''))}
           ${mpField('MBTI','mp-mbti',p.mbti||'','예: INFP')}
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-          <p class="text-xs font-bold text-purple-400 mb-1">내 이야기</p>
+          <p class="text-xs font-bold text-gray-400 mb-1">내 이야기</p>
           ${mpField('가장 좋아하는 찬양','mp-fave-song',p.fave_song||'')}
           ${mpField('취미','mp-hobby',p.hobby||'')}
           ${mpField('특기','mp-special',p.special||'')}
@@ -2555,11 +2607,11 @@ function renderMyPage() {
           ${mpField('마지막 한 마디','mp-last-word',p.last_word||'')}
         </div>
         <div class="bg-white rounded-2xl p-4 shadow-sm">
-          <p class="text-xs font-bold text-purple-400 mb-2">자기소개</p>
-          <textarea id="mp-intro" rows="4" placeholder="자기소개를 자유롭게 써주세요..." class="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-400">${(p.intro||'').replace(/</g,'&lt;')}</textarea>
+          <p class="text-xs font-bold text-gray-400 mb-2">자기소개</p>
+          <textarea id="mp-intro" rows="4" placeholder="자기소개를 자유롭게 써주세요..." class="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400">${(p.intro||'').replace(/</g,'&lt;')}</textarea>
         </div>
         <div class="flex gap-2 pb-2">
-          <button onclick="saveMyPage()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold shadow">저장</button>
+          <button onclick="saveMyPage()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold shadow">저장</button>
           <button onclick="mypageEditMode=false;renderMyPage()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold">취소</button>
         </div>
       </div>`;
@@ -2579,7 +2631,7 @@ function renderMyPage() {
     document.getElementById('mypage-content').innerHTML = `
       <div class="space-y-4">
         <div class="bg-white rounded-2xl p-5 shadow-sm text-center">
-          <div class="w-24 h-24 rounded-full bg-purple-100 mx-auto overflow-hidden flex items-center justify-center mb-3${photo?' cursor-pointer':''}" style="${photoBg}" ${photo?`onclick="zoomProfilePhoto('${uid}')"`:''}>${photoInner}</div>
+          <div class="w-24 h-24 rounded-full bg-gray-100 mx-auto overflow-hidden flex items-center justify-center mb-3${photo?' cursor-pointer':''}" style="${photoBg}" ${photo?`onclick="zoomProfilePhoto('${uid}')"`:''}>${photoInner}</div>
           <h2 class="font-bold text-xl text-gray-800">${u.name}</h2>
           <p class="text-sm text-gray-400 mt-0.5">${u.grade||''} · ${u.group}</p>
           ${u.phone&&isLeader()?`<button onclick="callPhone('${u.phone}')" class="mt-2 text-xs bg-green-50 text-green-700 border border-green-200 px-4 py-1.5 rounded-full">📞 ${u.phone}</button>`:''}
@@ -2594,10 +2646,10 @@ function renderMyPage() {
         </div>`:''}
         ${p.intro?`
         <div class="bg-white rounded-2xl p-4 shadow-sm">
-          <p class="text-xs font-bold text-purple-400 mb-2">자기소개</p>
+          <p class="text-xs font-bold text-gray-400 mb-2">자기소개</p>
           <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${p.intro.replace(/</g,'&lt;')}</p>
         </div>`:''}
-        <button onclick="mypageEditMode=true;renderMyPage()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow">✏️ 프로필 편집</button>
+        <button onclick="mypageEditMode=true;renderMyPage()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow">✏️ 프로필 편집</button>
       </div>`;
   }
 }
@@ -2606,7 +2658,7 @@ function mpField(label, id, value, placeholder) {
   const escaped = (value||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   return `<div>
     <label class="text-xs text-gray-400 mb-1 block">${label}</label>
-    <input type="text" id="${id}" value="${escaped}" placeholder="${placeholder||''}" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+    <input type="text" id="${id}" value="${escaped}" placeholder="${placeholder||''}" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
   </div>`;
 }
 
@@ -2674,7 +2726,7 @@ function openProfileView(studentId) {
   const p = profiles[studentId] || {};
   const photo = p.photo || null;
   const photoBg = photo ? `background-image:url(${photo});background-size:cover;background-position:center` : '';
-  const photoInner = photo ? '' : `<span class="text-4xl font-bold text-purple-400">${s.name[0]}</span>`;
+  const photoInner = photo ? '' : `<span class="text-4xl font-bold text-gray-400">${s.name[0]}</span>`;
 
   const rows = [
     ['학교', p.school],
@@ -2692,7 +2744,7 @@ function openProfileView(studentId) {
 
   document.getElementById('profile-view-body').innerHTML = `
     <div class="text-center mb-5">
-      <div class="w-28 h-28 rounded-full bg-purple-100 mx-auto overflow-hidden flex items-center justify-center mb-3${photo ? ' cursor-pointer shadow-lg' : ''}" style="${photoBg}" ${photo ? `onclick="zoomProfilePhoto('${studentId}')"` : ''}>${photoInner}</div>
+      <div class="w-28 h-28 rounded-full bg-gray-100 mx-auto overflow-hidden flex items-center justify-center mb-3${photo ? ' cursor-pointer shadow-lg' : ''}" style="${photoBg}" ${photo ? `onclick="zoomProfilePhoto('${studentId}')"` : ''}>${photoInner}</div>
       <h2 class="font-bold text-xl text-gray-800">${s.name}</h2>
       <p class="text-sm text-gray-400 mt-0.5"><span class="badge-${s.group} px-2 py-0.5 rounded-full text-xs font-semibold">${s.group}</span> · ${s.grade || ''}</p>
     </div>
@@ -2706,7 +2758,7 @@ function openProfileView(studentId) {
     </div>` : ''}
     ${p.intro ? `
     <div class="bg-gray-50 rounded-2xl p-4 mb-3">
-      <p class="text-xs font-bold text-purple-400 mb-2">자기소개</p>
+      <p class="text-xs font-bold text-gray-400 mb-2">자기소개</p>
       <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${p.intro.replace(/</g,'&lt;')}</p>
     </div>` : ''}
     ${!hasContent ? `<p class="text-center text-gray-400 text-sm py-6">아직 프로필을 작성하지 않았어요</p>` : ''}
@@ -2735,7 +2787,7 @@ function updateHeaderUserPhoto() {
       menuPhoto.innerHTML = '';
     } else {
       menuPhoto.style.backgroundImage = '';
-      menuPhoto.innerHTML = `<span class="text-lg font-bold text-purple-500">${u.name[0]}</span>`;
+      menuPhoto.innerHTML = `<span class="text-lg font-bold text-gray-500">${u.name[0]}</span>`;
     }
   }
 }
@@ -2830,13 +2882,13 @@ function _weeklyFileCard(sunDate, label, admin, extraBtn='') {
         <p class="text-xs text-gray-500 font-semibold">📁 ${label} <span class="text-gray-400 font-normal">${mo}월 ${wk}주차 (${dateStr})</span></p>
         <div class="flex items-center gap-2">
           ${extraBtn}
-          ${admin ? `<button onclick="openWeeklyFileEditAll('${month}',${wk})" class="text-xs text-purple-500 font-semibold">편집</button>` : ''}
+          ${admin ? `<button onclick="openWeeklyFileEditAll('${month}',${wk})" class="text-xs text-gray-500 font-semibold">편집</button>` : ''}
         </div>
       </div>
       <div class="flex gap-1.5">
         ${btn('콘티', 'conti', '📄', 'bg-blue-50 text-blue-700')}
         ${btn('리허설', 'sat', '🎵', 'bg-green-50 text-green-700')}
-        ${btn('1부', 'sun1', '🎶', 'bg-purple-50 text-purple-700')}
+        ${btn('1부', 'sun1', '🎶', 'bg-gray-50 text-gray-900')}
         ${btn('2부', 'sun2', '🎶', 'bg-indigo-50 text-indigo-700')}
         ${btn('2부실황', 'live', '🎬', 'bg-orange-50 text-orange-700')}
       </div>
@@ -2846,7 +2898,7 @@ function _weeklyFileCard(sunDate, label, admin, extraBtn='') {
 function renderWeeklyFiles() {
   const today = new Date();
   const admin = isAdmin() || isLeader();
-  const allBtn = `<button onclick="openWeeklyFilesArchive()" class="text-xs text-purple-500 font-semibold">전체 보기</button>`;
+  const allBtn = `<button onclick="openWeeklyFilesArchive()" class="text-xs text-gray-500 font-semibold">전체 보기</button>`;
 
   if (today.getDay() === 0) {
     return _weeklyFileCard(today, '이번주', admin, allBtn);
@@ -2885,12 +2937,12 @@ function openWeeklyFilesArchive() {
         <div class="py-2 border-b border-gray-50 last:border-0">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-xs font-bold text-gray-700">${wk}주차 <span class="text-gray-400 font-normal">(${dateStr})</span></span>
-            ${admin ? `<button onclick="openWeeklyFileEditAll('${month}',${wk})" class="text-xs text-purple-400">편집</button>` : ''}
+            ${admin ? `<button onclick="openWeeklyFileEditAll('${month}',${wk})" class="text-xs text-gray-400">편집</button>` : ''}
           </div>
           <div class="flex gap-1.5">
             ${_btn(f,'conti','콘티','📄','bg-blue-50 text-blue-700')}
             ${_btn(f,'sat','리허설','🎵','bg-green-50 text-green-700')}
-            ${_btn(f,'sun1','1부','🎶','bg-purple-50 text-purple-700')}
+            ${_btn(f,'sun1','1부','🎶','bg-gray-50 text-gray-900')}
             ${_btn(f,'sun2','2부','🎶','bg-indigo-50 text-indigo-700')}
             ${_btn(f,'live','2부실황','🎬','bg-orange-50 text-orange-700')}
           </div>
@@ -2931,9 +2983,9 @@ function openWeeklyFileEditAll(month, wk) {
         ${[['conti','📄 콘티 (PDF)'],['sat','🎵 토요일 리허설 MP3'],['sun1','🎶 주일 1부 MP3'],['sun2','🎶 주일 2부 MP3'],['live','🎬 주일 2부 실황']].map(([key, label]) => `
           <div>
             <label class="text-xs text-gray-500 font-semibold">${label}</label>
-            <input id="wf-${key}" value="${f[key]||''}" placeholder="파일 경로 또는 URL" class="mt-0.5 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-400">
+            <input id="wf-${key}" value="${f[key]||''}" placeholder="파일 경로 또는 URL" class="mt-0.5 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
           </div>`).join('')}
-        <button onclick="saveWeeklyFiles('${month}',${wk})" class="w-full bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm mt-1">저장</button>
+        <button onclick="saveWeeklyFiles('${month}',${wk})" class="w-full bg-gray-900 text-white py-2.5 rounded-xl font-bold text-sm mt-1">저장</button>
       </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend', html);
@@ -3040,8 +3092,8 @@ function renderFeedbackSection() {
     <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
       <p class="text-xs text-gray-500 font-semibold mb-2">💬 홈페이지 피드백</p>
       <div class="flex gap-2 mb-3">
-        <input id="feedback-input" type="text" maxlength="200" placeholder="건의사항이나 수정 요청을 남겨주세요" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-purple-400">
-        <button onclick="submitFeedback()" class="bg-purple-600 text-white px-3 py-2 rounded-xl text-sm font-semibold active:bg-purple-700 flex-shrink-0">등록</button>
+        <input id="feedback-input" type="text" maxlength="200" placeholder="건의사항이나 수정 요청을 남겨주세요" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-gray-400">
+        <button onclick="submitFeedback()" class="bg-gray-900 text-white px-3 py-2 rounded-xl text-sm font-semibold active:bg-black flex-shrink-0">등록</button>
       </div>
       <div id="feedback-list"></div>
     </div>`;
@@ -3062,6 +3114,114 @@ function _initTodayBirthdayBanner() {
   }
 }
 
+function renderAbout() {
+  const CROSS = 'DISCIPLES';
+  const cross = CROSS.split('').map((ch, i) => i === 2
+    ? `<div class="ln">
+         <span class="arm l"><span class="ch">L</span><span class="ch">A</span></span>
+         <span class="ch">S</span>
+         <span class="arm r"><span class="ch">T</span></span>
+         <span class="waves">WE<br>ARE THE<br>NEW WAVES</span>
+       </div>`
+    : `<div class="ln"><span class="ch">${ch}</span></div>`).join('');
+
+  const sat = [['11:00','가사 테스트'],['11:20','전체 모임 &amp; 기도회'],
+    ['11:40–12:20','SOLADI · 액기스 · LADIS 파트 연습'],
+    ['12:30–13:00','전체 리허설 &amp; 기도회'],['13:00–14:00','간식 &amp; 사랑모임']];
+  const sun = [['08:10–08:40','리허설 &amp; 골방 기도회'],['08:40–08:50','전체 기도회 · 1부'],
+    ['08:55–09:20','예배 찬양 · 1부'],['10:40–10:50','파트별 기도회 · 2부'],
+    ['10:55–11:20','예배 찬양 · 2부'],['12:50–13:10','마무리 모임 · 라모']];
+  const row = a => a.map(([t, n]) => `<div class="it"><span class="tm">${t}</span><span class="nm">${n}</span></div>`).join('');
+
+  const parts = [
+    ['SOLADI','VOCAL','목소리로 예배를 세워가는 LADI의 보컬 파트입니다.',''],
+    ['액기스','BAND','각자의 소리를 모아 하나의 예배를 세워가는 LADI의 밴드 파트입니다.','건반 · 신스 · 기타 · 베이스 · 드럼'],
+    ['LADIS','WORSHIP','몸과 움직임으로 하나님을 찬양하는 LADI의 워십 파트입니다.','']
+  ];
+  const steps = ['수련회 이후 모집','서류 지원','면접 &amp; 오디션','수습 훈련','YIP &amp; 예배자 교육','LADI 정식 멤버'];
+
+  document.getElementById('page-about').innerHTML = `
+    <div class="ab">
+      <div class="ab-sec" style="padding-top:34px">
+        <button onclick="navigate('dashboard')" style="min-height:32px" class="text-sm"><span class="dim">‹ 돌아가기</span></button>
+        <div class="cross">${cross}</div>
+        <div class="ladi-mark">LADI</div>
+        <div class="ladi-sub">LAST DISCIPLES</div>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">LADI</div>
+        <h2>마지막 제자</h2>
+        <p>LADI는 수영로교회 고등부 찬양팀입니다.</p>
+        <p class="lead">우리가 꿈꾸는 마지막 제자는 그저 무대 위에서 찬양하는 사람이 아닙니다.</p>
+        <p>주님의 마음을 알고, 주님의 소원과 꿈인 예배를 품고,<br>
+           그 예배를 우리의 찬양과 삶을 통해 이 세상에 흘려보내는 사람.</p>
+        <p class="hl">그것이 LADI가 꿈꾸는 마지막 제자입니다.</p>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">OUR IDENTITY</div>
+        <div class="chant">
+          <div class="c1">사랑의 공동체 LADI<br>예배하는 공동체 LADI<br>마지막 제자 LADI</div>
+          <div class="c2">어이! 어이! 어이!</div>
+          <div class="c3">LADI!</div>
+        </div>
+        <p style="margin-top:26px">LADI는 함께 예배하기 전에, 먼저 <span class="hl">함께 사랑하는 공동체</span>가 되기를 원합니다.</p>
+        <p>서로를 세워주고, 함께 기도하고, 함께 자라며<br>
+           무대 위에서뿐 아니라 우리의 모든 삶으로 하나님을 예배합니다.</p>
+        <p>그리고 우리가 받은 예배를 우리 안에만 머물게 하지 않습니다.<br>
+           학교로, 가정으로, 친구들에게로, 우리가 살아가는 모든 자리로 흘려보냅니다.</p>
+        <p class="lead">사랑하고, 예배하고,<br>그 예배를 흘려보내는 사람들.</p>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">LADI WEEKLY</div>
+        <h2>한 주</h2>
+        <p>함께 준비하고, 함께 기도하고, 함께 사랑하며 예배를 세워가는 시간입니다.</p>
+        <p class="ab-kicker" style="margin-top:28px">SATURDAY · 토요일</p>
+        <div class="sched">${row(sat)}</div>
+        <p class="ab-kicker" style="margin-top:30px">LORD'S DAY · 주일</p>
+        <div class="sched">${row(sun)}</div>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">LADI PARTS</div>
+        <h2>서 있는 자리는 다르지만<br>향하는 곳은 하나입니다</h2>
+        <p class="hl" style="margin-bottom:24px">하나님을 예배하는 것.</p>
+        ${parts.map(([n, e, d, sub]) => `<div class="part">
+          <div class="pn">${n}</div><div class="pe">${e}</div>
+          ${sub ? `<div class="pd dim" style="font-size:13px">${sub}</div>` : ''}
+          <div class="pd">${d}</div></div>`).join('')}
+        <p class="dim" style="margin-top:22px;font-size:13.5px">서로 다른 자리와 역할이 모여 하나의 LADI가 됩니다.</p>
+      </div>
+
+      <div class="ab-sec">
+        <div class="ab-kicker">JOIN LADI</div>
+        <h2>처음부터 완벽할 필요는 없습니다</h2>
+        <p>찬양을 사랑하고, 예배자로 살아가고 싶고,<br>공동체 안에서 함께 자라고 싶은 학생이라면 도전할 수 있습니다.</p>
+        <p>LADI는 <span class="hl">지금 얼마나 잘하는지만</span> 보지 않습니다.<br>
+           예배를 향한 마음, 함께하는 사람을 사랑하는 태도,<br>
+           맡겨진 자리를 책임지는 자세, 그리고 배우고 자라려는 마음을 함께 봅니다.</p>
+        <p class="ab-kicker" style="margin-top:30px">HOW TO JOIN</p>
+        <div class="steps">${steps.map((t, i) => `<div class="st${i === steps.length - 1 ? ' last' : ''}">${t}</div>`).join('')}</div>
+        <p style="margin-top:24px">LADI가 세우고 싶은 사람은 좋은 보컬, 좋은 연주자, 좋은 워십퍼에서 멈추지 않습니다.</p>
+        <p class="lead">한 사람의 예배자.<br>한 사람의 제자.</p>
+        <p class="dim">그것이 LADI의 훈련이 향하는 곳입니다.</p>
+      </div>
+
+      <div class="ab-sec" style="padding-bottom:46px">
+        <div class="ab-kicker">LAST DISCIPLES</div>
+        <p class="lead">우리는 노래만 남기고 싶은 팀이 아닙니다.<br>예배를 남기고 싶습니다.</p>
+        <p>우리가 드린 예배가 또 다른 예배를 일으키고,<br>
+           우리가 살아낸 예배가 누군가의 삶으로 흘러가고,<br>
+           그렇게 이 세상 곳곳에 하나님을 예배하는 사람들이 세워지기를 꿈꿉니다.</p>
+        <p>주님의 소원과 꿈인 예배를<br>이 세상에 흘려보내는 마지막 제자.</p>
+        <div class="ladi-mark" style="font-size:34px;margin-top:30px">LADI</div>
+        <div class="ladi-sub">LAST DISCIPLES</div>
+      </div>
+    </div>`;
+}
+
 function renderDashboard() {
   _initTodayBirthdayBanner();
   if (isMember()) { renderMemberDashboard(); return; }
@@ -3077,7 +3237,7 @@ function renderDashboard() {
         <p class="text-[10px] text-gray-400 font-semibold mb-1.5">빠른 메뉴</p>
         <div class="grid grid-cols-4 gap-1.5">
           <button onclick="navigate('check')" class="bg-blue-50 text-blue-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">📋<span>체크표</span></button>
-          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">📖<span>큐티</span></button>
+          <button onclick="navigate('qt')" class="bg-gray-50 text-gray-900 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">📖<span>큐티</span></button>
           <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">⭐<span>라인업</span></button>
           <button onclick="navigate('students')" class="bg-orange-50 text-orange-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">👥<span>학생</span></button>
           <button onclick="navigate('love')" class="bg-pink-50 text-pink-700 rounded-lg py-1.5 font-semibold text-[10px] flex flex-col items-center gap-0.5" style="min-height:unset">💛<span>사랑모임</span></button>
@@ -3096,7 +3256,7 @@ function renderDashboard() {
       <div class="bg-white rounded-xl px-3 py-2 shadow-sm">
         <div class="flex items-center justify-between mb-1">
           <p class="text-xs text-gray-500 font-semibold">🎂 ${getMonthStr(month)} 생일자</p>
-          <button onclick="navigate('birthday')" class="text-xs text-purple-500 font-semibold" style="min-height:unset">전체</button>
+          <button onclick="navigate('birthday')" class="text-xs text-gray-500 font-semibold" style="min-height:unset">전체</button>
         </div>
         ${monthBirthdays.length ? `
           <div class="flex flex-wrap gap-1">
@@ -3112,7 +3272,16 @@ function renderDashboard() {
       ${renderFeedbackSection()}
     </div>
   `;
-  document.getElementById('dashboard-content').innerHTML = html;
+  document.getElementById('dashboard-content').innerHTML = `<div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer mb-2" style="background:#000">
+      <div class="px-4 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
+          <p class="text-white font-black text-xl tracking-widest mt-0.5">LADI</p>
+          <p class="text-white/60 text-[11px] mt-1">우리가 어떤 팀인지 · 한 주 · 파트 · 훈련</p>
+        </div>
+        <span class="text-white/50 text-2xl">›</span>
+      </div>
+    </div>` + html;
   renderFeedbackList();
 }
 
@@ -3219,8 +3388,8 @@ function renderAdminStats() {
           <p class="text-sm font-bold text-blue-700">${satTotal ? Math.round(satOk/satTotal*100) : '-'}%</p>
           <p class="text-[10px] text-gray-500">토요일</p>
         </div>
-        <div class="bg-purple-50 rounded-lg py-1.5">
-          <p class="text-sm font-bold text-purple-700">${sunTotal ? Math.round(sunOk/sunTotal*100) : '-'}%</p>
+        <div class="bg-gray-50 rounded-lg py-1.5">
+          <p class="text-sm font-bold text-gray-900">${sunTotal ? Math.round(sunOk/sunTotal*100) : '-'}%</p>
           <p class="text-[10px] text-gray-500">주일</p>
         </div>
         <div class="bg-green-50 rounded-lg py-1.5">
@@ -3243,7 +3412,7 @@ function renderEditLogPanel() {
       <span class="text-xs text-gray-400 min-w-16">${ts}</span>
       <div class="text-xs text-gray-600 flex-1">
         <span class="font-semibold text-gray-800">${l.editorName}</span>이
-        <span class="text-purple-600">${l.targetName}</span>
+        <span class="text-gray-700">${l.targetName}</span>
         ${typeLabel} 수정 ${l.field&&l.field!=='-'?`(${l.field}: ${l.before}→${l.after})`:''}
         ${l.reason?`<span class="text-gray-400">· ${l.reason.slice(0,20)}</span>`:''}
       </div>
@@ -3321,7 +3490,7 @@ function renderMemberDashboard() {
 
   const myPhoto = (profiles[me.id]||{}).photo;
   const photoStyle = myPhoto ? `background-image:url(${myPhoto});background-size:cover;background-position:center` : '';
-  const photoInner = myPhoto ? '' : `<span class="text-lg font-bold text-purple-600">${me.name[0]}</span>`;
+  const photoInner = myPhoto ? '' : `<span class="text-lg font-bold text-gray-700">${me.name[0]}</span>`;
 
   // 받은 비밀댓글 섹션
   const myComments = getAllMyQTComments();
@@ -3355,7 +3524,7 @@ function renderMemberDashboard() {
   const html = `
     <div class="space-y-3">
       ${todayBirthdays.length ? `
-        <div class="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl px-4 py-2.5 text-white">
+        <div class="bg-gradient-to-r from-pink-500 to-gray-900 rounded-2xl px-4 py-2.5 text-white">
           <p class="text-xs opacity-80 font-semibold mb-1">🎂 오늘의 생일자</p>
           <div class="flex flex-wrap gap-2">
             ${todayBirthdays.map(s => {
@@ -3372,7 +3541,7 @@ function renderMemberDashboard() {
 
       <div class="bg-white rounded-2xl px-4 py-3 shadow-sm">
         <div class="flex items-center gap-3 mb-2">
-          <div class="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-800 font-bold overflow-hidden flex-shrink-0" style="${photoStyle}">${photoInner}</div>
+          <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold overflow-hidden flex-shrink-0" style="${photoStyle}">${photoInner}</div>
           <div class="flex-1">
             <p class="font-bold text-gray-800 text-sm">${me.name}</p>
             <p class="text-xs text-gray-500">${me.group} · ${me.grade||''}</p>
@@ -3380,7 +3549,7 @@ function renderMemberDashboard() {
         </div>
         <div class="grid grid-cols-3 gap-2 text-center">
           ${stats.satRate!==null?`<div class="bg-blue-50 rounded-xl py-1.5"><p class="text-base font-bold text-blue-700">${stats.satRate}%</p><p class="text-xs text-gray-500">토요일</p></div>`:''}
-          ${stats.sunRate!==null?`<div class="bg-purple-50 rounded-xl py-1.5"><p class="text-base font-bold text-purple-700">${stats.sunRate}%</p><p class="text-xs text-gray-500">주일</p></div>`:''}
+          ${stats.sunRate!==null?`<div class="bg-gray-50 rounded-xl py-1.5"><p class="text-base font-bold text-gray-900">${stats.sunRate}%</p><p class="text-xs text-gray-500">주일</p></div>`:''}
           ${stats.qtAvg!==null?`<div class="bg-green-50 rounded-xl py-1.5"><p class="text-base font-bold text-green-700">${stats.qtAvg}</p><p class="text-xs text-gray-500">QT 평균</p></div>`:''}
         </div>
       </div>
@@ -3399,7 +3568,7 @@ function renderMemberDashboard() {
       <div class="bg-white rounded-xl px-4 py-3 shadow-md">
         <p class="text-xs text-gray-500 font-semibold mb-2">빠른 메뉴</p>
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="navigate('qt')" class="bg-purple-50 text-purple-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">📖 말씀 큐티</button>
+          <button onclick="navigate('qt')" class="bg-gray-50 text-gray-900 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">📖 말씀 큐티</button>
           <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">⭐ 라인업</button>
           <button onclick="navigate('birthday')" class="bg-pink-50 text-pink-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">🎂 생일</button>
           <button onclick="navigate('mypage')" class="bg-blue-50 text-blue-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">👤 마이페이지</button>
@@ -3407,7 +3576,16 @@ function renderMemberDashboard() {
       </div>
     </div>
   `;
-  document.getElementById('dashboard-content').innerHTML = html;
+  document.getElementById('dashboard-content').innerHTML = `<div onclick="navigate('about')" class="rounded-xl overflow-hidden cursor-pointer mb-2" style="background:#000">
+      <div class="px-4 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold tracking-[0.3em] text-white/40">LAST DISCIPLES</p>
+          <p class="text-white font-black text-xl tracking-widest mt-0.5">LADI</p>
+          <p class="text-white/60 text-[11px] mt-1">우리가 어떤 팀인지 · 한 주 · 파트 · 훈련</p>
+        </div>
+        <span class="text-white/50 text-2xl">›</span>
+      </div>
+    </div>` + html;
   _initTodayBirthdayBanner();
   renderFeedbackList();
   markQTCommentsAsRead();
@@ -3432,29 +3610,29 @@ function _renderStudentCard(s) {
   const satBadge = stats.satRate !== null
     ? `<span class="text-[10px] font-semibold px-1 py-0 rounded ${stats.satRate >= 90 ? 'bg-blue-100 text-blue-700' : stats.satRate >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">토${stats.satRate}%</span>` : '';
   const sunBadge = stats.sunRate !== null
-    ? `<span class="text-[10px] font-semibold px-1 py-0 rounded ${stats.sunRate >= 90 ? 'bg-purple-100 text-purple-700' : stats.sunRate >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">주${stats.sunRate}%</span>` : '';
+    ? `<span class="text-[10px] font-semibold px-1 py-0 rounded ${stats.sunRate >= 90 ? 'bg-gray-900 text-white' : stats.sunRate >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">주${stats.sunRate}%</span>` : '';
   const qtBadge = stats.qtAvg !== null
     ? `<span class="text-[10px] font-semibold px-1 py-0 rounded ${parseFloat(stats.qtAvg) >= 4 ? 'bg-green-100 text-green-700' : parseFloat(stats.qtAvg) >= 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}">QT${stats.qtAvg}</span>` : '';
   const ph = profiles[s.id]?.photo;
   const avatarStyle = ph ? `background-image:url(${ph});background-size:cover;background-position:center` : '';
-  const avatarInner = ph ? '' : `<span class="font-bold text-sm text-purple-700">${s.name[0]}</span>`;
+  const avatarInner = ph ? '' : `<span class="font-bold text-sm text-gray-900">${s.name[0]}</span>`;
   return `
-    <div class="student-card group-${g} border border-transparent active:border-purple-200 mb-0.5"
+    <div class="student-card group-${g} border border-transparent active:border-gray-300 mb-0.5"
          onclick="navigate('detail',{currentStudentId:'${s.id}'})">
       <div class="flex items-center gap-1.5">
-        <div class="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 overflow-hidden text-[10px]" style="${avatarStyle}">${avatarInner}</div>
+        <div class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden text-[10px]" style="${avatarStyle}">${avatarInner}</div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1 flex-wrap">
             <p class="font-semibold text-gray-800 text-xs leading-tight">${bdayFlag}${s.name}</p>
             <span class="text-[10px] text-gray-400 leading-tight">${s.grade||''}</span>
-            ${s.instrument ? `<span class="text-[10px] bg-purple-50 text-purple-600 px-1 rounded">${s.instrument}</span>` : ''}
+            ${s.instrument ? `<span class="text-[10px] bg-gray-50 text-gray-700 px-1 rounded">${s.instrument}</span>` : ''}
             ${s.status==='군복무' ? `<span class="text-[10px] text-green-600">🪖</span>` : ''}
           </div>
           ${g!=='팀장' ? `<div class="flex gap-0.5 flex-wrap">${satBadge}${sunBadge}${qtBadge}</div>` : ''}
         </div>
         <div class="flex gap-1 flex-shrink-0">
           ${(isLeader() && s.phone) ? `<button onclick="event.stopPropagation();callPhone('${s.phone}')" class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded" style="min-height:unset">📞</button>` : ''}
-          ${isAdmin() ? `<button onclick="event.stopPropagation();openEditStudent('${s.id}')" class="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded" style="min-height:unset">수정</button>` : ''}
+          ${isAdmin() ? `<button onclick="event.stopPropagation();openEditStudent('${s.id}')" class="text-[10px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded" style="min-height:unset">수정</button>` : ''}
         </div>
       </div>
     </div>
@@ -3496,7 +3674,7 @@ function renderStudents() {
   // Update filter buttons
   document.querySelectorAll('.grp-btn').forEach(b=>{
     const g = b.id.replace('grp-','');
-    b.classList.toggle('bg-purple-600', g===group);
+    b.classList.toggle('bg-gray-900', g===group);
     b.classList.toggle('text-white', g===group);
   });
 }
@@ -3543,7 +3721,7 @@ function renderDetail(id) {
           </div>
         </div>
         ${c.memo ? `<p class="text-xs text-gray-400 mt-2 bg-gray-50 rounded-lg p-2">📝 ${c.memo}</p>` : ''}
-        ${isLeader() ? `<button onclick="openCheckModal('${s.id}',${i})" class="mt-2 text-xs text-purple-600 underline">수정</button>` : ''}
+        ${isLeader() ? `<button onclick="openCheckModal('${s.id}',${i})" class="mt-2 text-xs text-gray-700 underline">수정</button>` : ''}
       </div>
     `;
   }).join('');
@@ -3555,7 +3733,7 @@ function renderDetail(id) {
   const html = `
     <div class="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
       <div class="group-${s.group} p-4 flex items-center gap-4">
-        <div class="w-16 h-16 rounded-full bg-purple-200 flex items-center justify-center text-purple-800 font-bold text-2xl">${s.name[0]}</div>
+        <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold text-2xl">${s.name[0]}</div>
         <div>
           <div class="flex items-center gap-2">
             <h2 class="text-xl font-bold text-gray-800">${s.name}</h2>
@@ -3565,7 +3743,7 @@ function renderDetail(id) {
           <div class="flex flex-wrap gap-1 mt-1">
             <span class="text-xs ${s.status==='활동중'?'bg-green-100 text-green-700':s.status==='군복무'?'bg-green-200 text-green-800':'bg-gray-100 text-gray-600'} px-2 py-0.5 rounded-full">${s.status==='군복무'?'🪖 군복무':s.status}</span>
             ${s.role ? s.role.split(' / ').map(r=>roleBadge(r)).join('') : ''}
-            ${s.instrument ? `<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">🎸 ${s.instrument}</span>` : ''}
+            ${s.instrument ? `<span class="text-xs bg-gray-900 text-white px-2 py-0.5 rounded-full">🎸 ${s.instrument}</span>` : ''}
             ${s.lineupService ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">라인업 ${s.lineupService}</span>` : ''}
           </div>
         </div>
@@ -3577,13 +3755,13 @@ function renderDetail(id) {
         ${(canSeeSensitive || isOwnProfile) && s.memo ? `<div class="bg-yellow-50 rounded-xl p-3 text-sm text-gray-700">📝 ${s.memo}</div>` : ''}
       </div>
       <div class="border-t flex">
-        ${canEdit ? `<button onclick="openEditStudent('${s.id}')" class="flex-1 py-3 text-sm text-purple-700 font-semibold border-r">정보 수정</button>` : ''}
+        ${canEdit ? `<button onclick="openEditStudent('${s.id}')" class="flex-1 py-3 text-sm text-gray-900 font-semibold border-r">정보 수정</button>` : ''}
         ${canSeeSensitive && s.phone ? `<button onclick="callPhone('${s.phone}')" class="flex-1 py-3 text-sm text-blue-700 font-semibold ${canEdit?'border-r':''}">📞 전화</button>` : ''}
         ${canEdit ? `<button onclick="openMemoModal('student_${s.id}')" class="flex-1 py-3 text-sm text-gray-700 font-semibold">📝 메모</button>` : ''}
       </div>
     </div>
 
-    ${isToday(s.birthDate) ? `<div class="bg-gradient-to-r from-pink-400 to-purple-500 rounded-2xl p-4 text-white text-center mb-4">🎂 오늘 생일이에요! 생일 축하해요!</div>` : ''}
+    ${isToday(s.birthDate) ? `<div class="bg-gradient-to-r from-pink-400 to-gray-500 rounded-2xl p-4 text-white text-center mb-4">🎂 오늘 생일이에요! 생일 축하해요!</div>` : ''}
 
     <div class="bg-white rounded-2xl p-4 shadow-sm">
       <p class="text-xs text-gray-500 font-semibold mb-1">${monthName(state.month)} 체크 기록</p>
@@ -3602,7 +3780,7 @@ let checkWeekIdx = null;
 function syncCheckTabs() {
   document.querySelectorAll('.cm-tab').forEach(btn => {
     const active = btn.dataset.cm === state.month;
-    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`;
+    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`;
   });
 }
 
@@ -3612,7 +3790,7 @@ function selectCheckMonth(ym) {
   document.getElementById('header-month').textContent = ym;
   document.querySelectorAll('.cm-tab').forEach(btn => {
     const active = btn.dataset.cm === ym;
-    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`;
+    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`;
   });
   renderCheckTable();
 }
@@ -3635,7 +3813,7 @@ function renderCheckTable() {
   // 상단 월 탭의 활성 표시를 실제 보고 있는 달과 일치시킨다(정적 HTML은 6월로 고정돼 있으므로).
   document.querySelectorAll('.cm-tab').forEach(btn => {
     const active = btn.dataset.cm === month;
-    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}`;
+    btn.className = `cm-tab text-xs px-3 py-1.5 rounded-full font-semibold ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`;
   });
   const recoveryBtn = document.getElementById('june-recovery-btn');
   if (recoveryBtn) recoveryBtn.classList.toggle('hidden', !(isLeader() && month === '2026-06'));
@@ -3655,7 +3833,7 @@ function renderCheckTable() {
   if (isLeader()) {
     const tabsHtml = weeks.map((w, i) => {
       const active = i === checkWeekIdx;
-      return `<button onclick="selectCheckWeek(${i})" class="text-xs px-3 py-1.5 rounded-full font-semibold flex-shrink-0 ${active ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600'}">${w.label}</button>`;
+      return `<button onclick="selectCheckWeek(${i})" class="text-xs px-3 py-1.5 rounded-full font-semibold flex-shrink-0 ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}">${w.label}</button>`;
     }).join('');
     document.getElementById('check-week-tabs').innerHTML = tabsHtml;
   } else {
@@ -3707,7 +3885,7 @@ function openJuneWeek1Recovery() {
           </table>
         </div>
         <div class="p-3 border-t flex gap-2">
-          <button onclick="saveJuneWeek1Recovery()" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold">복구값 저장</button>
+          <button onclick="saveJuneWeek1Recovery()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold">복구값 저장</button>
           <button onclick="document.getElementById('june-week1-recovery').remove()" class="px-5 bg-gray-100 rounded-xl font-bold">닫기</button>
         </div>
       </div>
@@ -3757,7 +3935,7 @@ function renderCheckTableView(month, weeks) {
   const thead = `<tr class="bg-gray-100">
     <th class="sticky left-0 bg-gray-100 px-1 py-1 text-left text-xs font-semibold text-gray-600" style="min-width:38px">이름</th>
     <th class="px-0.5 py-1 text-xs font-semibold text-gray-500" style="min-width:14px">분</th>
-    <th colspan="5" class="px-1 py-1 text-xs font-semibold text-purple-700 border-l border-gray-200">${w.label} (토 ${w.satDate.slice(5)} / 주 ${w.sunDate.slice(5)})</th>
+    <th colspan="5" class="px-1 py-1 text-xs font-semibold text-gray-900 border-l border-gray-200">${w.label} (토 ${w.satDate.slice(5)} / 주 ${w.sunDate.slice(5)})</th>
   </tr>`;
 
   const allBtn = (field) => isLeader()
@@ -3768,7 +3946,7 @@ function renderCheckTableView(month, weeks) {
     <th class="px-0.5 py-0.5"></th>
     <th class="px-0.5 py-0.5 text-[10px] text-blue-600 font-medium border-l border-gray-200">QT</th>
     <th class="px-0.5 py-0.5 text-[10px] text-green-600 font-medium">가테${allBtn('gate')}</th>
-    <th class="px-0.5 py-0.5 text-[10px] text-purple-600 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}${allBtn('sat')}</th>
+    <th class="px-0.5 py-0.5 text-[10px] text-gray-700 font-medium">토${satRateTxt?`<span class='text-gray-400 font-normal'>${satRateTxt}</span>`:''}${allBtn('sat')}</th>
     <th class="px-0.5 py-0.5 text-[10px] text-orange-600 font-medium">주${sunRateTxt?`<span class='text-gray-400 font-normal'>${sunRateTxt}</span>`:''}${allBtn('sun')}</th>
     <th class="px-0.5 py-0.5 text-[10px] text-gray-400 font-medium">🚦</th>
   </tr>`;
@@ -3878,7 +4056,7 @@ function renderCheckCards(month, weeks) {
       html += `
         <div class="bg-white rounded-xl p-3 shadow-sm mb-3 group-${g}">
           <div class="flex items-center gap-2 mb-2 cursor-pointer" onclick="navigate('detail',{currentStudentId:'${s.id}'})">
-            <div class="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center text-purple-800 font-bold text-sm">${s.name[0]}</div>
+            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold text-sm">${s.name[0]}</div>
             <div>
               <p class="font-bold text-sm text-gray-800">${s.name}</p>
               <p class="text-xs text-gray-500">${s.group} · ${s.grade||''}</p>
@@ -4091,11 +4269,11 @@ function renderQTSubmit() {
         const isMe = s.id === state.currentUser;
         const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
         const passage = QT_SCHEDULE[dateStr] || '';
-        return `<div class="bg-white rounded-2xl p-4 shadow-sm ${isMe?'border-l-4 border-purple-400':''}">
+        return `<div class="bg-white rounded-2xl p-4 shadow-sm ${isMe?'border-l-4 border-gray-400':''}">
           <div class="flex items-start justify-between mb-2 gap-2">
             <div class="flex items-center gap-2">
               <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
-              <span class="font-semibold text-gray-800 text-sm">${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}</span>
+              <span class="font-semibold text-gray-800 text-sm">${s.name}${isMe?' <span class="text-xs text-gray-400">(나)</span>':''}</span>
             </div>
             <div class="text-right flex-shrink-0">
               <p class="text-xs font-semibold text-blue-600">${dayName} · ${passage.replace('고린도전서','고전')}</p>
@@ -4104,7 +4282,7 @@ function renderQTSubmit() {
           </div>
           ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
           ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
-          ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
+          ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-gray-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
     : `<div class="text-center py-8 text-gray-400 bg-white rounded-2xl shadow-sm">
@@ -4118,13 +4296,13 @@ function renderQTSubmit() {
   const totalDays = Object.keys(QT_SCHEDULE).filter(k=>k.startsWith(qtMonth)).length;
   const qtDownloadItems = Object.values(QT_DOWNLOADS);
   const qtDownloadCard = qtDownloadItems.length ? `
-    <div class="bg-white rounded-xl p-3 shadow-sm border border-purple-100">
+    <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-200">
       <p class="text-xs font-semibold text-gray-500 mb-2">큐티 자료</p>
       <div class="grid grid-cols-2 gap-2">
         ${qtDownloadItems.map(item => `
-          <a href="${item.href}" download class="bg-purple-600 text-white px-3 py-2 rounded-xl text-xs font-bold active:bg-purple-700 inline-flex flex-col items-center justify-center text-center" style="min-height:48px">
+          <a href="${item.href}" download class="bg-gray-900 text-white px-3 py-2 rounded-xl text-xs font-bold active:bg-black inline-flex flex-col items-center justify-center text-center" style="min-height:48px">
             <span>${item.label.replace(' 청소년 큐티 PDF', '')}</span>
-            <span class="text-[10px] text-purple-100 font-semibold">${item.size} PDF</span>
+            <span class="text-[10px] text-white/80 font-semibold">${item.size} PDF</span>
           </a>
         `).join('')}
       </div>
@@ -4156,7 +4334,7 @@ function renderQTSubmit() {
       </div>
       ${todayEntry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${todayEntry.content}</p>` : ''}
       ${todayEntry.imageKey && qtImages[todayEntry.imageKey] ? `<img src="${qtImages[todayEntry.imageKey]}" class="w-full rounded-xl mt-2 max-h-48 object-cover cursor-pointer" onclick="zoomQtPhoto('${todayEntry.imageKey}')">` : ''}
-      ${!todayLocked ? `<button onclick="qtEditMode=true;renderQTSubmit()" class="mt-2 text-xs text-purple-500 underline">수정</button>` : ''}
+      ${!todayLocked ? `<button onclick="qtEditMode=true;renderQTSubmit()" class="mt-2 text-xs text-gray-500 underline">수정</button>` : ''}
     </div>`;
   } else if (todayLocked) {
     todayForm = `<div class="bg-gray-50 rounded-xl p-3 mt-3 text-center"><p class="text-xs text-gray-400">🔒 이 주차는 마감되었습니다</p></div>`;
@@ -4178,7 +4356,7 @@ function renderQTSubmit() {
       <input type="file" id="qt-day-img-gallery" accept="image/*" class="hidden" onchange="qtDayPreviewImg(this)">
       <div class="flex gap-2">
         ${qtEditMode ? `<button onclick="qtEditMode=false;renderQTSubmit()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-500">취소</button>` : ''}
-        <button onclick="submitQTDay('${TODAY_STR}')" class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm active:bg-purple-700">${qtEditMode ? '수정 완료' : '큐티 완료 기록하기'}</button>
+        <button onclick="submitQTDay('${TODAY_STR}')" class="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-bold text-sm active:bg-black">${qtEditMode ? '수정 완료' : '큐티 완료 기록하기'}</button>
       </div>
     </div>`;
   }
@@ -4244,7 +4422,7 @@ function renderQTSubmit() {
       const chips = members.map(s => {
         const isActive = qtFeedFilter === s.id;
         return `<button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
-          class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-purple-600 text-white':'bg-gray-100 text-gray-600'}"
+          class="flex-shrink-0 text-[11px] px-1.5 py-0.5 rounded-full font-semibold transition-all ${isActive?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}"
           style="min-height:unset;line-height:1.4">${s.name}</button>`;
       }).join('');
       return `<div class="flex items-center gap-1 flex-wrap">
@@ -4256,8 +4434,8 @@ function renderQTSubmit() {
       <div class="flex items-center justify-between mb-0.5">
         <p class="text-xs font-semibold text-gray-500">이번 주 큐티 피드 (${allWeekEntries.length}개)</p>
         <div class="flex gap-1.5">
-          ${qtFeedFilter ? `<button onclick="qtFeedFilter=null;renderQTSubmit()" class="text-xs text-purple-500 underline">전체</button>` : ''}
-          ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-semibold">🔄</button>` : ''}
+          ${qtFeedFilter ? `<button onclick="qtFeedFilter=null;renderQTSubmit()" class="text-xs text-gray-500 underline">전체</button>` : ''}
+          ${isAdmin() ? `<button onclick="triggerImageMigration()" class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-semibold">🔄</button>` : ''}
         </div>
       </div>
       ${rows}
@@ -4309,13 +4487,13 @@ function renderQTSubmit() {
             <button onclick="addQTComment('${s.id}','${dateStr}',document.getElementById('${inputId}').value)" class="flex-1 bg-amber-500 text-white py-1.5 rounded-xl text-xs font-bold active:bg-amber-600">등록</button>
           </div>
         </div>` : '';
-    return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-purple-400':''}">
+    return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-gray-400':''}">
       <div class="flex items-start justify-between mb-2 gap-2">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="badge-${s.group||'솔라디'} text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0">${s.group?.[0]||'?'}</span>
           <button onclick="qtFeedFilter=qtFeedFilter==='${s.id}'?null:'${s.id}';renderQTSubmit()"
-            class="font-semibold text-gray-800 text-sm hover:text-purple-600 transition-colors">
-            ${s.name}${isMe?' <span class="text-xs text-purple-400">(나)</span>':''}
+            class="font-semibold text-gray-800 text-sm hover:text-gray-700 transition-colors">
+            ${s.name}${isMe?' <span class="text-xs text-gray-400">(나)</span>':''}
           </button>
         </div>
         <div class="text-right flex-shrink-0">
@@ -4325,7 +4503,7 @@ function renderQTSubmit() {
       </div>
       ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
       ${imgHtml}
-      ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-purple-500 mt-2 underline">수정</button>`:''}
+      ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-gray-500 mt-2 underline">수정</button>`:''}
       ${commentListHtml}
       ${commentBtnHtml}
     </div>`;
@@ -4343,7 +4521,7 @@ function renderQTSubmit() {
           <h2 class="font-bold text-gray-800">${m}월 말씀 큐티</h2>
           <button onclick="changeQTMonth(1)" class="text-gray-400 text-lg leading-none px-1 ${_qtMi<_qtMonths.length-1?'':'opacity-30 pointer-events-none'}">›</button>
         </div>
-        <span class="text-xs text-gray-500">내 진도 <span class="font-bold text-purple-600">${doneCount}</span>/${totalDays}일</span>
+        <span class="text-xs text-gray-500">내 진도 <span class="font-bold text-gray-700">${doneCount}</span>/${totalDays}일</span>
       </div>
       <div class="bg-gray-50 rounded-xl p-3 shadow-sm">
         <div class="flex gap-0.5 mb-1 px-0.5">
@@ -4420,7 +4598,7 @@ function renderQTDayView() {
       ${entry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${entry.content}</p>` : ''}
       ${entry.imageKey && qtImages[entry.imageKey] ? `<img src="${qtImages[entry.imageKey]}" class="w-full rounded-xl mt-3 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : ''}
       ${!locked ? `<div class="flex gap-2 mt-3">
-        <button onclick="startEditQTDay('${dateStr}')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white border border-purple-300 text-purple-700 active:bg-purple-50">수정</button>
+        <button onclick="startEditQTDay('${dateStr}')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-400 text-gray-900 active:bg-gray-50">수정</button>
         <button onclick="deleteQTDay('${dateStr}')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-400 active:bg-gray-50">삭제</button>
       </div>` : ''}
     </div>`;
@@ -4449,7 +4627,7 @@ function renderQTDayView() {
       </div>
       <div class="flex gap-2">
         ${qtEditMode ? `<button onclick="qtEditMode=false;renderQTDayView()" class="flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-500">취소</button>` : ''}
-        <button onclick="submitQTDay('${dateStr}')" class="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold text-sm active:bg-purple-700">${qtEditMode ? '수정 완료' : '큐티 완료 기록하기'}</button>
+        <button onclick="submitQTDay('${dateStr}')" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">${qtEditMode ? '수정 완료' : '큐티 완료 기록하기'}</button>
       </div>
     </div>`;
   }
@@ -4475,11 +4653,11 @@ function renderQTDayView() {
         <div class="space-y-3">
           ${allEntries.map(({ s, v }) => {
             const isMe = s.id === state.currentUser;
-            return `<div class="rounded-xl p-3 ${isMe ? 'bg-purple-50 border border-purple-200' : 'bg-gray-50'}">
+            return `<div class="rounded-xl p-3 ${isMe ? 'bg-gray-50 border border-gray-300' : 'bg-gray-50'}">
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-2">
                   <span class="badge-${s.group||'솔라디'} text-xs px-1.5 py-0.5 rounded font-semibold">${s.group?.[0]||'?'}</span>
-                  <span class="text-sm font-semibold text-gray-800">${s.name}${isMe ? ' <span class="text-xs text-purple-500">(나)</span>' : ''}</span>
+                  <span class="text-sm font-semibold text-gray-800">${s.name}${isMe ? ' <span class="text-xs text-gray-500">(나)</span>' : ''}</span>
                 </div>
                 <span class="text-xs text-gray-400">${formatDate(v.createdAt)}</span>
               </div>
@@ -4492,12 +4670,12 @@ function renderQTDayView() {
 
   document.getElementById('qt-submit-content').innerHTML = `
     <div class="space-y-4">
-      <button onclick="closeQTDay()" class="flex items-center gap-1 text-purple-700 font-semibold text-sm">← 달력</button>
+      <button onclick="closeQTDay()" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 달력</button>
       <div class="bg-white rounded-2xl p-4 shadow-sm">
         <p class="text-xs text-gray-400 mb-1">${dateLabel}${isToday ? ' <span class=\'text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full\'>오늘</span>' : ''}</p>
         <div class="flex items-center justify-between">
           <h2 class="font-bold text-gray-800 text-base">${passage}</h2>
-          ${isLeader() ? `<button onclick="openPassageEditor('${dateStr}')" class="text-xs text-purple-600 underline flex-shrink-0 ml-2">본문 편집</button>` : ''}
+          ${isLeader() ? `<button onclick="openPassageEditor('${dateStr}')" class="text-xs text-gray-700 underline flex-shrink-0 ml-2">본문 편집</button>` : ''}
         </div>
         ${(state.qtPassageTexts||{})[dateStr] ? `
           <div class="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -4712,7 +4890,7 @@ function pcGo(el, dir) {
     const slide = document.getElementById(`pslide-${i}-${dateStr}`);
     if (slide) slide.style.display = i === idx ? 'block' : 'none';
     const dot = document.getElementById(`pdot-${i}-${dateStr}`);
-    if (dot) dot.className = `w-2 h-2 rounded-full transition-all ${i === idx ? 'bg-purple-500' : 'bg-gray-300'}`;
+    if (dot) dot.className = `w-2 h-2 rounded-full transition-all ${i === idx ? 'bg-gray-700' : 'bg-gray-300'}`;
   });
 }
 
@@ -4869,7 +5047,7 @@ function buildCheckModalBody() {
   function attButtons(field) {
     return attOpts.map(v=>`
       <button onclick="setTempCheck('${field}','${v}')"
-        class="px-2 py-1 rounded-lg text-xs font-semibold ${v==='O'?'st-O':v==='지각'?'st-지각':v==='무단지각'?'st-무단지각':v==='결석'?'st-결석':v==='무단결석'?'st-무단결석':v==='기타'?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-500'} ${tempCheck[field]===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
+        class="px-2 py-1 rounded-lg text-xs font-semibold ${v==='O'?'st-O':v==='지각'?'st-지각':v==='무단지각'?'st-무단지각':v==='결석'?'st-결석':v==='무단결석'?'st-무단결석':v==='기타'?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-500'} ${tempCheck[field]===v?'ring-2 ring-gray-900 opacity-100':'opacity-50'}">
         ${v||'빈칸'}
       </button>`).join('');
   }
@@ -4880,7 +5058,7 @@ function buildCheckModalBody() {
         <div class="flex flex-wrap gap-2">
           ${QT_OPTIONS.map(v=>`
             <button onclick="setTempCheck('qt','${v}')"
-              class="px-3 py-1.5 rounded-lg text-sm font-semibold border qt-${v||'빈칸'} ${tempCheck.qt===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
+              class="px-3 py-1.5 rounded-lg text-sm font-semibold border qt-${v||'빈칸'} ${tempCheck.qt===v?'ring-2 ring-gray-900 opacity-100':'opacity-50'}">
               ${v||'빈칸'}
             </button>`).join('')}
         </div>
@@ -4890,7 +5068,7 @@ function buildCheckModalBody() {
         <div class="flex gap-2">
           ${[['O','통과'],['X','미완료'],['','빈칸']].map(([v,l])=>`
             <button onclick="setTempCheck('gate','${v}')"
-              class="flex-1 py-2 rounded-lg text-sm font-semibold ${v==='O'?'st-O':v==='X'?'st-X':'bg-gray-100 text-gray-600'} ${tempCheck.gate===v?'ring-2 ring-purple-500 opacity-100':'opacity-50'}">
+              class="flex-1 py-2 rounded-lg text-sm font-semibold ${v==='O'?'st-O':v==='X'?'st-X':'bg-gray-100 text-gray-600'} ${tempCheck.gate===v?'ring-2 ring-gray-900 opacity-100':'opacity-50'}">
               ${l}
             </button>`).join('')}
         </div>
@@ -4999,7 +5177,7 @@ function renderBirthday() {
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full badge-${s.group} flex items-center justify-center overflow-hidden flex-shrink-0" style="${avatarStyle}">${avatarInner}</div>
                     <div>
-                      <p class="font-semibold text-sm text-gray-800">${s.name} ${todayFlag?'🎂':''}${hasProfile?'<span class="text-xs text-purple-400 ml-1">👤</span>':''}</p>
+                      <p class="font-semibold text-sm text-gray-800">${s.name} ${todayFlag?'🎂':''}${hasProfile?'<span class="text-xs text-gray-400 ml-1">👤</span>':''}</p>
                       <p class="text-xs text-gray-500">${formatBirthDate(s.birthDate)} · <span class="badge-${s.group} px-1 rounded text-xs">${s.group}</span></p>
                     </div>
                   </div>
@@ -5029,7 +5207,7 @@ function renderBirthday() {
                   <div class="flex items-center gap-3">
                     ${(()=>{ const ph=profiles[s.id]?.photo; return `<div class="w-9 h-9 rounded-full badge-${g} flex items-center justify-center overflow-hidden flex-shrink-0" style="${ph?`background-image:url(${ph});background-size:cover;background-position:center`:''}">` + (ph?'':`<span class="font-bold text-sm">${s.name[0]}</span>`) + '</div>'; })()}
                     <div>
-                      <p class="font-semibold text-sm text-gray-800">${s.name} ${todayFlag?'🎂':''}${(profiles[s.id]?.photo||profiles[s.id]?.intro||profiles[s.id]?.mbti)?'<span class="text-xs text-purple-400 ml-1">👤</span>':''}</p>
+                      <p class="font-semibold text-sm text-gray-800">${s.name} ${todayFlag?'🎂':''}${(profiles[s.id]?.photo||profiles[s.id]?.intro||profiles[s.id]?.mbti)?'<span class="text-xs text-gray-400 ml-1">👤</span>':''}</p>
                       <p class="text-xs text-gray-500">${formatBirthDate(s.birthDate)}</p>
                     </div>
                   </div>
@@ -5060,8 +5238,8 @@ function switchLineupService(svc) {
   lineupService = svc;
   const t1 = document.getElementById('lineup-tab-1');
   const t2 = document.getElementById('lineup-tab-2');
-  if (t1) t1.className = `flex-1 py-2 rounded-xl text-sm font-bold ${svc==='1부'?'bg-purple-600 text-white':'bg-gray-100 text-gray-600'}`;
-  if (t2) t2.className = `flex-1 py-2 rounded-xl text-sm font-bold ${svc==='2부'?'bg-purple-600 text-white':'bg-gray-100 text-gray-600'}`;
+  if (t1) t1.className = `flex-1 py-2 rounded-xl text-sm font-bold ${svc==='1부'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`;
+  if (t2) t2.className = `flex-1 py-2 rounded-xl text-sm font-bold ${svc==='2부'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}`;
   renderLineupSelection();
 }
 
@@ -5073,9 +5251,9 @@ function renderLineup() {
     </div>
     <div class="flex gap-2 mb-4">
       <button id="lineup-tab-1" onclick="switchLineupService('1부')"
-        class="flex-1 py-2 rounded-xl text-sm font-bold ${lineupService==='1부'?'bg-purple-600 text-white':'bg-gray-100 text-gray-600'}">1부 예배</button>
+        class="flex-1 py-2 rounded-xl text-sm font-bold ${lineupService==='1부'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}">1부 예배</button>
       <button id="lineup-tab-2" onclick="switchLineupService('2부')"
-        class="flex-1 py-2 rounded-xl text-sm font-bold ${lineupService==='2부'?'bg-purple-600 text-white':'bg-gray-100 text-gray-600'}">2부 예배</button>
+        class="flex-1 py-2 rounded-xl text-sm font-bold ${lineupService==='2부'?'bg-gray-900 text-white':'bg-gray-100 text-gray-600'}">2부 예배</button>
     </div>
     <div id="lineup-weeks"></div>
   `;
@@ -5226,7 +5404,7 @@ function renderLineupSelection() {
         </h3>
         <span class="lineup-가능 text-xs px-2 py-0.5 rounded-full">${totalIn}명 선택</span>
       </div>
-      ${canEdit ? '<p class="text-xs text-purple-500 mb-3">탭 = 선택/해제 | ⚠️ 흐린 이름 = 목양 확인 필요 (팀장만 승인 가능)</p>' : ''}
+      ${canEdit ? '<p class="text-xs text-gray-500 mb-3">탭 = 선택/해제 | ⚠️ 흐린 이름 = 목양 확인 필요 (팀장만 승인 가능)</p>' : ''}
       ${groupBlocks}
     </div>`;
 }
@@ -5422,9 +5600,9 @@ function renderQRScanPage() {
     <div class="space-y-4">
       <h2 class="font-bold text-gray-800">QR 출석 체크</h2>
       ${canGenerate ? `
-        <div class="bg-purple-50 rounded-xl p-3 flex items-center justify-between">
-          <span class="text-sm text-purple-700 font-semibold">QR 생성 (팀장)</span>
-          <button onclick="openQRModal()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg font-semibold">QR 생성</button>
+        <div class="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+          <span class="text-sm text-gray-900 font-semibold">QR 생성 (팀장)</span>
+          <button onclick="openQRModal()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg font-semibold">QR 생성</button>
         </div>` : ''}
       ${inKakao ? `
         <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center shadow-sm space-y-3">
@@ -5443,7 +5621,7 @@ function renderQRScanPage() {
           <div id="qr-scan-status" class="text-center mt-3 text-sm text-gray-500">카메라 시작 중...</div>
           <div id="qr-scan-result" class="mt-3"></div>
           <div class="flex gap-2 mt-3">
-            <button onclick="startQRCamera()" class="flex-1 bg-purple-600 text-white py-2 rounded-xl text-sm font-bold">카메라 켜기</button>
+            <button onclick="startQRCamera()" class="flex-1 bg-gray-900 text-white py-2 rounded-xl text-sm font-bold">카메라 켜기</button>
             <button onclick="stopQRCamera()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl text-sm font-bold">카메라 끄기</button>
           </div>
         </div>`}
@@ -5567,7 +5745,7 @@ function processScannedQR(qrData) {
       <div class="text-5xl mb-2">✅</div>
       <p class="font-bold text-green-700 text-lg">${me?.name}님 ${data.type} ${isLate ? '지각' : '출석'} 완료!</p>
       <p class="text-xs text-gray-500 mt-1">체크 시간: ${nowTime}</p>
-      <button onclick="navigate('dashboard')" class="mt-3 bg-purple-600 text-white px-6 py-2 rounded-xl font-bold text-sm">확인</button>
+      <button onclick="navigate('dashboard')" class="mt-3 bg-gray-900 text-white px-6 py-2 rounded-xl font-bold text-sm">확인</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
 }
@@ -5585,8 +5763,8 @@ function openQRModal() {
 
 function setQRType(type) {
   qrType = type;
-  document.getElementById('qr-sat').className = `flex-1 py-2 rounded-lg text-sm font-semibold ${type==='토요일'?'bg-purple-600 text-white':'bg-gray-200 text-gray-700'}`;
-  document.getElementById('qr-sun').className = `flex-1 py-2 rounded-lg text-sm font-semibold ${type==='주일'?'bg-purple-600 text-white':'bg-gray-200 text-gray-700'}`;
+  document.getElementById('qr-sat').className = `flex-1 py-2 rounded-lg text-sm font-semibold ${type==='토요일'?'bg-gray-900 text-white':'bg-gray-200 text-gray-700'}`;
+  document.getElementById('qr-sun').className = `flex-1 py-2 rounded-lg text-sm font-semibold ${type==='주일'?'bg-gray-900 text-white':'bg-gray-200 text-gray-700'}`;
   if (type === '주일') {
     document.getElementById('qr-start').value = '07:50';
     document.getElementById('qr-end').value = '08:10';
@@ -5702,12 +5880,12 @@ function renderMyLoveMeeting() {
             ${amLoveLeader ? `<button onclick="openLoveRecord('${myMeeting.id}','${wKey}')" class="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-lg font-semibold">✏️ 기록</button>` : ''}
           </div>
         </div>
-        ${rec.topic ? `<p class="text-xs text-purple-600 mb-1">나눔: ${rec.topic}</p>` : ''}
+        ${rec.topic ? `<p class="text-xs text-gray-700 mb-1">나눔: ${rec.topic}</p>` : ''}
         ${recPhoto ? `<img src="${recPhoto}" class="love-photo-thumb mb-1">` : ''}
         <div>
           <p class="text-xs text-gray-400 font-semibold">내 기도제목</p>
           ${myPrayer ? `<p class="text-xs text-gray-700 bg-gray-50 rounded p-1 mt-0.5">${myPrayer}</p>` :
-            `<button onclick="openMyPrayer('${myMeeting.id}','${wKey}')" class="text-xs text-purple-600 underline mt-0.5">기도제목 작성</button>`}
+            `<button onclick="openMyPrayer('${myMeeting.id}','${wKey}')" class="text-xs text-gray-700 underline mt-0.5">기도제목 작성</button>`}
         </div>
       </div>`;
   }).join('');
@@ -5771,13 +5949,13 @@ function renderLoveMeetingAdmin() {
           </div>
           <div class="flex gap-1">
             <button onclick="openEditLoveMeeting('${m.id}')" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg">수정</button>
-            <button onclick="openLoveRecord('${m.id}','${month}_w${lastWeekIdx}')" class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-lg font-semibold">기록</button>
+            <button onclick="openLoveRecord('${m.id}','${month}_w${lastWeekIdx}')" class="text-xs bg-gray-900 text-white px-2 py-1 rounded-lg font-semibold">기록</button>
             ${isLeader() ? `<button onclick="deleteLoveMeeting('${m.id}')" class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-lg">삭제</button>` : ''}
           </div>
         </div>
         <div class="flex gap-2 text-xs">
           ${hasPhoto ? '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">📷 사진 있음</span>' : '<span class="bg-red-50 text-red-500 px-2 py-0.5 rounded-full">📷 미업로드</span>'}
-          ${rec.topic ? `<span class="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">💬 ${rec.topic.slice(0,10)}...</span>` : '<span class="bg-gray-50 text-gray-400 px-2 py-0.5 rounded-full">나눔 미등록</span>'}
+          ${rec.topic ? `<span class="bg-gray-50 text-gray-900 px-2 py-0.5 rounded-full">💬 ${rec.topic.slice(0,10)}...</span>` : '<span class="bg-gray-50 text-gray-400 px-2 py-0.5 rounded-full">나눔 미등록</span>'}
           <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">참석 ${attendCount}명</span>
         </div>
         ${recPhoto ? `<img src="${recPhoto}" class="love-photo-thumb mt-2">` : ''}
@@ -5790,7 +5968,7 @@ function renderLoveMeetingAdmin() {
         <h2 class="font-bold text-gray-800">사랑 모임</h2>
         ${isAdmin() ? `<div class="flex gap-1">
           <button onclick="createLoveGroups()" class="text-xs bg-pink-500 text-white px-3 py-1.5 rounded-full font-semibold">💐 New 소그룹 생성</button>
-          <button onclick="openAddLoveMeeting()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-full font-semibold">+ 추가</button>
+          <button onclick="openAddLoveMeeting()" class="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-full font-semibold">+ 추가</button>
         </div>` : ''}
       </div>
       ${loveWeeklyTopicCard(true)}
@@ -5903,8 +6081,8 @@ function openLoveRecord(meetingId, wKey) {
     return `<div class="flex items-center justify-between py-1">
       <span class="text-sm text-gray-700">${s.name}</span>
       <div class="flex gap-1">
-        ${['참여','불참'].map(v => `<button onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-purple-400','font-bold'));this.classList.add('ring-2','ring-purple-400','font-bold');this._val='${v}'" data-uid="${s.id}" data-val="${v}"
-          class="text-sm px-4 py-1.5 rounded-lg font-semibold ${v==='참여'?'st-O':'st-결석'} ${cur===v?'ring-2 ring-purple-400 font-bold':''} lr-attn-btn">
+        ${['참여','불참'].map(v => `<button onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-gray-400','font-bold'));this.classList.add('ring-2','ring-gray-400','font-bold');this._val='${v}'" data-uid="${s.id}" data-val="${v}"
+          class="text-sm px-4 py-1.5 rounded-lg font-semibold ${v==='참여'?'st-O':'st-결석'} ${cur===v?'ring-2 ring-gray-400 font-bold':''} lr-attn-btn">
           ${v}
         </button>`).join('')}
       </div>
@@ -6067,7 +6245,7 @@ function showMonthPicker() {
     <div class="grid grid-cols-3 gap-2">
       ${months.map(ym=>{
         const [y,m] = ym.split('-');
-        return `<button onclick="selectMonth('${ym}')" class="py-3 rounded-xl text-sm font-semibold ${ym===state.month?'bg-purple-600 text-white':'bg-gray-100 text-gray-700'}">${m}월</button>`;
+        return `<button onclick="selectMonth('${ym}')" class="py-3 rounded-xl text-sm font-semibold ${ym===state.month?'bg-gray-900 text-white':'bg-gray-100 text-gray-700'}">${m}월</button>`;
       }).join('')}
     </div>`;
   document.getElementById('month-picker-content').innerHTML = html;
@@ -6307,7 +6485,7 @@ function showQRAttendanceForm(data, isLate, time) {
     <div class="space-y-4 mt-8">
       <div class="text-center">
         <div class="text-4xl mb-2">📱</div>
-        <h1 class="text-2xl font-bold text-purple-700">라디 출석 체크</h1>
+        <h1 class="text-2xl font-bold text-gray-900">라디 출석 체크</h1>
         <p class="text-gray-500 text-sm mt-1">${data.type} · ${data.date}</p>
         ${isLate ? '<div class="bg-yellow-100 text-yellow-800 text-sm font-semibold px-4 py-2 rounded-xl mt-2">⚠️ 지각 처리됩니다</div>' : '<div class="bg-green-100 text-green-800 text-sm font-semibold px-4 py-2 rounded-xl mt-2">✓ 정상 출석 시간</div>'}
       </div>
@@ -6319,7 +6497,7 @@ function showQRAttendanceForm(data, isLate, time) {
         </select>
       </div>
       <button onclick="submitQRAttendance('${JSON.stringify(data).replace(/'/g,"\\'")}', ${isLate}, '${time}')"
-        class="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-lg">
+        class="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold text-lg">
         출석 체크 완료
       </button>
     </div>
@@ -6362,7 +6540,7 @@ function showQRResult(type, msg) {
     <div class="text-center space-y-4">
       <div class="text-6xl">${type==='success'?'✅':'❌'}</div>
       <p class="text-lg font-bold ${type==='success'?'text-green-700':'text-red-700'}">${msg.replace(/\n/g,'<br>')}</p>
-      <button onclick="location.href=location.pathname" class="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">메인으로</button>
+      <button onclick="location.href=location.pathname" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold">메인으로</button>
     </div>
   `;
   body.classList.add('active');
@@ -6443,7 +6621,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.1';
+const APP_BUILD = '2026-08-26.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
