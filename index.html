@@ -3238,69 +3238,6 @@ function renderAbout() {
     </div>`;
 }
 
-// 이규현 담임목사 주일 설교 — 수영로교회 공식 재생목록.
-// 유튜브가 재생목록 임베드를 막아 두어서 '최신 영상 하나'를 띄운다.
-// 그 영상 번호는 sermon.json에 있고, GitHub Actions가 주마다 새로 채워 넣는다.
-const SERMON_PLAYLIST = 'PLihs4cM8uzB2zfICO5Er3DwfdA59RI_mm';
-let _sermons = null;
-function loadSermons() {
-  if (_sermons !== null) return;
-  _sermons = [];
-  fetch('sermon.json?ts=' + Date.now(), { cache: 'no-store' })
-    .then(r => r.ok ? r.json() : null)
-    .then(d => {
-      if (d && Array.isArray(d.items) && d.items.length) {
-        _sermons = d.items;
-        if (state.page === 'dashboard') renderDashboard();
-      }
-    })
-    .catch(e => console.warn('설교 목록 실패:', e));
-}
-function sermonDate(d) {
-  if (!d || d.length < 10) return '';
-  return `${Number(d.slice(5,7))}월 ${Number(d.slice(8,10))}일`;
-}
-// 제목이 "본문 | 성경 | 이규현 목사 | 주일예배 | 26.8.23" 꼴이라 앞 두 토막만 쓴다.
-function sermonTitle(t) {
-  const p = String(t).split('|').map(x => x.trim());
-  return { main: p[0] || t, ref: p[1] || '' };
-}
-function renderSermonCard() {
-  loadSermons();
-  const list = _sermons || [];
-  const top = list[0];
-  const body = top ? `
-      <div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000">
-        <iframe src="https://www.youtube.com/embed/${top.id}"
-          style="position:absolute;inset:0;width:100%;height:100%;border:0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"
-          title="이규현 목사님 주일 설교"></iframe>
-      </div>
-      <p class="text-sm font-bold text-gray-800 mt-2 leading-snug">${sermonTitle(top.title).main}</p>
-      <p class="text-[11px] text-gray-400 mt-0.5">${sermonTitle(top.title).ref}${top.date ? ' · ' + sermonDate(top.date) : ''}</p>
-      ${list.length > 1 ? `
-      <div class="mt-2 pt-2 border-t">
-        ${list.slice(1, 4).map(v => `
-          <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener"
-             class="flex items-center gap-2 py-1.5">
-            <span class="text-[10px] text-gray-400 font-semibold" style="min-width:44px">${sermonDate(v.date)}</span>
-            <span class="text-xs text-gray-700 truncate flex-1">${sermonTitle(v.title).main}</span>
-          </a>`).join('')}
-      </div>` : ''}`
-    : `<a href="https://www.youtube.com/playlist?list=${SERMON_PLAYLIST}" target="_blank" rel="noopener"
-         class="block text-center bg-gray-50 border rounded-xl py-6 text-sm text-gray-500 font-semibold">유튜브에서 보기 ›</a>`;
-  return `
-    <div class="surface px-3 py-3">
-      <div class="flex items-center justify-between mb-2">
-        <p class="sec">이규현 목사님 주일 설교</p>
-        <a href="https://www.youtube.com/playlist?list=${SERMON_PLAYLIST}" target="_blank" rel="noopener"
-           class="text-xs text-gray-500 font-semibold">전체 보기</a>
-      </div>
-      ${body}
-    </div>`;
-}
-
 function renderDashboard() {
   _initTodayBirthdayBanner();
   if (isMember()) { renderMemberDashboard(); return; }
@@ -3322,8 +3259,6 @@ function renderDashboard() {
           <button onclick="navigate('birthday')"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span>생일</span></button>
         </div>
       </div>
-
-      ${renderSermonCard()}
 
       <!-- 목양 알림 -->
       ${renderPastoralAlerts()}
@@ -3590,7 +3525,6 @@ function renderMemberDashboard() {
 
   const html = `
     <div class="space-y-3">
-      ${renderSermonCard()}
       ${todayBirthdays.length ? `
         <div class="bg-gradient-to-r from-pink-500 to-gray-900 rounded-2xl px-4 py-2.5 text-white">
           <p class="text-xs opacity-80 font-semibold mb-1">🎂 오늘의 생일자</p>
@@ -6686,7 +6620,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.7';
+const APP_BUILD = '2026-08-26.8';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
