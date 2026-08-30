@@ -21,6 +21,13 @@ service cloud.firestore {
       allow create, update: if true;
       allow delete: if false;
     }
+    // 신입생 자기소개서 — 팀장이 올린 파일. 문서 1MB 한도 때문에
+    // {id}(메타)와 {id}_c{n}(base64 조각)으로 나눠 담는다.
+    match /newcomerIntro/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
     // 26년 하반기 오디션 지원서 — 지원자 한 명당 문서 하나(문서 id = 6자리 실기번호).
     match /newcomerApply/{document} {
       allow read: if true;
