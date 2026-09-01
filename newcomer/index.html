@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-01.2';
+const APP_BUILD = '2026-09-01.3';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -545,7 +545,8 @@ let currentUser = null;   // 로컬 전용 — 서버에 올리지 않는다
 let currentPage = 'home';
 let checkWeek = 0;
 let qtDate = '';   // 큐티 화면에서 보고 있는 날짜
-let qtOpenStudent = null;  // 팀장이 펼쳐 본 아이
+let qtOpenStudent = null;  // 펼쳐 본 아이의 묵상
+let qtCalMonth = null;     // 큐티 달력이 보고 있는 달 'YYYY-MM'. null이면 보고 있는 날짜의 달.
 const _qtDraft = {};       // 날짜 → 쓰다 만 글. 화면이 다시 그려져도 날아가지 않게.
 
 function saveLocal() {
@@ -979,6 +980,39 @@ function qtSlotOf(dateISO) {
   return { n, i };
 }
 function qtDateOf(n, i) { return iso(addDays(weekInfo(n).sat, 2 + i)); }
+
+// ── 큐티 달력 ──
+// 8주 과정이 걸쳐 있는 달들만 오간다.
+function qtAvailMonths() {
+  const out = [];
+  let d = parseDate(qtDateOf(0, 0)), end = parseDate(qtDateOf(WEEKS - 1, 4));
+  d = new Date(d.getFullYear(), d.getMonth(), 1);
+  while (d <= end) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+    d = new Date(d.getFullYear(), d.getMonth()+1, 1);
+  }
+  return out;
+}
+function qtShownMonth() {
+  const months = qtAvailMonths();
+  const want = qtCalMonth || (qtDate || '').slice(0, 7);
+  return months.includes(want) ? want : months[0];
+}
+function shiftQtMonth(step) {
+  const months = qtAvailMonths(), i = months.indexOf(qtShownMonth()) + step;
+  if (i < 0 || i >= months.length) return;
+  qtCalMonth = months[i];
+  renderAll();
+}
+function pickQtDate(ds) { qtDate = ds; qtCalMonth = ds.slice(0, 7); qtOpenStudent = null; renderAll(); }
+// 달력 칸에 들어갈 짧은 본문 이름
+function qtShortRef(ds) {
+  const r = QT_SCHEDULE[ds];
+  if (!r) return '';
+  return r.replace('사사기','삿').replace('야고보서','약').replace('시편','시')
+          .replace('고린도전서','고전').replace('고린도후서','고후').replace(/\s/g,'');
+}
+
 function shiftQtDate(step) {
   const s = qtSlotOf(qtDate);
   if (!s) return;
@@ -1083,36 +1117,73 @@ function submitQT(id, n, i, date) {
 
 function renderQT() {
   const el = document.getElementById('page-qt');
-  const slot = qtSlotOf(qtDate);
-  if (!slot) { qtDate = qtDateOf(currentWeek(), 0); }
+  if (!qtSlotOf(qtDate)) qtDate = qtDateOf(currentWeek(), 0);
   const { n, i } = qtSlotOf(qtDate);
   const d = parseDate(qtDate);
   const ref = QT_SCHEDULE[qtDate] || '';
   const meId = isLeader() ? null : currentUser;
-  const done = meId ? qtOf(meId, n)[i] : false;
 
-  const dayChips = DOW_QT.map((dw, k) => {
-    const ds = qtDateOf(n, k), on = ds === qtDate;
-    const checked = meId ? qtOf(meId, n)[k] : false;
-    return `<button onclick="qtDate='${ds}';renderAll()" style="min-height:56px"
-      class="flex-1 flex flex-col items-center justify-center rounded-xl py-1.5 ${on ? 'bg-gray-900 text-white' : 'bg-white border text-gray-600'}">
-      <span class="text-[11px] ${on?'text-white/70':'text-gray-400'}">${dw}</span>
-      <span class="text-sm font-bold">${parseDate(ds).getDate()}</span>
-      ${checked ? `<span class="text-[10px] ${on?'text-white':'text-blue-600'}">✓</span>` : '<span class="text-[10px] opacity-0">·</span>'}
-    </button>`;
-  }).join('');
+  // ── 달력 (본 앱과 같은 일~토 7열 월간 달력) ──
+  const month = qtShownMonth();
+  const [my, mm] = month.split('-').map(Number);
+  const months = qtAvailMonths(), mi = months.indexOf(month);
+  const first = new Date(my, mm - 1, 1), last = new Date(my, mm, 0);
+  const todayStr = iso(today0());
+  const rows = [];
+  let cur = addDays(first, -first.getDay());   // 그 주 일요일부터
+  while (cur <= last) {
+    const cells = [];
+    for (let k = 0; k < 7; k++) {
+      const c = addDays(cur, k), ds = iso(c);
+      if (c.getMonth() + 1 !== mm) { cells.push('<div class="flex-1 min-w-0"></div>'); continue; }
+      const slot = qtSlotOf(ds);                       // 큐티하는 날인가(월~금, 과정 안)
+      const mine = slot && meId ? qtOf(meId, slot.n)[slot.i] : false;
+      const cnt  = slot ? state.students.filter(x => qtOf(x.id, slot.n)[slot.i]).length : 0;
+      const sel = ds === qtDate, today = ds === todayStr;
+      const bg = !slot ? 'bg-gray-50'
+               : mine ? 'bg-green-100'
+               : today ? 'bg-blue-50'
+               : 'bg-white border';
+      const ring = sel ? 'ring-2 ring-gray-900' : (today && slot ? 'ring-1 ring-blue-300' : '');
+      const numC = !slot ? 'text-gray-300' : mine ? 'text-green-700' : today ? 'text-blue-700' : 'text-gray-700';
+      cells.push(`<div class="flex-1 min-w-0 rounded-lg py-1 px-0.5 text-center ${bg} ${ring} ${slot?'cursor-pointer active:scale-95':''} transition-all"
+        ${slot ? `onclick="pickQtDate('${ds}')"` : ''}>
+        <p class="text-[11px] font-bold ${numC}">${c.getDate()}</p>
+        ${slot ? `<p class="text-[8px] leading-tight ${mine?'text-green-500':'text-blue-400'} truncate">${qtShortRef(ds)}</p>` : '<p class="text-[8px]">&nbsp;</p>'}
+        ${slot ? (meId
+            ? `<p class="text-[9px] ${mine?'text-green-600':'text-transparent'}">✓</p>`
+            : `<p class="text-[9px] ${cnt?'text-blue-600 font-bold':'text-transparent'}">${cnt||0}</p>`)
+          : '<p class="text-[9px]">&nbsp;</p>'}
+      </div>`);
+    }
+    rows.push(`<div class="flex gap-0.5 mb-1">${cells.join('')}</div>`);
+    cur = addDays(cur, 7);
+  }
+  const calendar = `
+    <div class="card !py-3">
+      <div class="flex items-center justify-between mb-2">
+        <button onclick="shiftQtMonth(-1)" style="min-height:32px"
+          class="px-2 text-xl ${mi<=0?'text-gray-200':'text-gray-400'}">‹</button>
+        <p class="text-sm font-bold text-gray-900">${my}년 ${mm}월</p>
+        <button onclick="shiftQtMonth(1)" style="min-height:32px"
+          class="px-2 text-xl ${mi>=months.length-1?'text-gray-200':'text-gray-400'}">›</button>
+      </div>
+      <div class="flex gap-0.5 mb-1">
+        ${['일','월','화','수','목','금','토'].map((w,k) =>
+          `<div class="flex-1 text-center text-[10px] font-semibold ${k===0?'text-red-400':k===6?'text-blue-400':'text-gray-400'}">${w}</div>`).join('')}
+      </div>
+      ${rows.join('')}
+      <p class="text-[11px] text-gray-400 mt-1 text-center">
+        날짜를 누르면 그날 큐티로 갑니다 · ${meId ? '초록칸은 내가 올린 날' : '숫자는 그날 올린 사람 수'}
+      </p>
+    </div>`;
 
   el.innerHTML = `
-    <div class="card !py-3">
-      <div class="flex items-center justify-between">
-        <button onclick="shiftQtDate(-1)" class="text-gray-400 px-2 text-xl" style="min-height:32px">‹</button>
-        <div class="text-center">
-          <p class="text-xs text-gray-500">${n+1}주차 · ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW_QT[i]})</p>
-          <p class="text-base font-bold text-gray-900 mt-0.5">${ref || '진도표에 없는 날'}</p>
-        </div>
-        <button onclick="shiftQtDate(1)" class="text-gray-400 px-2 text-xl" style="min-height:32px">›</button>
-      </div>
-      <div class="flex gap-1.5 mt-3">${dayChips}</div>
+    ${calendar}
+
+    <div class="card !py-3 text-center">
+      <p class="text-xs text-gray-500">${n+1}주차 · ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW_QT[i]})</p>
+      <p class="text-base font-bold text-gray-900 mt-0.5">${ref || '진도표에 없는 날'}</p>
     </div>
 
     <div class="card !p-3">
@@ -1132,9 +1203,10 @@ function renderQT() {
       const saved = _qtDocs[qtKey(meId, qtDate)];
       const loading = saved === undefined;
       const shownImg = _qtPendingImg || (saved && saved.image) || '';
+      const done = qtOf(meId, n)[i];
       return `
     <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm mb-2">${d.getMonth()+1}월 ${d.getDate()}일 묵상</h3>
+      <h3 class="font-bold text-gray-800 text-sm mb-2">${d.getMonth()+1}월 ${d.getDate()}일 내 묵상</h3>
       ${loading ? `<p class="text-sm text-gray-400 py-6 text-center">불러오는 중…</p>` : `
       <textarea id="qt-text" rows="6" oninput="_qtDraft['${qtDate}']=this.value"
         placeholder="오늘 말씀을 읽고 마음에 남은 것, 하나님이 어떤 분으로 보였는지, 내 삶에 어떻게 적용할지 자유롭게 적어보세요."
@@ -1151,7 +1223,6 @@ function renderQT() {
         📷 ${shownImg ? '사진 바꾸기' : '큐티 노트 사진 올리기'}
         <input type="file" accept="image/*" class="hidden" onchange="pickQtImage(this)">
       </label>
-
       <button onclick="submitQT('${meId}',${n},${i},'${qtDate}')"
         class="w-full mt-3 py-4 rounded-xl font-bold text-sm ${saved ? 'bg-blue-600 text-white' : 'bg-gray-900 text-white'}">
         ${saved ? '고쳐서 다시 올리기' : '큐티 올리기'}
@@ -1163,24 +1234,28 @@ function renderQT() {
       <p class="text-sm ${qtCount(meId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(meId,n)}일 / 5일</p>
       <p class="text-xs text-gray-400 mt-0.5">${qtCount(meId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(meId,n)}일 남았어요`}</p>
     </div>`;
-    })() : `
+    })() : ''}
+
     <div class="card">
-      <h3 class="font-bold text-gray-800 text-sm mb-1">${d.getMonth()+1}월 ${d.getDate()}일 큐티</h3>
+      <h3 class="font-bold text-gray-800 text-sm mb-1">${d.getMonth()+1}월 ${d.getDate()}일 친구들 큐티</h3>
       <p class="text-[11px] text-gray-400 mb-2">이름을 누르면 그날 올린 묵상을 볼 수 있어요</p>
       ${state.students.map(s => {
         loadQtDoc(s.id, qtDate);
-        const doc = _qtDocs[qtKey(s.id, qtDate)];
+        const raw = _qtDocs[qtKey(s.id, qtDate)];
+        // 글도 사진도 없는 빈 문서는 낸 것으로 치지 않는다.
+        const doc = raw && ((raw.text || '').trim() || raw.image) ? raw : (raw === undefined ? undefined : null);
         const open = qtOpenStudent === s.id;
+        const me = s.id === currentUser;
         const c = qtCount(s.id, n);
         return `<div class="border-b last:border-0">
           <div onclick="qtOpenStudent = qtOpenStudent==='${s.id}' ? null : '${s.id}'; renderAll()" class="flex items-center justify-between py-2 cursor-pointer">
             <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-800 font-semibold">${s.name}</span>
+              <span class="text-sm text-gray-800 font-semibold">${s.name}${me?' <span class="text-xs text-gray-400">(나)</span>':''}</span>
               ${doc === undefined ? '<span class="text-[11px] text-gray-300">…</span>'
                 : (doc ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">올림</span>'
                        : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">아직</span>')}
             </div>
-            <span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">주 ${c}/5</span>
+            ${isLeader() ? `<span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">주 ${c}/5</span>` : ''}
           </div>
           ${open && doc ? `<div class="pb-3">
             ${doc.text ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3">${esc(doc.text)}</p>` : ''}
@@ -1188,8 +1263,8 @@ function renderQT() {
           </div>` : (open ? `<p class="text-xs text-gray-400 pb-3">아직 올리지 않았어요</p>` : '')}
         </div>`;
       }).join('')}
-      <p class="text-[11px] text-gray-400 mt-2">체크만 고치려면 체크표에서 하면 됩니다.</p>
-    </div>`}
+      ${isLeader() ? `<p class="text-[11px] text-gray-400 mt-2">체크만 고치려면 체크표에서 하면 됩니다.</p>` : ''}
+    </div>
 
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">월별 큐티 PDF</h3>
