@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-01.1';
+const APP_BUILD = '2026-09-01.2';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -339,8 +339,8 @@ const PROGRAM = [
 // 신입생 교육(4~8주차)은 전원 참석이다.
 // 교육만 면제일 뿐 출석·큐티·가테 기준은 다른 아이들과 똑같이 적용된다.
 // 처음 값일 뿐이고, 리더가 명단 화면에서 언제든 켜고 끌 수 있다.
-// 2026-09-01: 김루아(n06)는 YIP 수료가 아닌 것으로 확인되어 면제에서 뺐다(목사님 확인).
-const EDU_EXEMPT_DEFAULT = { n03:true, n04:true }; // 남예진, 배은채
+// 2026-09-01(목사님 확인): 김루아(n06)는 YIP 수료가 아니라 뺐고, 서찬영(n11)은 수료라 넣었다.
+const EDU_EXEMPT_DEFAULT = { n03:true, n04:true, n11:true }; // 남예진, 배은채, 서찬영
 
 function programOf(n) { return PROGRAM.find(p => n >= p.from && n <= p.to) || PROGRAM[PROGRAM.length-1]; }
 function isEduExempt(id, n) {
