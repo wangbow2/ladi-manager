@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-01.3';
+const APP_BUILD = '2026-09-02.1';
 const WEEKS = 8;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
@@ -548,6 +548,8 @@ let qtDate = '';   // 큐티 화면에서 보고 있는 날짜
 let qtOpenStudent = null;  // 펼쳐 본 아이의 묵상
 let qtCalMonth = null;     // 큐티 달력이 보고 있는 달 'YYYY-MM'. null이면 보고 있는 날짜의 달.
 const _qtDraft = {};       // 날짜 → 쓰다 만 글. 화면이 다시 그려져도 날아가지 않게.
+let _qtEditing = null;     // 목사님이 고치는 중인 아이 id
+let _qtDelArm = null;      // '지우기'를 한 번 눌러 확인을 기다리는 아이 id
 
 function saveLocal() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {}
@@ -723,6 +725,9 @@ function canEditAtt() { return isLeader(); }
 // 큐티 체크는 아이가 직접 누르는 게 아니라 '제출'로 켜진다.
 // 체크칸을 직접 고치는 건 바로잡을 일이 있는 팀장만.
 function canEditQT(id) { return isLeader(); }
+// 남의 큐티 글을 고치고 지우는 것은 목사님만. 아이가 쓴 글을 손대는 일이라 한 사람에게만 둔다.
+const QT_MANAGER = 't1';   // 황영환 목사
+function canManageQT() { return currentUser === QT_MANAGER; }
 
 function fillLoginSelect() {
   const sel = document.getElementById('login-name-select');
@@ -1115,6 +1120,57 @@ function submitQT(id, n, i, date) {
     });
 }
 
+// ── 목사님 전용: 아이 큐티 고치기·지우기 ──
+function startEditQT(id) { if (!canManageQT()) return; _qtEditing = id; _qtDelArm = null; renderAll(); }
+function cancelEditQT()  { _qtEditing = null; renderAll(); }
+
+function saveEditQT(id) {
+  if (!canManageQT()) return;
+  const ta = document.getElementById('qt-edit-' + id);
+  const text = (ta ? ta.value : '').trim();
+  const prev = _qtDocs[qtKey(id, qtDate)] || {};
+  const doc = { studentId: id, date: qtDate, text, image: prev.image || '',
+                updatedAt: new Date().toISOString(), editedBy: (findUser(currentUser)||{}).name || '' };
+  _qtDocs[qtKey(id, qtDate)] = doc;
+  _qtEditing = null;
+  renderAll();
+  if (!_FS_OK) { toast('고쳤어요 (인터넷이 없어 이 기기에만)'); return; }
+  _db.collection('newcomerQT').doc(qtKey(id, qtDate)).set(doc)
+    .then(() => toast(`${findUser(id).name} 큐티를 고쳤어요`))
+    .catch(e => { console.warn('큐티 수정 실패:', e); toast('저장이 안 됐어요. 잠시 뒤 다시 해주세요'); });
+}
+
+// 한 번 더 누르게 해서 실수로 지우는 일을 막는다(브라우저 확인창은 쓰지 않는다).
+function armDeleteQT(id) { if (!canManageQT()) return; _qtDelArm = id; _qtEditing = null; renderAll(); }
+function cancelDeleteQT() { _qtDelArm = null; renderAll(); }
+
+function doDeleteQT(id) {
+  if (!canManageQT() || _qtDelArm !== id) return;
+  const { n, i } = qtSlotOf(qtDate);
+  // 규칙상 문서 삭제가 막혀 있어 내용을 비운다. 글도 사진도 없으면 앱은 '아직'으로 본다.
+  const doc = { studentId: id, date: qtDate, text: '', image: '',
+                updatedAt: '', editedBy: (findUser(currentUser)||{}).name || '' };
+  _qtDocs[qtKey(id, qtDate)] = doc;
+  _qtDelArm = null;
+  // 제출과 함께 켜졌던 그날 체크도 같이 끈다.
+  const arr = qtOf(id, n).slice();
+  arr[i] = false;
+  pushPatch({ qt: { [`${id}_w${n}`]: arr } });
+  renderAll();
+  if (!_FS_OK) { toast('지웠어요 (인터넷이 없어 이 기기에만)'); return; }
+  _db.collection('newcomerQT').doc(qtKey(id, qtDate)).set(doc)
+    .then(() => toast(`${findUser(id).name} 큐티를 지웠어요`))
+    .catch(e => { console.warn('큐티 삭제 실패:', e); toast('지우지 못했어요. 잠시 뒤 다시 해주세요'); });
+}
+
+function removeEditImage(id) {
+  if (!canManageQT()) return;
+  const prev = _qtDocs[qtKey(id, qtDate)] || {};
+  _qtDocs[qtKey(id, qtDate)] = Object.assign({}, prev, { image: '' });
+  renderAll();
+  toast('사진을 뺐어요 — 아래 저장을 눌러야 반영됩니다');
+}
+
 function renderQT() {
   const el = document.getElementById('page-qt');
   if (!qtSlotOf(qtDate)) qtDate = qtDateOf(currentWeek(), 0);
@@ -1258,8 +1314,37 @@ function renderQT() {
             ${isLeader() ? `<span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">주 ${c}/5</span>` : ''}
           </div>
           ${open && doc ? `<div class="pb-3">
-            ${doc.text ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3">${esc(doc.text)}</p>` : ''}
-            ${doc.image ? `<img src="${doc.image}" onclick="showImg(this.src)" class="w-full rounded-xl border mt-2 cursor-pointer" style="max-height:320px;object-fit:contain;background:#F9FAFB">` : ''}
+            ${_qtEditing === s.id ? `
+              <textarea id="qt-edit-${s.id}" rows="7"
+                class="w-full border rounded-xl p-3 text-sm resize-none">${esc(doc.text || '')}</textarea>
+              ${doc.image ? `
+                <div class="relative mt-2">
+                  <img src="${doc.image}" class="w-full rounded-xl border" style="max-height:240px;object-fit:contain;background:#F9FAFB">
+                  <button onclick="removeEditImage('${s.id}')" style="min-height:32px"
+                    class="absolute top-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>
+                </div>` : ''}
+              <div class="flex gap-2 mt-2">
+                <button onclick="saveEditQT('${s.id}')" class="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-bold text-sm">저장</button>
+                <button onclick="cancelEditQT()" class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-sm">취소</button>
+              </div>`
+            : `
+              ${doc.text ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3">${esc(doc.text)}</p>` : ''}
+              ${doc.image ? `<img src="${doc.image}" onclick="showImg(this.src)" class="w-full rounded-xl border mt-2 cursor-pointer" style="max-height:320px;object-fit:contain;background:#F9FAFB">` : ''}
+              ${canManageQT() ? (_qtDelArm === s.id ? `
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-xs text-red-600 font-semibold flex-1">${s.name} 큐티를 지울까요?</span>
+                  <button onclick="doDeleteQT('${s.id}')" style="min-height:32px"
+                    class="text-xs px-3 py-1.5 rounded-full font-bold bg-red-600 text-white">지웁니다</button>
+                  <button onclick="cancelDeleteQT()" style="min-height:32px"
+                    class="text-xs px-3 py-1.5 rounded-full font-semibold bg-gray-100 text-gray-600">그만</button>
+                </div>` : `
+                <div class="flex gap-2 mt-2">
+                  <button onclick="startEditQT('${s.id}')" style="min-height:32px"
+                    class="text-xs px-3 py-1.5 rounded-full font-semibold bg-white border text-gray-600">고치기</button>
+                  <button onclick="armDeleteQT('${s.id}')" style="min-height:32px"
+                    class="text-xs px-3 py-1.5 rounded-full font-semibold bg-white border text-red-500">지우기</button>
+                </div>`) : ''}
+              ${doc.editedBy ? `<p class="text-[11px] text-gray-400 mt-1">${doc.editedBy} 목사님이 손댄 기록이 있어요</p>` : ''}`}
           </div>` : (open ? `<p class="text-xs text-gray-400 pb-3">아직 올리지 않았어요</p>` : '')}
         </div>`;
       }).join('')}
