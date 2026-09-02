@@ -300,8 +300,10 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-02.1';
+const APP_BUILD = '2026-09-02.2';
 const WEEKS = 8;
+// 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
+const PRE_WEEKS = 1;
 const DEFAULT_START = '2026-09-05'; // 첫 토요일 — 리더가 앱에서 바꿀 수 있다
 
 // 명단. 연락처는 여기 두지 않는다(공개 저장소에 남으므로) — Firestore에서 받아 온다.
@@ -365,6 +367,8 @@ const LIMITS = {
 };
 // 큐티 본문 — 성서유니온 「청소년 매일성경」 진도표(본 앱 QT_SCHEDULE에서 가져옴)
 const QT_SCHEDULE = {
+  // 8월 — 준비 주간(과정 시작 전 한 주)
+  '2026-08-31':'이사야 39:1-8',
   // 9월
   '2026-09-01':'사사기 1:1-10',
   '2026-09-02':'사사기 1:11-21',
@@ -498,7 +502,7 @@ function suYouthImgUrl(dateStr, slot) {
   return `https://sum.su.or.kr:8888/Bible_Attach/QT2/J${dateStr.replace(/-/g,'')}-${slot+1}.jpg`;
 }
 // 월별 큐티 PDF — 본 앱의 files/ 아래 실물을 그대로 쓴다.
-const QT_PDF = { '2026-09':'9월', '2026-10':'10월' };
+const QT_PDF = { '2026-08':'8월', '2026-09':'9월', '2026-10':'10월' };
 
 const ATT_CYCLE = ['', '출석', '지각', '무단지각', '결석', '무단결석'];
 const ATT_SHORT = { '':'·', '출석':'O', '지각':'지', '무단지각':'무지', '결석':'결', '무단결석':'무결' };
@@ -536,7 +540,7 @@ let state = {
   pins: {},
   eduExempt: Object.assign({}, EDU_EXEMPT_DEFAULT), // 신입생 교육 면제(표시 전용)
   att: {},   // `${id}_w${n}_sat` | `_sun`  → 출석/지각/무단지각/결석/무단결석
-  qt: {},    // `${id}_w${n}` → [bool x5] (월~금)
+  qt: {},    // weekKey(id,n) → [bool x5] (월~금). 준비 주간은 `${id}_pre1`
   gate: {},  // `${id}_w${n}` → 'O' | 'X'
   edu: {},   // `${id}_w${n}` → 'O' | 'X'  (토요일 교육 참석: 1~3주 YIP, 4~8주 신입생 교육)
   memos: {}
@@ -652,6 +656,9 @@ function weekInfo(n) {
   const sat = addDays(parseDate(state.startDate || DEFAULT_START), n*7);
   return { n, sat, sun: addDays(sat,1), qtStart: addDays(sat,2), fri: addDays(sat,6) };
 }
+// 준비 주간은 -1. 키에 '-'가 들어가지 않도록 이름을 따로 짓는다.
+function weekKey(id, n) { return n < 0 ? `${id}_pre${-n}` : `${id}_w${n}`; }
+function weekLabel(n) { return n < 0 ? '준비 주간' : `${n+1}주차`; }
 function weekStarted(n) { return today0() >= weekInfo(n).sat; }
 function weekEnded(n) { return today0() > weekInfo(n).fri; }
 function currentWeek() {
@@ -663,9 +670,9 @@ function currentWeek() {
 // 집계 · 수료 판정
 // ==========================================
 function attOf(id, n, day) { return state.att[`${id}_w${n}_${day}`] || ''; }
-function qtOf(id, n) { const v = state.qt[`${id}_w${n}`]; return Array.isArray(v) ? v : [false,false,false,false,false]; }
+function qtOf(id, n) { const v = state.qt[weekKey(id, n)]; return Array.isArray(v) ? v : [false,false,false,false,false]; }
 function qtCount(id, n) { return qtOf(id, n).filter(Boolean).length; }
-function qtHasEntry(id, n) { return state.qt[`${id}_w${n}`] !== undefined; }
+function qtHasEntry(id, n) { return state.qt[weekKey(id, n)] !== undefined; }
 function gateOf(id, n) { return state.gate[`${id}_w${n}`] || ''; }
 function eduOf(id, n) { return (state.edu || {})[`${id}_w${n}`] || ''; }
 
@@ -802,7 +809,7 @@ function cycleAtt(id, n, day) {
 }
 function toggleQT(id, n, i) {
   if (!canEditQT(id)) return;
-  const key = `${id}_w${n}`;
+  const key = weekKey(id, n);
   const arr = qtOf(id, n).slice();
   arr[i] = !arr[i];
   pushPatch({ qt: { [key]: arr } });
@@ -855,7 +862,7 @@ function renderAll() {
   document.getElementById('nav-roster').classList.toggle('hidden', !isLeader());
   document.getElementById('nav-intro').classList.toggle('hidden', !isLeader());
   const w = weekInfo(currentWeek());
-  document.getElementById('header-week').textContent = `${currentWeek()+1}주차`;
+  document.getElementById('header-week').textContent = weekStarted(0) ? `${currentWeek()+1}주차` : '시작 전';
   ({ home: renderHome, qt: renderQT, check: renderCheck, status: renderStatus,
      roster: renderRoster, intro: renderIntro, rules: renderRules, about: renderAbout }[currentPage] || renderHome)();
 }
@@ -871,7 +878,7 @@ function partBadge(s) {
 
 function renderHome() {
   const el = document.getElementById('page-home');
-  const cw = currentWeek(), wi = weekInfo(cw);
+  const cw = currentWeek(), wi = weekInfo(cw), qw = qtWeekNow();
   const started = weekStarted(0);
   const header = `
     <div class="card">
@@ -964,33 +971,37 @@ function renderHome() {
         const ref = QT_SCHEDULE[t];
         if (!ref) return `<p class="text-sm text-gray-400">오늘은 진도표에 없는 날이에요</p>`;
         return `<p class="text-base font-bold text-gray-900">${ref}</p>
-                <p class="text-xs text-gray-400 mt-0.5">${s ? `${s.n+1}주차 ${DOW_QT[s.i]}요일` : '토·주일은 큐티를 세지 않아요'}</p>`;
+                <p class="text-xs text-gray-400 mt-0.5">${s ? `${weekLabel(s.n)} ${DOW_QT[s.i]}요일` : '토·주일은 큐티를 세지 않아요'}</p>`;
       })()}
       <div class="flex gap-1.5 justify-between mt-3">
         ${DOW_QT.map((d,i) => `<div class="flex flex-col items-center gap-1">
           <span class="text-[11px] text-gray-400">${d}</span>
-          <div class="qt-dot ${qtOf(id,cw)[i]?'on':''}" style="cursor:default">${qtOf(id,cw)[i]?'✓':''}</div>
+          <div class="qt-dot ${qtOf(id,qw)[i]?'on':''}" style="cursor:default">${qtOf(id,qw)[i]?'✓':''}</div>
         </div>`).join('')}
       </div>
-      <p class="text-xs mt-2 ${qtCount(id,cw)>=4?'text-blue-600':'text-gray-400'}">이번 주 ${qtCount(id,cw)}일 / 5일 — 4일 이상이면 통과입니다</p>
+      <p class="text-xs mt-2 ${qw<0?'text-gray-400':(qtCount(id,qw)>=4?'text-blue-600':'text-gray-400')}">이번 주 ${qtCount(id,qw)}일 / 5일 ${qw<0?'— 준비 주간이라 수료 판정에는 안 들어가요':'— 4일 이상이면 통과입니다'}</p>
     </div>`;
 }
 
 // 날짜 → 몇 주차 며칠째 큐티인지. 토·주일이나 과정 밖 날짜면 null.
 function qtSlotOf(dateISO) {
   const diff = Math.round((parseDate(dateISO) - parseDate(state.startDate || DEFAULT_START)) / 86400000);
-  if (diff < 0) return null;
-  const n = Math.floor(diff / 7), i = (diff % 7) - 2; // 0=토, 1=주일, 2~6=월~금
-  if (n >= WEEKS || i < 0) return null;
+  // 준비 주간은 diff가 음수다. %가 음수를 내놓으므로 보정해서 요일을 뽑는다.
+  const n = Math.floor(diff / 7), i = ((diff % 7) + 7) % 7 - 2; // 0=토, 1=주일, 2~6=월~금
+  if (n < -PRE_WEEKS || n >= WEEKS || i < 0) return null;
   return { n, i };
 }
+// 오늘이 속한 큐티 주차(토·주일이면 진행 주차).
+function qtWeekNow() { const s = qtSlotOf(iso(today0())); return s ? s.n : currentWeek(); }
+// 큐티는 그날 안에만 올린다 — 자정을 넘기면 잠긴다. 미리 당겨 쓰는 것도 막는다.
+function qtLocked(dateISO) { return dateISO !== iso(today0()); }
 function qtDateOf(n, i) { return iso(addDays(weekInfo(n).sat, 2 + i)); }
 
 // ── 큐티 달력 ──
 // 8주 과정이 걸쳐 있는 달들만 오간다.
 function qtAvailMonths() {
   const out = [];
-  let d = parseDate(qtDateOf(0, 0)), end = parseDate(qtDateOf(WEEKS - 1, 4));
+  let d = parseDate(qtDateOf(-PRE_WEEKS, 0)), end = parseDate(qtDateOf(WEEKS - 1, 4));
   d = new Date(d.getFullYear(), d.getMonth(), 1);
   while (d <= end) {
     out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
@@ -1024,7 +1035,7 @@ function shiftQtDate(step) {
   let n = s.n, i = s.i + step;
   if (i > 4) { n++; i = 0; }
   if (i < 0) { n--; i = 4; }
-  if (n < 0 || n >= WEEKS) return;
+  if (n < -PRE_WEEKS || n >= WEEKS) return;
   qtDate = qtDateOf(n, i);
   renderAll();
 }
@@ -1095,6 +1106,8 @@ function pickQtImage(input) {
 function clearQtImage() { _qtPendingImg = null; renderAll(); }
 
 function submitQT(id, n, i, date) {
+  // 자정이 지나면 그날은 닫힌다. 화면을 켜 둔 채 날이 바뀐 경우까지 여기서 막는다.
+  if (qtLocked(date)) { toast('그날 큐티는 닫혔어요 — 오늘 것만 올릴 수 있어요'); renderAll(); return; }
   const ta = document.getElementById('qt-text');
   const text = (ta ? ta.value : '').trim();
   const prev = _qtDocs[qtKey(id, date)] || {};
@@ -1108,7 +1121,7 @@ function submitQT(id, n, i, date) {
   // 체크는 제출과 함께 켠다 — 올렸는데 체크가 안 되는 일이 없도록.
   const arr = qtOf(id, n).slice();
   arr[i] = true;
-  pushPatch({ qt: { [`${id}_w${n}`]: arr } });
+  pushPatch({ qt: { [weekKey(id, n)]: arr } });
   renderAll();
 
   if (!_FS_OK) { toast('저장했어요 (인터넷이 없어 이 기기에만)'); return; }
@@ -1155,7 +1168,7 @@ function doDeleteQT(id) {
   // 제출과 함께 켜졌던 그날 체크도 같이 끈다.
   const arr = qtOf(id, n).slice();
   arr[i] = false;
-  pushPatch({ qt: { [`${id}_w${n}`]: arr } });
+  pushPatch({ qt: { [weekKey(id, n)]: arr } });
   renderAll();
   if (!_FS_OK) { toast('지웠어요 (인터넷이 없어 이 기기에만)'); return; }
   _db.collection('newcomerQT').doc(qtKey(id, qtDate)).set(doc)
@@ -1238,8 +1251,9 @@ function renderQT() {
     ${calendar}
 
     <div class="card !py-3 text-center">
-      <p class="text-xs text-gray-500">${n+1}주차 · ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW_QT[i]})</p>
+      <p class="text-xs text-gray-500">${weekLabel(n)} · ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW_QT[i]})</p>
       <p class="text-base font-bold text-gray-900 mt-0.5">${ref || '진도표에 없는 날'}</p>
+      ${n < 0 ? `<p class="text-[11px] text-gray-400 mt-1">과정 시작(${fmt(weekInfo(0).sat)} 토) 전에 미리 하는 주예요 · 수료 판정에는 들어가지 않아요</p>` : ''}
     </div>
 
     <div class="card !p-3">
@@ -1260,10 +1274,24 @@ function renderQT() {
       const loading = saved === undefined;
       const shownImg = _qtPendingImg || (saved && saved.image) || '';
       const done = qtOf(meId, n)[i];
+      const locked = qtLocked(qtDate);
       return `
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">${d.getMonth()+1}월 ${d.getDate()}일 내 묵상</h3>
-      ${loading ? `<p class="text-sm text-gray-400 py-6 text-center">불러오는 중…</p>` : `
+      ${loading ? `<p class="text-sm text-gray-400 py-6 text-center">불러오는 중…</p>`
+      : locked ? `
+      ${saved && ((saved.text||'').trim() || saved.image) ? `
+        ${saved.text ? `<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-3">${esc(saved.text)}</p>` : ''}
+        ${saved.image ? `<img src="${saved.image}" onclick="showImg(this.src)" class="w-full rounded-xl border mt-2 cursor-pointer" style="max-height:320px;object-fit:contain;background:#F9FAFB">` : ''}
+        <p class="text-[11px] text-gray-400 mt-2 text-center">🔒 지난 날이라 고칠 수 없어요</p>`
+      : `<div class="text-center py-6">
+          <p class="text-2xl">🔒</p>
+          <p class="text-sm text-gray-500 mt-1 font-semibold">${parseDate(qtDate) > today0() ? '아직 열리지 않은 날이에요' : '이 날 큐티는 닫혔어요'}</p>
+          <p class="text-xs text-gray-400 mt-1">큐티는 그날 자정까지만 올릴 수 있어요.<br>오늘 것을 올려주세요.</p>
+          ${qtSlotOf(iso(today0())) ? `<button onclick="pickQtDate('${iso(today0())}')"
+            class="mt-3 px-4 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm">오늘 큐티로 가기</button>` : ''}
+        </div>`}`
+      : `
       <textarea id="qt-text" rows="6" oninput="_qtDraft['${qtDate}']=this.value"
         placeholder="오늘 말씀을 읽고 마음에 남은 것, 하나님이 어떤 분으로 보였는지, 내 삶에 어떻게 적용할지 자유롭게 적어보세요."
         class="w-full border rounded-xl p-3 text-sm resize-none">${esc(_qtDraft[qtDate] !== undefined ? _qtDraft[qtDate] : (saved && saved.text || ''))}</textarea>
@@ -1287,8 +1315,9 @@ function renderQT() {
       `}
     </div>
     <div class="card !py-3 text-center">
-      <p class="text-sm ${qtCount(meId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(meId,n)}일 / 5일</p>
-      <p class="text-xs text-gray-400 mt-0.5">${qtCount(meId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(meId,n)}일 남았어요`}</p>
+      <p class="text-sm ${n>=0&&qtCount(meId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(meId,n)}일 / 5일</p>
+      <p class="text-xs text-gray-400 mt-0.5">${n < 0 ? '준비 주간이에요 — 세지는 않지만 몸에 붙이는 한 주로 삼아요'
+        : (qtCount(meId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(meId,n)}일 남았어요`)}</p>
     </div>`;
     })() : ''}
 
@@ -1937,6 +1966,21 @@ fillLoginSelect();
 checkWeek = currentWeek();
 // 큐티 화면은 오늘 자로 연다. 오늘이 토·주일이면 그 주 월요일부터.
 qtDate = qtSlotOf(iso(today0())) ? iso(today0()) : qtDateOf(currentWeek(), 0);
+
+// 자정이 지나면 그날 큐티가 닫힌다. 앱을 켜 둔 채 날이 바뀌어도 화면이 따라가도록
+// 다음 자정에 한 번 다시 그린다(글을 쓰는 중이면 다 쓰고 나서).
+function scheduleDayRollover() {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+  setTimeout(() => {
+    const t = iso(today0());
+    if (qtSlotOf(t)) qtDate = t;
+    checkWeek = currentWeek();
+    if (currentUser) renderAll();
+    scheduleDayRollover();
+  }, Math.max(1000, next - now));
+}
+scheduleDayRollover();
 
 try {
   const saved = localStorage.getItem('ladi_newcomer_user');
