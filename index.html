@@ -4943,31 +4943,41 @@ function openSrcFullscreen(imageKey) {
   document.body.appendChild(el);
 }
 
-// 지면 사진은 브라우저 새 창에서 연다 — 손가락으로 키우고 저장할 수 있게.
-// 수동 업로드본은 data: 주소라 브라우저가 새 탭 이동을 막는다. Blob으로 바꿔서 연다.
-function _dataUrlToBlob(dataUrl) {
-  const comma = dataUrl.indexOf(',');
-  const head = dataUrl.slice(0, comma);
-  const mime = (head.match(/data:([^;]+)/) || [, 'image/jpeg'])[1];
-  const bin = atob(dataUrl.slice(comma + 1));
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], { type: mime });
+// 지면 사진은 따로 뜨는 팝업창에서 연다 — 손가락으로 키우고 저장할 수 있게.
+// 성서유니온 이미지 주소를 그대로 열면 남의 문서라 Esc 처리를 붙일 수 없다.
+// 그래서 빈 창(about:blank, 우리와 같은 출처)을 띄우고 그 안에 우리 뷰어를 직접 그린다.
+function _passageViewerHtml(srcs, idx, title) {
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><style>
+html,body{margin:0;height:100%;background:#111;}
+body{display:flex;align-items:center;justify-content:center;overflow:auto;}
+img{max-width:100%;max-height:100vh;object-fit:contain;display:block;cursor:zoom-in;}
+img.zoom{max-width:none;max-height:none;width:auto;cursor:zoom-out;}
+.hint{position:fixed;left:0;right:0;bottom:0;margin:0;text-align:center;color:rgba(255,255,255,.6);
+ font:12px/2.4 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+ background:linear-gradient(transparent,rgba(0,0,0,.7));pointer-events:none;}
+</style></head><body>
+<img id="v" alt="${title}">
+<p class="hint">Esc 닫기 · ← → 장 넘기기 · 사진을 누르면 크게</p>
+<script>
+var S = ${JSON.stringify(srcs)}, i = ${idx}, v = document.getElementById('v');
+function show(n){ if (n < 0 || n >= S.length) return; i = n; v.className = ''; v.src = S[i]; }
+show(i);
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') { e.preventDefault(); window.close(); }
+  else if (e.key === 'ArrowRight') show(i + 1);
+  else if (e.key === 'ArrowLeft') show(i - 1);
+});
+v.addEventListener('click', function(){ v.classList.toggle('zoom'); });
+window.focus();
+<\/script></body></html>`;
 }
 
 function openImgNewWindow(dateStr, imgKey) {
-  const slot = imgKey === 'img1' ? 1 : 0;
-  let src = _passageImgSrc(dateStr, slot), revoke = null;
-  try {
-    if (src.startsWith('data:')) {
-      src = URL.createObjectURL(_dataUrlToBlob(src));
-      revoke = src;
-    }
-  } catch (e) {
-    console.warn('지면 사진 변환 실패 — 앱 안에서 엽니다:', e);
-    openImgFullscreen(dateStr, imgKey);
-    return;
-  }
+  const idx = imgKey === 'img1' ? 1 : 0;
+  const srcs = [0, 1].map(sl => _passageImgSrc(dateStr, sl));
+  const [, m, d] = dateStr.split('-');
   // 탭이 아니라 따로 뜨는 팝업창으로. 지면이 세로로 길어 세로를 넉넉히 잡고 화면 가운데에 둔다.
   // width·height를 주는 것만으로도 크롬은 팝업으로 열지만, popup=yes를 함께 줘야 확실하다.
   const sw = window.screen.availWidth || 1200, sh = window.screen.availHeight || 900;
@@ -4975,18 +4985,23 @@ function openImgNewWindow(dateStr, imgKey) {
   const feat = `popup=yes,width=${w0},height=${h0},left=${Math.round((sw-w0)/2)},top=${Math.round((sh-h0)/2)}`
              + ',resizable=yes,scrollbars=yes';
   // 창 이름을 주면 다른 장을 눌렀을 때 창이 쌓이지 않고 그 팝업이 바뀐다.
-  // 'noopener'를 옵션 문자열에 넣으면 브라우저가 null을 돌려줘 차단과 구분되지 않는다. 열고 나서 끊는다.
-  const w = window.open(src, 'ladiQtPassage', feat);
+  // 'noopener'를 옵션 문자열에 넣으면 브라우저가 null을 돌려줘 차단과 구분되지 않는다.
+  // opener를 끊어도 크롬이 그 창을 다른 browsing context group으로 떼어내 이름으로 못 찾게 되므로 그대로 둔다.
+  const w = window.open('about:blank', 'ladiQtPassage', feat);
   if (!w) {   // 팝업이 막힌 기기 — 지금까지처럼 앱 안 전체화면으로
-    if (revoke) URL.revokeObjectURL(revoke);
     openImgFullscreen(dateStr, imgKey);
     return;
   }
-  try { w.focus(); } catch (_) {}
-  // opener를 끊으면 크롬이 그 창을 다른 browsing context group으로 떼어내 이름으로 다시 못 찾는다
-  // (= 다른 장을 누를 때마다 창이 쌓인다). 여는 것이 성서유니온 지면 JPG나 우리 blob 이미지뿐이라
-  // 스크립트가 돌 여지가 없어, 창 재사용을 택하고 opener는 두었다.
-  if (revoke) setTimeout(() => URL.revokeObjectURL(revoke), 60000);
+  try {
+    w.document.open();
+    w.document.write(_passageViewerHtml(srcs, idx, `${Number(m)}월 ${Number(d)}일 큐티 지면`));
+    w.document.close();
+    w.focus();
+  } catch (e) {   // 창 안을 못 건드리는 브라우저 — 앱 안에서 연다
+    console.warn('팝업 뷰어를 그리지 못해 앱 안에서 엽니다:', e);
+    try { w.close(); } catch (_) {}
+    openImgFullscreen(dateStr, imgKey);
+  }
 }
 
 function openImgFullscreen(dateStr, imgKey) {
@@ -6778,7 +6793,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.2';
+const APP_BUILD = '2026-09-03.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
