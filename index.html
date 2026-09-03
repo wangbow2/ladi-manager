@@ -4968,14 +4968,24 @@ function openImgNewWindow(dateStr, imgKey) {
     openImgFullscreen(dateStr, imgKey);
     return;
   }
-  // 'noopener'를 옵션으로 주면 브라우저가 null을 돌려줘 차단과 구분되지 않는다. 열고 나서 끊는다.
-  const w = window.open(src, '_blank');
+  // 탭이 아니라 따로 뜨는 팝업창으로. 지면이 세로로 길어 세로를 넉넉히 잡고 화면 가운데에 둔다.
+  // width·height를 주는 것만으로도 크롬은 팝업으로 열지만, popup=yes를 함께 줘야 확실하다.
+  const sw = window.screen.availWidth || 1200, sh = window.screen.availHeight || 900;
+  const w0 = Math.round(Math.min(900, sw * 0.9)), h0 = Math.round(Math.min(1200, sh * 0.9));
+  const feat = `popup=yes,width=${w0},height=${h0},left=${Math.round((sw-w0)/2)},top=${Math.round((sh-h0)/2)}`
+             + ',resizable=yes,scrollbars=yes';
+  // 창 이름을 주면 다른 장을 눌렀을 때 창이 쌓이지 않고 그 팝업이 바뀐다.
+  // 'noopener'를 옵션 문자열에 넣으면 브라우저가 null을 돌려줘 차단과 구분되지 않는다. 열고 나서 끊는다.
+  const w = window.open(src, 'ladiQtPassage', feat);
   if (!w) {   // 팝업이 막힌 기기 — 지금까지처럼 앱 안 전체화면으로
     if (revoke) URL.revokeObjectURL(revoke);
     openImgFullscreen(dateStr, imgKey);
     return;
   }
-  try { w.opener = null; } catch (_) {}
+  try { w.focus(); } catch (_) {}
+  // opener를 끊으면 크롬이 그 창을 다른 browsing context group으로 떼어내 이름으로 다시 못 찾는다
+  // (= 다른 장을 누를 때마다 창이 쌓인다). 여는 것이 성서유니온 지면 JPG나 우리 blob 이미지뿐이라
+  // 스크립트가 돌 여지가 없어, 창 재사용을 택하고 opener는 두었다.
   if (revoke) setTimeout(() => URL.revokeObjectURL(revoke), 60000);
 }
 
@@ -6768,7 +6778,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.1';
+const APP_BUILD = '2026-09-03.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
