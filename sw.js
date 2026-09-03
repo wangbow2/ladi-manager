@@ -1,5 +1,5 @@
 // 배포할 때마다 이 값만 올리면 된다. 앱이 새 버전을 알아채는 유일한 기준.
-const APP_BUILD = '2026-09-03.5';
+const APP_BUILD = '2026-09-03.6';
 const CACHE_NAME = 'ladi-' + APP_BUILD;
 const ASSETS = [
   './',

@@ -36,9 +36,25 @@ jobs:
                                 'date': (pub.group(1)[:10] if pub else '')})
           if not items:
               raise SystemExit('영상을 못 받아왔습니다')
+          # RSS는 최근 15개만 준다. 매번 덮어쓰면 목록이 영영 안 쌓여
+          # '전체 찬양 보기'가 최근 몇 편짜리가 된다. 이미 있는 것과 합친다.
+          import os
+          old = []
+          if os.path.exists('worship.json'):
+              try:
+                  old = json.load(open('worship.json', encoding='utf-8')).get('items', [])
+              except Exception:
+                  old = []
+          seen, merged = set(), []
+          for v in items + old:      # 새 목록을 앞에 둬 제목이 바뀌었으면 새 것을 쓴다
+              if v.get('id') in seen:
+                  continue
+              seen.add(v['id'])
+              merged.append(v)
+          merged.sort(key=lambda v: v.get('date', ''), reverse=True)
           out = {'channel': CH,
                  'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
-                 'items': items[:10]}
+                 'items': merged}
           json.dump(out, open('worship.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
           print('최신:', items[0]['date'], items[0]['title'][:50])
           PY

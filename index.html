@@ -3298,7 +3298,73 @@ function openClipEditor(id) {
   else state.worshipClips[id] = { start: S || 0, end: E || null };
   saveState();
   renderDashboard();
+  _refreshWorshipArchive();
 }
+
+// ── 전체 찬양 보기 ──
+// worship.json에 쌓인 예배 영상을 달별로 모아 둔다. 줄을 누르면 그 자리에서
+// 찬양 구간만 재생한다(구간을 안 정했으면 처음부터).
+let _worshipOpenId = null;
+
+function _worshipArchiveListHtml() {
+  const list = (_worship || []).filter(v => !/후기|수련회 영상/.test(v.title));
+  if (!list.length) return '<p class="text-sm text-gray-400 text-center py-6">아직 불러온 영상이 없습니다</p>';
+  const byMonth = {};
+  list.forEach(v => { const m = (v.date || '').slice(0, 7) || '0000-00'; (byMonth[m] = byMonth[m] || []).push(v); });
+  return Object.keys(byMonth).sort().reverse().map(m => {
+    const [yr, mo] = m.split('-');
+    const rows = byMonth[m].map(v => {
+      const c = clipOf(v.id), open = _worshipOpenId === v.id;
+      const q = c ? `?start=${c.start || 0}${c.end ? '&end=' + c.end : ''}` : '';
+      return `
+      <div class="py-1.5 border-b border-gray-50 last:border-0">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] text-gray-400 font-semibold" style="min-width:44px">${worshipDate(v.date)}</span>
+          <button onclick="toggleWorshipArchive('${v.id}')" style="min-height:unset"
+            class="text-xs text-left flex-1 truncate ${open ? 'text-gray-900 font-bold' : 'text-gray-700'}">${worshipTitle(v.title)}</button>
+          ${c ? `<span class="text-[10px] text-blue-500 flex-shrink-0">${fmtSec(c.start || 0)}~</span>` : ''}
+          ${isLeader() ? `<button onclick="openClipEditor('${v.id}')" style="min-height:unset" class="text-[10px] text-gray-400 flex-shrink-0">${c ? '구간' : '지정'}</button>` : ''}
+        </div>
+        ${open ? `
+        <div class="mt-1.5" style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000">
+          <iframe src="https://www.youtube.com/embed/${v.id}${q}"
+            style="position:absolute;inset:0;width:100%;height:100%;border:0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="고등부 찬양"></iframe>
+        </div>
+        <a href="https://www.youtube.com/watch?v=${v.id}${c ? '&t=' + (c.start || 0) : ''}" target="_blank" rel="noopener"
+           class="block text-[11px] text-gray-400 mt-1">유튜브에서 열기 ›</a>` : ''}
+      </div>`;
+    }).join('');
+    return `<div class="mb-3"><p class="text-xs font-bold text-gray-600 mb-1">${yr}년 ${Number(mo)}월</p>${rows}</div>`;
+  }).join('');
+}
+
+function _refreshWorshipArchive() {
+  const el = document.getElementById('worship-archive-list');
+  if (el) el.innerHTML = _worshipArchiveListHtml();
+}
+
+function toggleWorshipArchive(id) {
+  _worshipOpenId = _worshipOpenId === id ? null : id;
+  _refreshWorshipArchive();
+}
+
+function openWorshipArchive() {
+  loadWorship();
+  _worshipOpenId = null;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="fixed inset-0 bg-black/50 z-50 flex items-end" id="worship-archive-modal">
+      <div class="bg-white rounded-t-2xl w-full p-5 max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between mb-3 flex-shrink-0">
+          <p class="font-bold text-gray-800">전체 찬양 보기</p>
+          <button onclick="_worshipOpenId=null;document.getElementById('worship-archive-modal').remove()" class="text-gray-400 text-xl font-bold">×</button>
+        </div>
+        <div id="worship-archive-list" class="overflow-y-auto flex-1">${_worshipArchiveListHtml()}</div>
+      </div>
+    </div>`);
+}
+
 function renderWorshipCard() {
   loadWorship();
   const list = (_worship || []).filter(v => !/후기|수련회 영상/.test(v.title));
@@ -3317,7 +3383,10 @@ function renderWorshipCard() {
     <div class="surface px-3 py-3">
       <div class="flex items-center justify-between mb-2">
         <p class="sec">이번 주 찬양</p>
-        ${isLeader() ? `<button onclick="openClipEditor('${top.id}')" style="min-height:unset" class="text-xs text-gray-500 font-semibold">${c ? '구간 수정' : '찬양 구간 지정'}</button>` : ''}
+        <div class="flex items-center gap-2.5">
+          ${isLeader() ? `<button onclick="openClipEditor('${top.id}')" style="min-height:unset" class="text-xs text-gray-500 font-semibold">${c ? '구간 수정' : '찬양 구간 지정'}</button>` : ''}
+          <button onclick="openWorshipArchive()" style="min-height:unset" class="text-xs text-gray-500 font-semibold">전체 보기</button>
+        </div>
       </div>
       <div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000">
         <iframe src="https://www.youtube.com/embed/${top.id}${q}"
@@ -6794,7 +6863,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.5';
+const APP_BUILD = '2026-09-03.6';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
