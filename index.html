@@ -3350,9 +3350,9 @@ function toggleWorshipArchive(id) {
   _refreshWorshipArchive();
 }
 
-function openWorshipArchive() {
+function openWorshipArchive(openId) {
   loadWorship();
-  _worshipOpenId = null;
+  _worshipOpenId = openId || null;
   document.body.insertAdjacentHTML('beforeend', `
     <div class="fixed inset-0 bg-black/50 z-50 flex items-end" id="worship-archive-modal">
       <div class="bg-white rounded-t-2xl w-full p-5 max-h-[80vh] flex flex-col">
@@ -3378,7 +3378,9 @@ function renderWorshipCard() {
   }
   const c = clipOf(top.id);
   const q = c ? `?start=${c.start || 0}${c.end ? '&end=' + c.end : ''}` : '';
-  const past = list.slice(1, 4);
+  // 올해 찬양을 작은 썸네일로 죽 늘어놓는다 — 한 화면에서 많이 보이도록.
+  const thisYear = new Date().getFullYear();
+  const past = list.slice(1).filter(v => (v.date || '').startsWith(String(thisYear)));
   return `
     <div class="surface px-3 py-3">
       <div class="flex items-center justify-between mb-2">
@@ -3402,16 +3404,24 @@ function renderWorshipCard() {
       ${!c && isLeader() ? `<p class="text-[11px] text-amber-600 mt-1">찬양 구간을 지정하면 그 부분만 재생됩니다</p>` : ''}
       ${past.length ? `
       <div class="mt-2 pt-2 border-t">
+        <div class="flex items-center justify-between mb-1.5">
+          <p class="text-[11px] font-semibold text-gray-500">${thisYear}년 찬양 ${past.length}편</p>
+          <button onclick="openWorshipArchive()" style="min-height:unset" class="text-[11px] text-gray-400">더보기 ›</button>
+        </div>
+        <div class="flex gap-1.5 overflow-x-auto pb-1" style="-webkit-overflow-scrolling:touch">
         ${past.map(v => {
           const pc = clipOf(v.id);
-          const pq = pc ? `&t=${pc.start || 0}` : '';
-          return `<div class="flex items-center gap-2 py-1.5">
-            <span class="text-[10px] text-gray-400 font-semibold" style="min-width:44px">${worshipDate(v.date)}</span>
-            <a href="https://www.youtube.com/watch?v=${v.id}${pq}" target="_blank" rel="noopener"
-               class="text-xs text-gray-700 truncate flex-1">${worshipTitle(v.title)}</a>
-            ${isLeader() ? `<button onclick="openClipEditor('${v.id}')" style="min-height:unset" class="text-[10px] text-gray-400 flex-shrink-0">${pc ? '구간' : '지정'}</button>` : ''}
-          </div>`;
+          return `<button onclick="openWorshipArchive('${v.id}')" style="min-height:unset"
+            class="flex-shrink-0 text-left" title="${worshipTitle(v.title).replace(/"/g,'')}">
+            <div style="position:relative;width:92px;height:52px;border-radius:6px;overflow:hidden;background:#000">
+              <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy"
+                   style="width:100%;height:100%;object-fit:cover;display:block">
+              ${pc ? `<span class="absolute bottom-0.5 right-0.5 text-[8px] text-white px-1 rounded" style="background:rgba(0,0,0,.65)">${fmtSec(pc.start || 0)}</span>` : ''}
+            </div>
+            <p class="text-[9px] text-gray-400 font-semibold mt-0.5">${worshipDate(v.date)}</p>
+          </button>`;
         }).join('')}
+        </div>
       </div>` : ''}
     </div>`;
 }
@@ -6863,7 +6873,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.6';
+const APP_BUILD = '2026-09-03.7';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
