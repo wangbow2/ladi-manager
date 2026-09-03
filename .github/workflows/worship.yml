@@ -2,6 +2,10 @@ name: 고등부 찬양 영상 갱신
 
 # 수영로교회 고등부 채널에 올라오는 예배 영상 목록을 worship.json에 적어 둔다.
 # 영상을 자르지 않고 앱에서 재생 구간만 지정하므로, 여기서는 목록만 챙기면 된다.
+#
+# ⚠️ 예전엔 채널 RSS(feeds/videos.xml)를 썼는데 2026-09-03 기준 유튜브가 그 주소를
+#    내렸다(공식 채널도 404). 그래서 채널 페이지를 직접 훑는다.
+#    예배는 라이브로 올라와 /streams 탭에 있고, 뮤지컬처럼 아닌 것도 있어 /videos 도 본다.
 on:
   schedule:
     - cron: '0 6 * * 0'      # 주일 15:00 (KST)
@@ -16,29 +20,59 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 채널에서 최근 영상 가져오기
+      - name: 채널에서 예배 영상 가져오기
         run: |
           python3 - <<'PY'
-          import json, re, urllib.request, datetime
-          CH = 'UC1FSCHLW7t8Yuq6g2-NH4kA'   # 수영로교회 고등부
-          url = f'https://www.youtube.com/feeds/videos.xml?channel_id={CH}'
-          req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-          xml = urllib.request.urlopen(req, timeout=30).read().decode('utf-8')
+          import json, os, re, datetime, urllib.request
+          UA = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                              '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept-Language': 'ko-KR,ko;q=0.9'}
+          HANDLE = '@syrhigh'
+          CH = 'UC1FSCHLW7t8Yuq6g2-NH4kA'
+
+          def scrape(tab):
+              url = f'https://www.youtube.com/{HANDLE}/{tab}'
+              html = urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30).read().decode('utf-8', 'ignore')
+              m = re.search(r'var ytInitialData = (\{.*?\});</script>', html, re.S)
+              if not m:
+                  return []
+              lockups = []
+              def walk(o):
+                  if isinstance(o, dict):
+                      if 'lockupViewModel' in o:
+                          lockups.append(o['lockupViewModel'])
+                      for v in o.values():
+                          walk(v)
+                  elif isinstance(o, list):
+                      for v in o:
+                          walk(v)
+              walk(json.loads(m.group(1)))
+              out = []
+              for x in lockups:
+                  vid = x.get('contentId')
+                  title = (((x.get('metadata') or {}).get('lockupMetadataViewModel') or {}).get('title') or {}).get('content')
+                  if not (vid and title):
+                      continue
+                  d = re.search(r'\b(\d{2})\.(\d{2})\.(\d{2})\b', title)        # 26.08.30
+                  if not d:
+                      d = re.search(r'\b20(\d{2})\.(\d{2})\.(\d{2})\b', title)  # 2022.02.06
+                  if not d:
+                      continue      # 제목에 날짜가 없으면 예배 영상이 아니다(홍보·후기 등)
+                  out.append({'id': vid, 'title': title,
+                              'date': f'20{d.group(1)}-{d.group(2)}-{d.group(3)}'})
+              return out
+
           items = []
-          for m in re.finditer(r'<entry>(.*?)</entry>', xml, re.S):
-              e = m.group(1)
-              vid = re.search(r'<yt:videoId>(.*?)</yt:videoId>', e)
-              ttl = re.search(r'<title>(.*?)</title>', e, re.S)
-              pub = re.search(r'<published>(.*?)</published>', e)
-              if vid and ttl:
-                  t = ttl.group(1).replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-                  items.append({'id': vid.group(1), 'title': t,
-                                'date': (pub.group(1)[:10] if pub else '')})
+          for tab in ('streams', 'videos'):
+              try:
+                  items += scrape(tab)
+              except Exception as e:
+                  print(f'{tab} 탭 실패: {e}')
           if not items:
-              raise SystemExit('영상을 못 받아왔습니다')
-          # RSS는 최근 15개만 준다. 매번 덮어쓰면 목록이 영영 안 쌓여
-          # '전체 찬양 보기'가 최근 몇 편짜리가 된다. 이미 있는 것과 합친다.
-          import os
+              raise SystemExit('영상을 못 받아왔습니다 — 유튜브 페이지 구조가 바뀌었을 수 있습니다')
+
+          # 채널 페이지는 최근 것만 준다. 매번 덮어쓰면 '전체 찬양 보기'가 자라지 못하므로
+          # 이미 있는 목록과 합친다. 새 목록을 앞에 둬 제목이 바뀌었으면 새 것을 쓴다.
           old = []
           if os.path.exists('worship.json'):
               try:
@@ -46,17 +80,18 @@ jobs:
               except Exception:
                   old = []
           seen, merged = set(), []
-          for v in items + old:      # 새 목록을 앞에 둬 제목이 바뀌었으면 새 것을 쓴다
+          for v in items + old:
               if v.get('id') in seen:
                   continue
               seen.add(v['id'])
               merged.append(v)
           merged.sort(key=lambda v: v.get('date', ''), reverse=True)
-          out = {'channel': CH,
-                 'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
-                 'items': merged}
-          json.dump(out, open('worship.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-          print('최신:', items[0]['date'], items[0]['title'][:50])
+
+          json.dump({'channel': CH,
+                     'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+                     'items': merged},
+                    open('worship.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+          print(f'{len(items)}편 훑어 {len(merged)}편 보관 · 최신 {merged[0]["date"]} {merged[0]["title"][:50]}')
           PY
       - name: 바뀌었으면 올리기
         run: |
