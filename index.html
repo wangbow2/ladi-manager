@@ -1879,11 +1879,14 @@ function saveQTImageToFirestore(imageKey, base64) {
 const _qtImagesAttempted = new Set();
 
 async function loadMissingQTImages(imageKeys) {
-  const missing = imageKeys.filter(k => k && !qtImages[k] && !_qtImagesAttempted.has(k));
+  const pending = [...new Set(imageKeys.filter(k => k && !qtImages[k] && !_qtImagesAttempted.has(k)))];
+  const missing = pending.slice(0, 4);
   const alreadyAttempted = imageKeys.filter(k => k && !qtImages[k] && _qtImagesAttempted.has(k));
   if (!missing.length) return alreadyAttempted.length > 0 ? 'retry' : false;
   missing.forEach(k => _qtImagesAttempted.add(k));
   let loaded = false;
+  // 한꺼번에 수십 장을 요청하면 모바일에서 네트워크·base64 디코딩이 겹쳐
+  // 큐티 화면 전체가 늦어진다. 4장씩 받고 즉시 화면에 보여준 뒤 다음 묶음을 받는다.
   await Promise.all(missing.map(async key => {
     try {
       const doc = await _db.collection('qtImages').doc(key).get();
@@ -1893,9 +1896,8 @@ async function loadMissingQTImages(imageKeys) {
       }
     } catch(e) {}
   }));
-  if (loaded) {
-    try { localStorage.setItem('radi_qt_images', JSON.stringify(qtImages)); } catch(e) {}
-  }
+  // 다른 학생 사진을 localStorage에 다시 쌓지 않는다. 다음 앱 시작 때 수 MB의
+  // JSON/base64를 파싱하느라 첫 화면이 멎는 문제를 막는다.
   return loaded ? true : 'attempted'; // 'attempted': 시도했지만 미발견 (≠ 'retry': 이미 시도한 키)
 }
 
@@ -4497,7 +4499,7 @@ function renderQTSubmit() {
             </div>
           </div>
           ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
-          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" loading="lazy" decoding="async" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
           ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-gray-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
@@ -4667,7 +4669,7 @@ function renderQTSubmit() {
     const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
     const imgHtml = v.imageKey
       ? imgSrc
-        ? `<img src="${imgSrc}" class="w-full rounded-xl mt-2 object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">`
+        ? `<img src="${imgSrc}" loading="lazy" decoding="async" class="w-full rounded-xl mt-2 object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">`
         : _qtImagesAttempted.has(v.imageKey) ? ''
         : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`
       : '';
@@ -5221,12 +5223,13 @@ function _saveQTSubmissionBackup(key, dateStr, content, imageKey, createdAt) {
 
 function qtDayPreviewImg(input) {
   if (!input.files?.[0]) return;
-  // QT 사진은 성경구절·손글씨 텍스트가 많아 고화질로 (1장당 별도 문서 저장이라 안전)
+  // 글씨는 읽히되 피드 로딩이 무겁지 않게 제한한다. 기존 설정(1600px·약 0.9MB)은
+  // 여러 명의 사진을 함께 볼 때 모바일에서 지나치게 컸다.
   compressImage(input.files[0], data => {
     _qtDayPendingImg = data;
     const el = document.getElementById('qt-day-img-preview');
     if (el) el.innerHTML = `<div class="relative"><img src="${data}" class="w-full rounded-xl max-h-52 object-cover"><button onclick="_qtDayPendingImg=null;document.getElementById('qt-day-img-preview').innerHTML=''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">삭제</button></div>`;
-  }, { max: 1600, quality: 0.9 });
+  }, { max: 1200, quality: 0.8, minQuality: 0.58, maxBytes: 360000 });
 }
 
 function submitQTDay(dateStr) {
