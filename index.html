@@ -4349,8 +4349,8 @@ function renderQTSubmit() {
         : day.locked ? 'text-gray-400'
         : isWE ? 'text-orange-700' : 'text-gray-700';
       const ptxt = done ? (isWE?'text-amber-400':'text-green-500') : day.locked ? 'text-gray-300' : isWE ? 'text-orange-400' : 'text-blue-500';
-      return `<div class="flex-1 min-w-0 py-1 px-0.5 rounded-lg text-center ${bg} ${!day.locked?'cursor-pointer active:scale-95':''} transition-all"
-        ${!day.locked?`onclick="openQTDay('${day.dateStr}')"`:''}>
+      return `<div class="flex-1 min-w-0 py-1 px-0.5 rounded-lg text-center ${bg} cursor-pointer active:scale-95 transition-all"
+        onclick="openQTDay('${day.dateStr}')">
         <p class="text-[10px] font-bold ${txt}">${new Date(day.dateStr+'T00:00:00').getDate()}</p>
         ${short?`<p class="text-[8px] leading-tight mt-0.5 ${ptxt}">${short}</p>`:''}
         ${done?`<p class="text-[9px] ${isWE?'text-amber-500':'text-green-600'}">✓</p>`:''}
@@ -4641,7 +4641,7 @@ function renderQTSubmit() {
           <div class="flex-1 text-center text-[10px] font-semibold text-orange-400">토</div>
         </div>
         ${calRows}
-        <p class="text-[9px] text-gray-400 text-center mt-1">주/토(주황)는 경건생활 · 평일 금요일 자정 마감</p>
+        <p class="text-[9px] text-gray-400 text-center mt-1">주/토(주황)는 경건생활 · 평일 금요일 자정 마감<br>지난 날도 눌러서 다시 볼 수 있어요</p>
       </div>
       ${qtDownloadCard}
       ${passageCard}
@@ -4715,7 +4715,8 @@ function renderQTDayView() {
     </div>`;
   } else if (locked && !entry?.done) {
     form = `<div class="bg-gray-50 rounded-xl p-4 text-center">
-      <p class="text-sm text-gray-400">🔒 이 주차는 마감되었습니다</p>
+      <p class="text-sm text-gray-400">🔒 마감된 주간이라 새로 쓸 수 없어요</p>
+      <p class="text-xs text-gray-400 mt-1">아래에서 그날 올라온 큐티는 볼 수 있습니다</p>
     </div>`;
   } else {
     // New entry or edit mode
@@ -6793,7 +6794,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.3';
+const APP_BUILD = '2026-09-03.5';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
