@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-02.2';
+const APP_BUILD = '2026-09-03.4';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -733,6 +733,8 @@ function canEditAtt() { return isLeader(); }
 // 체크칸을 직접 고치는 건 바로잡을 일이 있는 팀장만.
 function canEditQT(id) { return isLeader(); }
 // 남의 큐티 글을 고치고 지우는 것은 목사님만. 아이가 쓴 글을 손대는 일이라 한 사람에게만 둔다.
+// 큐티가 아이들에게도 보이는 팀장. 목사님이 "내건 보여줘도 된다"고 하셨다(2026-09-03).
+const QT_PUBLIC_LEADERS = ['t1'];
 const QT_MANAGER = 't1';   // 황영환 목사
 function canManageQT() { return currentUser === QT_MANAGER; }
 
@@ -1190,7 +1192,13 @@ function renderQT() {
   const { n, i } = qtSlotOf(qtDate);
   const d = parseDate(qtDate);
   const ref = QT_SCHEDULE[qtDate] || '';
-  const meId = isLeader() ? null : currentUser;
+  const meId = isLeader() ? null : currentUser;   // 달력 표시용 — 팀장은 초록칸 대신 사람 수를 본다
+  const writerId = currentUser;                   // 묵상을 쓰고 보는 사람 — 팀장도 자기 것은 쓴다
+  // 큐티 목록에 오르는 사람들. 아이들 + 팀장.
+  // 목사님은 아이들에게도 보인다(2026-09-03 직접 허락). 나머지 팀장은 본인 화면에서만 보인다 —
+  // 자기 이름을 눌러 자기 큐티를 볼 수 있어야 하지만, 남에게 보일지는 본인이 정할 일이라서다.
+  const qtPeople = state.students.concat(
+    LEADERS.filter(l => QT_PUBLIC_LEADERS.includes(l.id) || l.id === currentUser));
 
   // ── 달력 (본 앱과 같은 일~토 7열 월간 달력) ──
   const month = qtShownMonth();
@@ -1207,7 +1215,7 @@ function renderQT() {
       if (c.getMonth() + 1 !== mm) { cells.push('<div class="flex-1 min-w-0"></div>'); continue; }
       const slot = qtSlotOf(ds);                       // 큐티하는 날인가(월~금, 과정 안)
       const mine = slot && meId ? qtOf(meId, slot.n)[slot.i] : false;
-      const cnt  = slot ? state.students.filter(x => qtOf(x.id, slot.n)[slot.i]).length : 0;
+      const cnt  = slot ? qtPeople.filter(x => qtOf(x.id, slot.n)[slot.i]).length : 0;
       const sel = ds === qtDate, today = ds === todayStr;
       const bg = !slot ? 'bg-gray-50'
                : mine ? 'bg-green-100'
@@ -1268,12 +1276,12 @@ function renderQT() {
       <p class="text-[11px] text-gray-400 mt-2 text-center">사진을 누르면 크게 볼 수 있어요 · 성서유니온 「청소년 매일성경」</p>
     </div>
 
-    ${meId ? (() => {
-      loadQtDoc(meId, qtDate);
-      const saved = _qtDocs[qtKey(meId, qtDate)];
+    ${writerId ? (() => {
+      loadQtDoc(writerId, qtDate);
+      const saved = _qtDocs[qtKey(writerId, qtDate)];
       const loading = saved === undefined;
       const shownImg = _qtPendingImg || (saved && saved.image) || '';
-      const done = qtOf(meId, n)[i];
+      const done = qtOf(writerId, n)[i];
       const locked = qtLocked(qtDate);
       return `
     <div class="card">
@@ -1307,7 +1315,7 @@ function renderQT() {
         📷 ${shownImg ? '사진 바꾸기' : '큐티 노트 사진 올리기'}
         <input type="file" accept="image/*" class="hidden" onchange="pickQtImage(this)">
       </label>
-      <button onclick="submitQT('${meId}',${n},${i},'${qtDate}')"
+      <button onclick="submitQT('${writerId}',${n},${i},'${qtDate}')"
         class="w-full mt-3 py-4 rounded-xl font-bold text-sm ${saved ? 'bg-blue-600 text-white' : 'bg-gray-900 text-white'}">
         ${saved ? '고쳐서 다시 올리기' : '큐티 올리기'}
       </button>
@@ -1315,16 +1323,16 @@ function renderQT() {
       `}
     </div>
     <div class="card !py-3 text-center">
-      <p class="text-sm ${n>=0&&qtCount(meId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(meId,n)}일 / 5일</p>
+      <p class="text-sm ${n>=0&&qtCount(writerId,n)>=4?'text-blue-600 font-bold':'text-gray-600'}">이번 주 ${qtCount(writerId,n)}일 / 5일</p>
       <p class="text-xs text-gray-400 mt-0.5">${n < 0 ? '준비 주간이에요 — 세지는 않지만 몸에 붙이는 한 주로 삼아요'
-        : (qtCount(meId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(meId,n)}일 남았어요`)}</p>
+        : (qtCount(writerId,n)>=4 ? '이번 주는 통과입니다' : `4일 이상이면 통과 — ${4-qtCount(writerId,n)}일 남았어요`)}</p>
     </div>`;
     })() : ''}
 
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-1">${d.getMonth()+1}월 ${d.getDate()}일 친구들 큐티</h3>
       <p class="text-[11px] text-gray-400 mb-2">이름을 누르면 그날 올린 묵상을 볼 수 있어요</p>
-      ${state.students.map(s => {
+      ${qtPeople.map(s => {
         loadQtDoc(s.id, qtDate);
         const raw = _qtDocs[qtKey(s.id, qtDate)];
         // 글도 사진도 없는 빈 문서는 낸 것으로 치지 않는다.
@@ -1336,6 +1344,7 @@ function renderQT() {
           <div onclick="qtOpenStudent = qtOpenStudent==='${s.id}' ? null : '${s.id}'; renderAll()" class="flex items-center justify-between py-2 cursor-pointer">
             <div class="flex items-center gap-2">
               <span class="text-sm text-gray-800 font-semibold">${s.name}${me?' <span class="text-xs text-gray-400">(나)</span>':''}</span>
+              ${s.title ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">${s.title.split(' / ').pop()}</span>` : ''}
               ${doc === undefined ? '<span class="text-[11px] text-gray-300">…</span>'
                 : (doc ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">올림</span>'
                        : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">아직</span>')}
