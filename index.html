@@ -4871,7 +4871,7 @@ function _renderPassageImgSection(dateStr) {
     <div class="su-passage-img relative flex-shrink-0 rounded-xl overflow-hidden" style="width:calc(50% - 4px)">
       <img src="${src}" class="w-full object-cover rounded-xl cursor-pointer active:opacity-80" style="max-height:260px;display:block"
            onerror="this.closest('.su-passage-img').style.display='none'"
-           onclick="event.stopPropagation();${inEdit?'':(`openImgFullscreen('${dateStr}','${key}')`)}">
+           onclick="event.stopPropagation();${inEdit?'':(`openImgNewWindow('${dateStr}','${key}')`)}">
       ${inEdit && isLeader() && manual ? `<button onclick="event.stopPropagation();confirmDeletePassageImage('${dateStr}',${slot})" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10 font-semibold">삭제</button>` : ''}
     </div>`;
   }).join('');
@@ -4941,6 +4941,42 @@ function openSrcFullscreen(imageKey) {
   el.onclick = e => { if (e.target === el) cleanup(); };
   _attachSwipeDownClose(el, img, cleanup, null);
   document.body.appendChild(el);
+}
+
+// 지면 사진은 브라우저 새 창에서 연다 — 손가락으로 키우고 저장할 수 있게.
+// 수동 업로드본은 data: 주소라 브라우저가 새 탭 이동을 막는다. Blob으로 바꿔서 연다.
+function _dataUrlToBlob(dataUrl) {
+  const comma = dataUrl.indexOf(',');
+  const head = dataUrl.slice(0, comma);
+  const mime = (head.match(/data:([^;]+)/) || [, 'image/jpeg'])[1];
+  const bin = atob(dataUrl.slice(comma + 1));
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+function openImgNewWindow(dateStr, imgKey) {
+  const slot = imgKey === 'img1' ? 1 : 0;
+  let src = _passageImgSrc(dateStr, slot), revoke = null;
+  try {
+    if (src.startsWith('data:')) {
+      src = URL.createObjectURL(_dataUrlToBlob(src));
+      revoke = src;
+    }
+  } catch (e) {
+    console.warn('지면 사진 변환 실패 — 앱 안에서 엽니다:', e);
+    openImgFullscreen(dateStr, imgKey);
+    return;
+  }
+  // 'noopener'를 옵션으로 주면 브라우저가 null을 돌려줘 차단과 구분되지 않는다. 열고 나서 끊는다.
+  const w = window.open(src, '_blank');
+  if (!w) {   // 팝업이 막힌 기기 — 지금까지처럼 앱 안 전체화면으로
+    if (revoke) URL.revokeObjectURL(revoke);
+    openImgFullscreen(dateStr, imgKey);
+    return;
+  }
+  try { w.opener = null; } catch (_) {}
+  if (revoke) setTimeout(() => URL.revokeObjectURL(revoke), 60000);
 }
 
 function openImgFullscreen(dateStr, imgKey) {
@@ -6732,7 +6768,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-08-26.9';
+const APP_BUILD = '2026-09-03.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
