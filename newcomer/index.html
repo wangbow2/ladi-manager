@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.4';
+const APP_BUILD = '2026-09-04.1';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -1071,27 +1071,64 @@ function loadQtDoc(id, date) {
 }
 
 // 사진은 폰 원본 그대로면 너무 커서 저장이 거부된다. 긴 변 1000px·품질을 낮춰 줄인다.
+// ⚠️ 폰으로 찍은 사진은 픽셀이 눕혀진 채 저장되고 'EXIF 방향' 표시로만 바로 세운다.
+//    캔버스에 그리면 그 표시가 사라져 옆으로 누운 사진이 올라간다.
+//    createImageBitmap의 imageOrientation:'from-image'가 픽셀 자체를 펴 준다.
+function _shrinkToJpeg(src, max, budget) {
+  const scale = Math.min(1, max / Math.max(src.width, src.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(src.width * scale);
+  c.height = Math.round(src.height * scale);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  let q = 0.72, out = c.toDataURL('image/jpeg', q);
+  while (out.length > budget && q > 0.35) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+  return out;
+}
+
 function compressImage(file, cb) {
-  const reader = new FileReader();
-  reader.onerror = () => cb(null);
-  reader.onload = e => {
-    const img = new Image();
-    img.onerror = () => cb(null);
-    img.onload = () => {
-      try {
-        const max = 1000, scale = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * scale);
-        c.height = Math.round(img.height * scale);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        let q = 0.72, out = c.toDataURL('image/jpeg', q);
-        while (out.length > 420000 && q > 0.35) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
-        cb(out.length > 700000 ? null : out);
-      } catch (_) { cb(null); }
-    };
-    img.src = e.target.result;
+  const done = src => {
+    try {
+      const out = _shrinkToJpeg(src, 1000, 420000);
+      if (src.close) src.close();
+      cb(out.length > 700000 ? null : out);
+    } catch (_) { cb(null); }
   };
-  reader.readAsDataURL(file);
+  const fallback = () => {                 // 옛 브라우저 — 방향은 브라우저 판단에 맡긴다
+    const reader = new FileReader();
+    reader.onerror = () => cb(null);
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => cb(null);
+      img.onload = () => done(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  if (window.createImageBitmap) {
+    createImageBitmap(file, { imageOrientation: 'from-image' }).then(done).catch(fallback);
+  } else {
+    fallback();
+  }
+}
+
+// 옆으로 누워 올라간 사진을 손으로 돌린다. 누를 때마다 시계 방향 90도.
+function _rotate90(dataUrl, cb) {
+  const img = new Image();
+  img.onerror = () => cb(null);
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas');
+      c.width = img.height; c.height = img.width;
+      const x = c.getContext('2d');
+      x.translate(c.width / 2, c.height / 2);
+      x.rotate(Math.PI / 2);
+      x.drawImage(img, -img.width / 2, -img.height / 2);
+      let q = 0.72, out = c.toDataURL('image/jpeg', q);
+      while (out.length > 420000 && q > 0.35) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+      cb(out);
+    } catch (_) { cb(null); }
+  };
+  img.src = dataUrl;
 }
 
 function pickQtImage(input) {
@@ -1106,6 +1143,19 @@ function pickQtImage(input) {
   });
 }
 function clearQtImage() { _qtPendingImg = null; renderAll(); }
+
+// 이미 올린 사진을 돌리면 '아직 안 올림' 상태가 된다 — 아래 버튼을 눌러야 저장된다.
+function rotateQtImage() {
+  const cur = _qtPendingImg || ((_qtDocs[qtKey(currentUser, qtDate)] || {}).image) || '';
+  if (!cur) return;
+  toast('돌리는 중이에요…');
+  _rotate90(cur, out => {
+    if (!out) { toast('사진을 못 돌렸어요'); return; }
+    _qtPendingImg = out;
+    renderAll();
+    toast('돌렸어요 — 아래 올리기를 눌러야 저장됩니다');
+  });
+}
 
 function submitQT(id, n, i, date) {
   // 자정이 지나면 그날은 닫힌다. 화면을 켜 둔 채 날이 바뀐 경우까지 여기서 막는다.
@@ -1176,6 +1226,19 @@ function doDeleteQT(id) {
   _db.collection('newcomerQT').doc(qtKey(id, qtDate)).set(doc)
     .then(() => toast(`${findUser(id).name} 큐티를 지웠어요`))
     .catch(e => { console.warn('큐티 삭제 실패:', e); toast('지우지 못했어요. 잠시 뒤 다시 해주세요'); });
+}
+
+function rotateEditImage(id) {
+  if (!canManageQT()) return;
+  const prev = _qtDocs[qtKey(id, qtDate)] || {};
+  if (!prev.image) return;
+  toast('돌리는 중이에요…');
+  _rotate90(prev.image, out => {
+    if (!out) { toast('사진을 못 돌렸어요'); return; }
+    _qtDocs[qtKey(id, qtDate)] = Object.assign({}, prev, { image: out });
+    renderAll();
+    toast('돌렸어요 — 아래 저장을 눌러야 반영됩니다');
+  });
 }
 
 function removeEditImage(id) {
@@ -1307,7 +1370,10 @@ function renderQT() {
       ${shownImg ? `
       <div class="mt-3 relative">
         <img src="${shownImg}" onclick="showImg(this.src)" class="w-full rounded-xl border cursor-pointer" style="max-height:320px;object-fit:contain;background:#F9FAFB">
-        <button onclick="clearQtImage()" style="min-height:32px" class="absolute top-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>
+        <div class="absolute top-2 right-2 flex gap-1.5">
+          <button onclick="rotateQtImage()" style="min-height:32px" class="bg-black/60 text-white text-xs px-3 py-1 rounded-full">↻ 돌리기</button>
+          <button onclick="clearQtImage()" style="min-height:32px" class="bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>
+        </div>
         ${_qtPendingImg ? `<p class="text-[11px] text-amber-600 mt-1">아직 안 올렸어요 — 아래 버튼을 눌러야 저장됩니다</p>` : ''}
       </div>` : ''}
 
@@ -1358,8 +1424,12 @@ function renderQT() {
               ${doc.image ? `
                 <div class="relative mt-2">
                   <img src="${doc.image}" class="w-full rounded-xl border" style="max-height:240px;object-fit:contain;background:#F9FAFB">
-                  <button onclick="removeEditImage('${s.id}')" style="min-height:32px"
-                    class="absolute top-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>
+                  <div class="absolute top-2 right-2 flex gap-1.5">
+                    <button onclick="rotateEditImage('${s.id}')" style="min-height:32px"
+                      class="bg-black/60 text-white text-xs px-3 py-1 rounded-full">↻ 돌리기</button>
+                    <button onclick="removeEditImage('${s.id}')" style="min-height:32px"
+                      class="bg-black/60 text-white text-xs px-3 py-1 rounded-full">사진 빼기</button>
+                  </div>
                 </div>` : ''}
               <div class="flex gap-2 mt-2">
                 <button onclick="saveEditQT('${s.id}')" class="flex-1 bg-gray-900 text-white py-2.5 rounded-xl font-bold text-sm">저장</button>
@@ -1561,7 +1631,7 @@ function compressIntroImage(file, cb) {
         c.width = Math.round(img.width * scale);
         c.height = Math.round(img.height * scale);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        cb(c.toDataURL('image/jpeg', 0.82));
+        cb(c.toDataURL('image/jpeg', 0.82));   // TODO: 여기도 EXIF 방향 적용 대상
       } catch (_) { cb(null); }
     };
     img.src = e.target.result;

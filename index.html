@@ -2015,12 +2015,10 @@ function compressImage(file, callback, opts) {
   const onError  = typeof opts.onError === 'function' ? opts.onError
     : (() => alert('사진을 처리하지 못했어요. 다른 사진으로 다시 시도하거나, 사진 용량을 조금 줄여서 올려 주세요.'));
 
-  const reader = new FileReader();
-  reader.onerror = () => { console.warn('사진 읽기 실패'); onError(new Error('read-failed')); };
-  reader.onload = e => {
-    const img = new Image();
-    img.onerror = () => { console.warn('이미지 디코딩 실패'); onError(new Error('decode-failed')); };
-    img.onload = () => {
+  // ⚠️ 폰 사진은 픽셀이 눕혀진 채 저장되고 'EXIF 방향' 표시로만 바로 세운다.
+  //    캔버스에 그리면 그 표시가 사라져 옆으로 누운 사진이 올라간다.
+  //    createImageBitmap의 imageOrientation:'from-image'가 픽셀 자체를 펴 준다.
+  const draw = img => {
       try {
         // base64 길이 → 대략 바이트 (base64는 원본의 4/3)
         const bytesOf = url => Math.floor(url.length * 0.75);
@@ -2059,15 +2057,31 @@ function compressImage(file, callback, opts) {
           ctx.drawImage(tmp, 0, 0);
           out = canvas.toDataURL('image/jpeg', q);
         }
+        if (img.close) img.close();
         callback(out);
       } catch (err) {
         console.warn('이미지 압축 실패:', err);
         onError(err);
       }
-    };
-    img.src = e.target.result;
   };
-  reader.readAsDataURL(file);
+
+  const fallback = () => {                 // 옛 브라우저 — 방향은 브라우저 판단에 맡긴다
+    const reader = new FileReader();
+    reader.onerror = () => { console.warn('사진 읽기 실패'); onError(new Error('read-failed')); };
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => { console.warn('이미지 디코딩 실패'); onError(new Error('decode-failed')); };
+      img.onload = () => draw(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (window.createImageBitmap) {
+    createImageBitmap(file, { imageOrientation: 'from-image' }).then(draw).catch(fallback);
+  } else {
+    fallback();
+  }
 }
 
 function getWeekPassages(satDateStr) {
@@ -4561,7 +4575,7 @@ function renderQTSubmit() {
     const existingImg = qtEditMode && todayEntry?.imageKey && qtImages[todayEntry.imageKey];
     todayForm = `<div class="space-y-2 mt-3">
       <textarea id="qt-day-text" rows="4" placeholder="오늘 말씀을 묵상하며 느낀 점을 써주세요..." class="w-full border rounded-xl p-3 text-sm resize-none">${existingContent}</textarea>
-      ${existingImg ? `<div id="qt-day-img-preview"><div class="relative"><img src="${existingImg}" class="w-full rounded-xl max-h-40 object-cover"><button onclick="_qtDayPendingImg=null;document.getElementById('qt-day-img-preview').innerHTML=''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">삭제</button></div></div>` : `<div id="qt-day-img-preview"></div>`}
+      ${existingImg ? `<div id="qt-day-img-preview">${_qtDayImgPreviewHtml(existingImg)}</div>` : `<div id="qt-day-img-preview"></div>`}
       <div class="flex gap-2">
         <label for="qt-day-img-cam" class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-xl p-2 cursor-pointer">
           <span>📷</span><span class="text-xs text-gray-500">카메라</span>
@@ -4832,7 +4846,7 @@ function renderQTDayView() {
     form = `<div class="space-y-3">
       <textarea id="qt-day-text" rows="5" placeholder="오늘 말씀을 묵상하며 느낀 점, 적용할 점을 자유롭게 써주세요..." class="w-full border rounded-xl p-3 text-sm resize-none">${existingContent}</textarea>
       <div>
-        ${existingImg ? `<div id="qt-day-img-preview"><div class="relative"><img src="${existingImg}" class="w-full rounded-xl max-h-52 object-cover"><button onclick="_qtDayPendingImg=null;document.getElementById('qt-day-img-preview').innerHTML=''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">삭제</button></div></div>` : `<div id="qt-day-img-preview"></div>`}
+        ${existingImg ? `<div id="qt-day-img-preview">${_qtDayImgPreviewHtml(existingImg)}</div>` : `<div id="qt-day-img-preview"></div>`}
         <div class="flex gap-2 mt-2">
           <label for="qt-day-img-cam" class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-xl p-2.5 cursor-pointer">
             <span class="text-lg">📷</span><span class="text-xs text-gray-500">카메라</span>
@@ -5221,6 +5235,46 @@ function _saveQTSubmissionBackup(key, dateStr, content, imageKey, createdAt) {
   } catch (e) { console.warn('큐티 안전사본 저장 실패:', e); }
 }
 
+// 옆으로 누워 올라간 사진을 손으로 돌린다. 누를 때마다 시계 방향 90도.
+function rotateDataUrl90(dataUrl, cb, quality) {
+  const img = new Image();
+  img.onerror = () => cb(null);
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas');
+      c.width = img.height; c.height = img.width;
+      const x = c.getContext('2d');
+      x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+      x.translate(c.width / 2, c.height / 2);
+      x.rotate(Math.PI / 2);
+      x.drawImage(img, -img.width / 2, -img.height / 2);
+      cb(c.toDataURL('image/jpeg', quality || 0.8));
+    } catch (_) { cb(null); }
+  };
+  img.src = dataUrl;
+}
+
+function _qtDayImgPreviewHtml(data) {
+  return `<div class="relative"><img src="${data}" class="w-full rounded-xl max-h-52 object-cover">
+    <div class="absolute top-1 right-1 flex gap-1">
+      <button onclick="rotateQtDayImg()" class="bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">↻ 돌리기</button>
+      <button onclick="_qtDayPendingImg=null;document.getElementById('qt-day-img-preview').innerHTML=''" class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">삭제</button>
+    </div></div>`;
+}
+
+// 이미 올린 사진을 돌리면 '아직 안 올림' 상태가 된다 — 저장 버튼을 눌러야 반영된다.
+function rotateQtDayImg() {
+  const el = document.getElementById('qt-day-img-preview');
+  const cur = _qtDayPendingImg || (el && el.querySelector('img') && el.querySelector('img').src) || '';
+  if (!cur) return;
+  rotateDataUrl90(cur, out => {
+    if (!out) { showToast('사진을 못 돌렸어요'); return; }
+    _qtDayPendingImg = out;
+    if (el) el.innerHTML = _qtDayImgPreviewHtml(out);
+    showToast('돌렸어요 — 저장을 눌러야 반영됩니다');
+  }, 0.8);
+}
+
 function qtDayPreviewImg(input) {
   if (!input.files?.[0]) return;
   // 글씨는 읽히되 피드 로딩이 무겁지 않게 제한한다. 기존 설정(1600px·약 0.9MB)은
@@ -5228,7 +5282,7 @@ function qtDayPreviewImg(input) {
   compressImage(input.files[0], data => {
     _qtDayPendingImg = data;
     const el = document.getElementById('qt-day-img-preview');
-    if (el) el.innerHTML = `<div class="relative"><img src="${data}" class="w-full rounded-xl max-h-52 object-cover"><button onclick="_qtDayPendingImg=null;document.getElementById('qt-day-img-preview').innerHTML=''" class="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">삭제</button></div>`;
+    if (el) el.innerHTML = _qtDayImgPreviewHtml(data);
   }, { max: 1200, quality: 0.8, minQuality: 0.58, maxBytes: 360000 });
 }
 
@@ -6902,7 +6956,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-03.8';
+const APP_BUILD = '2026-09-04.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
