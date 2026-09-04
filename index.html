@@ -613,6 +613,8 @@
   <div class="flex items-center justify-center w-full h-full p-6">
     <img id="photo-zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl" style="touch-action:none;transform-origin:center center;will-change:transform;" onclick="event.stopPropagation()">
   </div>
+  <button id="photo-zoom-rotate" onclick="event.stopPropagation();rotateZoomedQtPhoto()"
+    class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/90 text-gray-900 text-sm font-bold px-5 py-2.5 rounded-full shadow-lg">↻ 돌리기</button>
 </div>
 
 <div id="modal-user-menu" class="modal">
@@ -2748,11 +2750,54 @@ function zoomProfilePhoto(uid) {
   openModal('modal-photo-zoom');
 }
 
+// 큐티 사진 돌리기 — 사진이 있는 어느 화면에서든 같은 함수를 쓴다.
+// 사진 열쇠는 `{학생id}_{날짜}_qt` 꼴이라 앞부분으로 주인을 가린다.
+let _zoomQtKey = null;
+
+function canRotateQtPhoto(key) {
+  if (!key || !state.currentUser) return false;
+  if (isAdmin() || isLeader()) return true;          // 팀장은 아이 사진도 바로잡을 수 있다
+  return key.indexOf(state.currentUser + '_') === 0; // 아이는 자기 사진만
+}
+
+function rotateQtPhotoByKey(key, after) {
+  const cur = (typeof qtImages !== 'undefined' && qtImages[key]) ? qtImages[key] : '';
+  if (!cur || !canRotateQtPhoto(key)) return;
+  showToast('돌리는 중이에요…');
+  rotateDataUrl90(cur, out => {
+    if (!out) { showToast('사진을 못 돌렸어요'); return; }
+    qtImages[key] = out;
+    saveQTImages();
+    saveQTImageToFirestore(key, out);
+    if (typeof after === 'function') after(out);
+    showToast('돌렸어요');
+  }, 0.8);
+}
+
+// 사진 위에 올리는 작은 돌리기 버튼. 돌릴 수 없는 사진이면 아무것도 안 그린다.
+function qtRotateBtn(key, extra) {
+  if (!canRotateQtPhoto(key)) return '';
+  return `<button onclick="event.stopPropagation();rotateQtPhotoByKey('${key}', () => renderQTSubmit())"
+    class="absolute top-2 right-2 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full ${extra || ''}">↻ 돌리기</button>`;
+}
+
 function zoomQtPhoto(key) {
   const src = (typeof qtImages !== 'undefined' && qtImages[key]) ? qtImages[key] : '';
   if (!src) return;
+  _zoomQtKey = key;
   document.getElementById('photo-zoom-img').src = src;
+  const btn = document.getElementById('photo-zoom-rotate');
+  if (btn) btn.classList.toggle('hidden', !canRotateQtPhoto(key));
   openModal('modal-photo-zoom');
+}
+
+function rotateZoomedQtPhoto() {
+  if (!_zoomQtKey) return;
+  rotateQtPhotoByKey(_zoomQtKey, out => {
+    const img = document.getElementById('photo-zoom-img');
+    if (img) img.src = out;
+    if (qtOpenDay) renderQTDayView(); else if (state.page === 'qt') renderQTSubmit();
+  });
 }
 
 function openProfileView(studentId) {
@@ -4513,7 +4558,7 @@ function renderQTSubmit() {
             </div>
           </div>
           ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
-          ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" loading="lazy" decoding="async" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+          ${v.imageKey?qtImages[v.imageKey]?`<div class="relative mt-2"><img src="${qtImages[v.imageKey]}" loading="lazy" decoding="async" class="w-full rounded-xl max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">${qtRotateBtn(v.imageKey)}</div>`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
           ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-gray-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
@@ -4565,7 +4610,7 @@ function renderQTSubmit() {
         <span class="text-xs text-gray-400">${formatDate(todayEntry.createdAt)}</span>
       </div>
       ${todayEntry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${todayEntry.content}</p>` : ''}
-      ${todayEntry.imageKey && qtImages[todayEntry.imageKey] ? `<img src="${qtImages[todayEntry.imageKey]}" class="w-full rounded-xl mt-2 max-h-48 object-cover cursor-pointer" onclick="zoomQtPhoto('${todayEntry.imageKey}')">` : ''}
+      ${todayEntry.imageKey && qtImages[todayEntry.imageKey] ? `<div class="relative mt-2"><img src="${qtImages[todayEntry.imageKey]}" class="w-full rounded-xl max-h-48 object-cover cursor-pointer" onclick="zoomQtPhoto('${todayEntry.imageKey}')">${qtRotateBtn(todayEntry.imageKey)}</div>` : ''}
       ${!todayLocked ? `<button onclick="qtEditMode=true;renderQTSubmit()" class="mt-2 text-xs text-gray-500 underline">수정</button>` : ''}
     </div>`;
   } else if (todayLocked) {
@@ -4683,7 +4728,7 @@ function renderQTSubmit() {
     const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
     const imgHtml = v.imageKey
       ? imgSrc
-        ? `<img src="${imgSrc}" loading="lazy" decoding="async" class="w-full rounded-xl mt-2 object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">`
+        ? `<div class="relative mt-2"><img src="${imgSrc}" loading="lazy" decoding="async" class="w-full rounded-xl object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">${qtRotateBtn(v.imageKey)}</div>`
         : _qtImagesAttempted.has(v.imageKey) ? ''
         : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`
       : '';
@@ -4900,7 +4945,7 @@ function renderQTDayView() {
                 <span class="text-xs text-gray-400">${formatDate(v.createdAt)}</span>
               </div>
               ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : ''}
-              ${v.imageKey?qtImages[v.imageKey]?`<img src="${qtImages[v.imageKey]}" class="w-full rounded-xl mt-2 max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+              ${v.imageKey?qtImages[v.imageKey]?`<div class="relative mt-2"><img src="${qtImages[v.imageKey]}" class="w-full rounded-xl max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">${qtRotateBtn(v.imageKey)}</div>`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
             </div>`;
           }).join('')}
         </div>
@@ -5062,6 +5107,18 @@ function openSrcFullscreen(imageKey) {
   closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;color:#fff;font-size:2.5rem;line-height:1;background:none;border:none;cursor:pointer;padding:0 8px;';
   closeBtn.onclick = cleanup;
   el.appendChild(closeBtn);
+  if (canRotateQtPhoto(imageKey)) {            // 크게 본 자리에서 바로 돌린다
+    const rot = document.createElement('button');
+    rot.textContent = '↻ 돌리기';
+    rot.style.cssText = 'position:absolute;bottom:28px;left:50%;transform:translateX(-50%);'
+      + 'background:rgba(255,255,255,.92);color:#111;font-size:14px;font-weight:700;'
+      + 'padding:10px 20px;border:none;border-radius:999px;cursor:pointer;';
+    rot.onclick = ev => {
+      ev.stopPropagation();
+      rotateQtPhotoByKey(imageKey, out => { img.src = out; renderQTSubmit(); });
+    };
+    el.appendChild(rot);
+  }
   function cleanup() { document.removeEventListener('keydown', onKey); el.remove(); }
   const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); cleanup(); } };
   document.addEventListener('keydown', onKey);
@@ -5284,17 +5341,10 @@ function rotateQtDayImg() {
 function rotateSavedQTDayImg(dateStr) {
   const entry = getQTDayEntry(dateStr);
   const key = entry && entry.imageKey;
-  const cur = key && qtImages[key];
-  if (!cur) return;
-  showToast('돌리는 중이에요…');
-  rotateDataUrl90(cur, out => {
-    if (!out) { showToast('사진을 못 돌렸어요'); return; }
-    qtImages[key] = out;
-    saveQTImages();
-    saveQTImageToFirestore(key, out);
+  if (!key) return;
+  rotateQtPhotoByKey(key, () => {
     if (qtOpenDay === dateStr) renderQTDayView(); else renderQTSubmit();
-    showToast('돌렸어요');
-  }, 0.8);
+  });
 }
 
 function qtDayPreviewImg(input) {
@@ -6978,7 +7028,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-04.3';
+const APP_BUILD = '2026-09-04.5';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
