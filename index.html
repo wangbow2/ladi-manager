@@ -4828,7 +4828,12 @@ function renderQTDayView() {
         <span class="text-xs text-gray-400">${formatDate(entry.createdAt)}</span>
       </div>
       ${entry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${entry.content}</p>` : ''}
-      ${entry.imageKey && qtImages[entry.imageKey] ? `<img src="${qtImages[entry.imageKey]}" class="w-full rounded-xl mt-3 max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">` : ''}
+      ${entry.imageKey && qtImages[entry.imageKey] ? `
+        <div class="relative mt-3">
+          <img src="${qtImages[entry.imageKey]}" class="w-full rounded-xl max-h-56 object-cover cursor-pointer" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'14rem':'none'">
+          <button onclick="event.stopPropagation();rotateSavedQTDayImg('${dateStr}')"
+            class="absolute top-1 right-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">↻ 돌리기</button>
+        </div>` : ''}
       ${!locked ? `<div class="flex gap-2 mt-3">
         <button onclick="startEditQTDay('${dateStr}')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-400 text-gray-900 active:bg-gray-50">수정</button>
         <button onclick="deleteQTDay('${dateStr}')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-400 active:bg-gray-50">삭제</button>
@@ -5272,6 +5277,23 @@ function rotateQtDayImg() {
     _qtDayPendingImg = out;
     if (el) el.innerHTML = _qtDayImgPreviewHtml(out);
     showToast('돌렸어요 — 저장을 눌러야 반영됩니다');
+  }, 0.8);
+}
+
+// 이미 올린 사진을 그 자리에서 돌린다 — 누르면 바로 저장된다(따로 '저장'을 안 눌러도 된다).
+function rotateSavedQTDayImg(dateStr) {
+  const entry = getQTDayEntry(dateStr);
+  const key = entry && entry.imageKey;
+  const cur = key && qtImages[key];
+  if (!cur) return;
+  showToast('돌리는 중이에요…');
+  rotateDataUrl90(cur, out => {
+    if (!out) { showToast('사진을 못 돌렸어요'); return; }
+    qtImages[key] = out;
+    saveQTImages();
+    saveQTImageToFirestore(key, out);
+    if (qtOpenDay === dateStr) renderQTDayView(); else renderQTSubmit();
+    showToast('돌렸어요');
   }, 0.8);
 }
 
@@ -6956,7 +6978,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-04.2';
+const APP_BUILD = '2026-09-04.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
