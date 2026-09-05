@@ -34,6 +34,18 @@ service cloud.firestore {
       allow create, update: if true;
       allow delete: if false;
     }
+    // 확~마! 제자반(disciple/) — LADI 본 앱·신입생 앱과 완전히 분리된 문서.
+    match /disciple/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+    // 제자반 제출물 — 큐티·D형 큐티·기도 영적일지·주일 설교 노트.
+    // 종류_사람_날짜로 문서를 하나씩 나눠 둔다(한 문서에 몰아넣다 통째로 잃지 않도록).
+    match /discipleDocs/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
     match /stateBackups/{document} {
       allow read, create: if true;
       allow update, delete: if false;
