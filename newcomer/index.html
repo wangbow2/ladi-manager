@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-05.2';
+const APP_BUILD = '2026-09-05.3';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -551,7 +551,28 @@ let checkWeek = 0;
 let qtDate = '';   // 큐티 화면에서 보고 있는 날짜
 let qtOpenStudent = null;  // 펼쳐 본 아이의 묵상
 let qtCalMonth = null;     // 큐티 달력이 보고 있는 달 'YYYY-MM'. null이면 보고 있는 날짜의 달.
-const _qtDraft = {};       // 날짜 → 쓰다 만 글. 화면이 다시 그려져도 날아가지 않게.
+const QT_DRAFT_KEY = 'ladi_newcomer_qt_drafts';
+let _qtDraft = {};
+try { _qtDraft = JSON.parse(localStorage.getItem(QT_DRAFT_KEY) || '{}') || {}; } catch (_) {}
+function qtDraftKey(date) { return `${currentUser || ''}|${date}`; }
+function qtDraftValue(date, fallback) {
+  const k = qtDraftKey(date);
+  return _qtDraft[k] !== undefined ? _qtDraft[k] : (fallback || '');
+}
+let _qtDraftTimer = null;
+function saveQtDraft(date, value) {
+  _qtDraft[qtDraftKey(date)] = value;
+  clearTimeout(_qtDraftTimer);
+  _qtDraftTimer = setTimeout(() => {
+    try { localStorage.setItem(QT_DRAFT_KEY, JSON.stringify(_qtDraft)); } catch (_) {}
+    const el = document.querySelector('[data-qt-autosave]');
+    if (el) el.textContent = '자동 저장됨';
+  }, 250);
+}
+function clearQtDraft(date) {
+  delete _qtDraft[qtDraftKey(date)];
+  try { localStorage.setItem(QT_DRAFT_KEY, JSON.stringify(_qtDraft)); } catch (_) {}
+}
 let _qtEditing = null;     // 목사님이 고치는 중인 아이 id
 let _qtDelArm = null;      // '지우기'를 한 번 눌러 확인을 기다리는 아이 id
 
@@ -1172,7 +1193,7 @@ function submitQT(id, n, i, date) {
 
   _qtDocs[qtKey(id, date)] = doc;
   _qtPendingImg = null;
-  delete _qtDraft[date];
+  clearQtDraft(date);
   // 체크는 제출과 함께 켠다 — 올렸는데 체크가 안 되는 일이 없도록.
   const arr = qtOf(id, n).slice();
   arr[i] = true;
@@ -1366,9 +1387,10 @@ function renderQT() {
             class="mt-3 px-4 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm">오늘 큐티로 가기</button>` : ''}
         </div>`}`
       : `
-      <textarea id="qt-text" rows="6" oninput="_qtDraft['${qtDate}']=this.value"
+      <div class="flex justify-end mb-1"><span data-qt-autosave class="text-[10px] text-gray-400">입력 자동 저장</span></div>
+      <textarea id="qt-text" rows="6" oninput="saveQtDraft('${qtDate}',this.value)"
         placeholder="오늘 말씀을 읽고 마음에 남은 것, 하나님이 어떤 분으로 보였는지, 내 삶에 어떻게 적용할지 자유롭게 적어보세요."
-        class="w-full border rounded-xl p-3 text-sm resize-none">${esc(_qtDraft[qtDate] !== undefined ? _qtDraft[qtDate] : (saved && saved.text || ''))}</textarea>
+        class="w-full border rounded-xl p-3 text-sm resize-none">${esc(qtDraftValue(qtDate, saved && saved.text || ''))}</textarea>
 
       ${shownImg ? `
       <div class="mt-3 relative">
@@ -2106,7 +2128,6 @@ if ('serviceWorker' in navigator) {
   function _safeToReload() {
     if (_pendingPatch) return false;                 // 서버에 아직 못 올린 체크가 있음
     if (_qtPendingImg) return false;                 // 고른 사진을 아직 안 올림
-    if (Object.keys(_qtDraft).length) return false;  // 쓰다 만 묵상 글이 있음
     return true;
   }
   function _reloadWhenSafe(to) {

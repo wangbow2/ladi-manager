@@ -4619,7 +4619,8 @@ function renderQTSubmit() {
     const existingContent = qtEditMode && todayEntry ? (todayEntry.content || '') : '';
     const existingImg = qtEditMode && todayEntry?.imageKey && qtImages[todayEntry.imageKey];
     todayForm = `<div class="space-y-2 mt-3">
-      <textarea id="qt-day-text" rows="4" placeholder="오늘 말씀을 묵상하며 느낀 점을 써주세요..." class="w-full border rounded-xl p-3 text-sm resize-none">${existingContent}</textarea>
+      <div class="flex justify-end"><span data-qt-autosave class="text-[10px] text-gray-400">입력 자동 저장</span></div>
+      <textarea id="qt-day-text" rows="4" oninput="qtDraftSet('${TODAY_STR}',this.value)" placeholder="오늘 말씀을 묵상하며 느낀 점을 써주세요..." class="w-full border rounded-xl p-3 text-sm resize-none">${qtDraftEsc(qtDraftValue(TODAY_STR, existingContent))}</textarea>
       ${existingImg ? `<div id="qt-day-img-preview">${_qtDayImgPreviewHtml(existingImg)}</div>` : `<div id="qt-day-img-preview"></div>`}
       <div class="flex gap-2">
         <label for="qt-day-img-cam" class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-xl p-2 cursor-pointer">
@@ -4894,7 +4895,8 @@ function renderQTDayView() {
     const existingContent = qtEditMode && entry ? (entry.content || '') : '';
     const existingImg = qtEditMode && entry?.imageKey && qtImages[entry.imageKey];
     form = `<div class="space-y-3">
-      <textarea id="qt-day-text" rows="5" placeholder="오늘 말씀을 묵상하며 느낀 점, 적용할 점을 자유롭게 써주세요..." class="w-full border rounded-xl p-3 text-sm resize-none">${existingContent}</textarea>
+      <div class="flex justify-end"><span data-qt-autosave class="text-[10px] text-gray-400">입력 자동 저장</span></div>
+      <textarea id="qt-day-text" rows="5" oninput="qtDraftSet('${dateStr}',this.value)" placeholder="오늘 말씀을 묵상하며 느낀 점, 적용할 점을 자유롭게 써주세요..." class="w-full border rounded-xl p-3 text-sm resize-none">${qtDraftEsc(qtDraftValue(dateStr, existingContent))}</textarea>
       <div>
         ${existingImg ? `<div id="qt-day-img-preview">${_qtDayImgPreviewHtml(existingImg)}</div>` : `<div id="qt-day-img-preview"></div>`}
         <div class="flex gap-2 mt-2">
@@ -5280,6 +5282,30 @@ function zoomPassageImage(dateStr, slot) {
 }
 
 let _qtDayPendingImg = null;
+const QT_DRAFT_KEY = 'radi_qt_drafts';
+let _qtDayDrafts = {};
+try { _qtDayDrafts = JSON.parse(localStorage.getItem(QT_DRAFT_KEY) || '{}') || {}; } catch (_) {}
+function qtDraftKey(dateStr) { return `${state.currentUser || ''}|${dateStr}`; }
+function qtDraftValue(dateStr, fallback) {
+  const k = qtDraftKey(dateStr);
+  return _qtDayDrafts[k] !== undefined ? _qtDayDrafts[k] : (fallback || '');
+}
+function qtDraftEsc(value) {
+  return String(value == null ? '' : value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+let _qtDraftTimer = null;
+function qtDraftSet(dateStr, value) {
+  _qtDayDrafts[qtDraftKey(dateStr)] = value;
+  clearTimeout(_qtDraftTimer);
+  _qtDraftTimer = setTimeout(() => {
+    try { localStorage.setItem(QT_DRAFT_KEY, JSON.stringify(_qtDayDrafts)); } catch (_) {}
+    document.querySelectorAll('[data-qt-autosave]').forEach(el => { el.textContent = '자동 저장됨'; });
+  }, 250);
+}
+function qtDraftClear(dateStr) {
+  delete _qtDayDrafts[qtDraftKey(dateStr)];
+  try { localStorage.setItem(QT_DRAFT_KEY, JSON.stringify(_qtDayDrafts)); } catch (_) {}
+}
 
 // 큐티 안전사본 — 사진과 똑같이 '한 문서 = 한 건'으로 즉시 저장한다.
 // 사진은 이 방식이라 한 번도 안 잃어버렸다. 본문도 같은 길로 태운다.
@@ -5379,6 +5405,7 @@ function submitQTDay(dateStr) {
   }
   const createdAt = qtEditMode && existing ? existing.createdAt : Date.now();
   state.qtDayChecks[key] = { done: true, content, imageKey, createdAt };
+  qtDraftClear(dateStr);
   qtEditMode = false;
   // 안전사본을 '즉시' 별도 문서에 남긴다. 본 기록(radi/state)은 묶음 저장이라
   // 앱을 바로 닫거나 네트워크가 끊기면 놓칠 수 있는데, 이 한 줄은 바로 나간다.
@@ -7028,7 +7055,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-04.5';
+const APP_BUILD = '2026-09-05.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
