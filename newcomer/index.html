@@ -300,7 +300,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-05.1';
+const APP_BUILD = '2026-09-05.2';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -1544,27 +1544,29 @@ function renderStatus() {
     <div class="card !p-0 overflow-hidden">
       <div class="scroll-table">
         <table class="w-full text-xs">
-          <thead class="bg-gray-50"><tr>${head.map(h=>`<th class="px-2 py-2 text-gray-500 font-semibold">${h}</th>`).join('')}</tr></thead>
+          <thead class="bg-gray-50"><tr>${head.map(h=>`<th class="px-1 py-2 text-gray-500 font-semibold whitespace-nowrap">${h}</th>`).join('')}</tr></thead>
           <tbody>
             ${list.map(s => {
               const v = verdict(s.id), t = v.tally;
+              // 어김/기준 — 숫자 하나만 있으면 몇 번까지 괜찮은지 알 수가 없어서
+              // 그 항목의 '수료 불가' 기준을 옆에 작게 같이 적는다.
               const cell = (k) => {
                 const lim = LIMITS[k], c = t[k];
-                const cls = c >= lim.fail ? 'text-red-600 font-bold' : (c > 0 && c === lim.fail-1 ? 'text-amber-600 font-bold' : 'text-gray-400');
-                return `<td class="px-2 py-2 text-center ${cls}">${c}</td>`;
+                const cls = c >= lim.fail ? 'text-red-600' : (c > 0 && c === lim.fail-1 ? 'text-amber-600' : (c > 0 ? 'text-gray-700' : 'text-gray-300'));
+                return `<td class="px-1 py-2 text-center whitespace-nowrap"><span class="${cls} font-bold">${c}</span><span class="text-gray-300 text-[10px]">/${lim.fail}</span></td>`;
               };
               const short = v.label === '수료 연기' ? '연기' : SHORT[v.level];
               return `<tr class="border-t">
                 <td class="px-2 py-2 font-semibold text-gray-800">${s.name}</td>
                 <td class="px-1 py-2 text-center"><span class="sig-${v.level} px-2 py-1 rounded-full font-bold text-[11px]">${short}</span></td>
                 ${cell('지각')}${cell('무단지각')}${cell('결석')}${cell('무단결석')}${cell('큐티미달')}${cell('가테미통과')}
-                <td class="px-2 py-2 text-center ${t.교육불참 ? 'text-gray-600 font-semibold' : 'text-gray-300'}">${t.교육불참}</td>
+                <td class="px-1 py-2 text-center ${t.교육불참 ? 'text-gray-600 font-semibold' : 'text-gray-300'}">${t.교육불참}</td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>
-      <p class="text-[11px] text-gray-400 px-3 py-2 border-t">무지=무단지각 · 무결=무단결석 · 큐티=4일 미만 주차 · 가테=미통과<br>교육=토요일 교육 불참 횟수 (기록만 하고 수료 판정에는 넣지 않습니다)</p>
+      <p class="text-[11px] text-gray-400 px-3 py-2 border-t">숫자는 <b class="text-gray-600">어김 / 기준</b>입니다. 기준 숫자에 닿으면 수료 불가, 하나 남으면 노란색으로 바뀝니다.<br>무지=무단지각 · 무결=무단결석 · 큐티=4일 미만 주차 · 가테=미통과<br>교육=토요일 교육 불참 횟수 (기록만 하고 수료 판정에는 넣지 않습니다)</p>
     </div>
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">아직 안 채워진 곳</h3>
