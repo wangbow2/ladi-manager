@@ -1764,7 +1764,9 @@ function initFirestore() {
         // QT 폼 작성 중이면 다시 렌더링 안 함 — 텍스트/이미지 날아가지 않도록
         const qtTextarea = document.getElementById('qt-day-text');
         const formActive = qtTextarea && (qtTextarea.value.trim() || _qtDayPendingImg);
-        if (!formActive) _renderCurrentPage();
+        // 큐티를 여럿이 동시에 올리면 스냅샷이 연달아 떨어진다. 그때마다 화면을
+        // 통째로 다시 그리면 깜빡이므로, 몰아친 것을 한 번으로 묶는다.
+        if (!formActive) _renderSoon();
         updateNotificationBadge();
       }
     });
@@ -1879,6 +1881,51 @@ function saveQTImageToFirestore(imageKey, base64) {
 }
 
 const _qtImagesAttempted = new Set();
+
+// 큐티 사진 한 칸. 아직 못 받은 사진은 자리만 잡아 두고, 도착하면 이 칸만 갈아 끼운다.
+function _qtImageSlotInner(key, imgCls, click) {
+  const src = qtImages[key];
+  if (src) return `<div class="relative mt-2"><img src="${src}" loading="lazy" decoding="async" class="${imgCls}" onclick="${click}">${qtRotateBtn(key)}</div>`;
+  if (_qtImagesAttempted.has(key)) return '';
+  return `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`;
+}
+function _qtSlotClick(key, zoom) { return zoom === 'src' ? `openSrcFullscreen('${key}')` : `zoomQtPhoto('${key}')`; }
+function qtImageSlot(key, imgCls, zoom) {
+  if (!key) return '';
+  return `<div class="qt-img-slot" data-qt-img="${key}" data-qt-img-cls="${imgCls}" data-qt-img-zoom="${zoom}">`
+       + _qtImageSlotInner(key, imgCls, _qtSlotClick(key, zoom)) + `</div>`;
+}
+function _paintQTImageSlots(keys) {
+  const want = new Set(keys);
+  document.querySelectorAll('.qt-img-slot').forEach(slot => {
+    const key = slot.dataset.qtImg;
+    if (!want.has(key) || slot.dataset.qtImgDone === '1') return;
+    const html = _qtImageSlotInner(key, slot.dataset.qtImgCls, _qtSlotClick(key, slot.dataset.qtImgZoom));
+    if (html !== slot.innerHTML) slot.innerHTML = html;
+    if (qtImages[key] || _qtImagesAttempted.has(key)) slot.dataset.qtImgDone = '1';
+  });
+}
+// 사진은 4장씩 나눠 받는다. 예전에는 한 묶음이 올 때마다 renderQTSubmit()을
+// 다시 불러 큐티 화면 전체를 갈아엎었고, 사진이 많은 주에는 그게 열 번 넘게
+// 이어지면서 글과 사진이 눈에 띄게 깜빡였다. 이제는 받아온 칸만 채운다.
+let _qtImgFillRun = 0;
+async function _fillQTImageSlots(keys) {
+  const want = [...new Set(keys.filter(Boolean))];
+  if (!want.length) return;
+  const run = ++_qtImgFillRun;
+  for (;;) {
+    const r = await loadMissingQTImages(want);
+    if (run !== _qtImgFillRun) return;   // 그 사이 화면이 바뀌었으면 그만둔다
+    _paintQTImageSlots(want);
+    if (r !== true && r !== 'attempted') return;   // 더 받을 게 없다
+  }
+}
+
+let _renderSoonTimer = null;
+function _renderSoon() {
+  clearTimeout(_renderSoonTimer);
+  _renderSoonTimer = setTimeout(() => { _renderSoonTimer = null; _renderCurrentPage(); }, 250);
+}
 
 async function loadMissingQTImages(imageKeys) {
   const pending = [...new Set(imageKeys.filter(k => k && !qtImages[k] && !_qtImagesAttempted.has(k)))];
@@ -4402,20 +4449,22 @@ function changeQTMonth(dir) {
   renderQTSubmit();
 }
 
-function isDayLocked(dateStr) {
+// 그 날짜가 속한 주의 마지막 날(토요일) 자정. 한 주는 주일에 시작해 토요일에 끝난다.
+function _qtWeekEnd(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  const dow = d.getDay();
-  const daysToSat = dow === 0 ? 6 : 7 - dow;
-  const sat = new Date(d); sat.setDate(d.getDate() + daysToSat);
-  const fri = new Date(sat); fri.setDate(sat.getDate() - 1); fri.setHours(23, 59, 59, 999);
-  return TODAY > fri;
+  const sat = new Date(d); sat.setDate(d.getDate() + (6 - d.getDay()));
+  sat.setHours(23, 59, 59, 999);
+  return sat;
+}
+function isDayLocked(dateStr) {
+  // 월~토는 예전 계산과 결과가 같다. 주일만 달라진다 — 예전에는 주일을 지난주에
+  // 붙여 세는 바람에 토요일 아침에 이미 잠겼는데, 이제는 같은 주의 다른 날들과
+  // 함께 그 주 토요일 자정에 잠긴다.
+  return TODAY > _qtWeekEnd(dateStr);
 }
 
 function getQTWeekSatStr(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const dow = d.getDay();
-  const daysToSat = dow === 0 ? 6 : 7 - dow;
-  const sat = new Date(d); sat.setDate(d.getDate() + daysToSat);
+  const sat = _qtWeekEnd(dateStr);
   return `${sat.getFullYear()}-${String(sat.getMonth()+1).padStart(2,'0')}-${String(sat.getDate()).padStart(2,'0')}`;
 }
 
@@ -4425,14 +4474,18 @@ function getQTDayEntry(dateStr) {
 }
 
 function getQTCurrentWeekDays() {
-  // Mon-Fri only (라인업/잠금 기준)
+  // 한 주는 주일에 시작해 토요일에 끝난다 (달력·isDayLocked·getQTWeekSatStr와 같은 기준).
+  // 그중 큐티 집계에 들어가는 월~금 5일만 돌려준다.
   const qtDates = Object.keys(QT_SCHEDULE).sort();
   if (!qtDates.length) return [];
   const firstQT = new Date(qtDates[0] + 'T00:00:00');
   const lastQT = new Date(qtDates[qtDates.length - 1] + 'T00:00:00');
   const ref = TODAY < firstQT ? firstQT : TODAY > lastQT ? lastQT : TODAY;
   const dow = ref.getDay();
-  const mon = new Date(ref); mon.setDate(ref.getDate() - (dow === 0 ? 6 : dow - 1));
+  // 주일(dow 0)이면 새 주가 막 시작한 것이므로 '다음날 월요일'이 그 주의 월요일이다.
+  // 예전에는 6일을 되돌려 지난주 월요일을 잡는 바람에, 주일 하루 동안
+  // 큐티 피드가 지난주 것을 보여주고 주말 집계도 어긋났다.
+  const mon = new Date(ref); mon.setDate(ref.getDate() + 1 - dow);
   const days = [];
   for (let i = 0; i < 5; i++) {
     const c = new Date(mon); c.setDate(mon.getDate() + i);
@@ -4544,7 +4597,9 @@ function renderQTSubmit() {
   const feed = allWeekEntries.length
     ? allWeekEntries.map(({ s, v, dateStr }) => {
         const isMe = s.id === state.currentUser;
-        const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
+        const _d = new Date(dateStr+'T00:00:00');
+        // 언제 쓴 큐티인지 한눈에 보이도록 날짜와 요일을 같이 적는다 — 예) 9/1(월)
+        const dayName = `${_d.getMonth()+1}/${_d.getDate()}(${DAYNAMES[_d.getDay()]})`;
         const passage = QT_SCHEDULE[dateStr] || '';
         return `<div class="bg-white rounded-2xl p-4 shadow-sm ${isMe?'border-l-4 border-gray-400':''}">
           <div class="flex items-start justify-between mb-2 gap-2">
@@ -4558,7 +4613,7 @@ function renderQTSubmit() {
             </div>
           </div>
           ${v.content?`<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${v.content}</p>`:''}
-          ${v.imageKey?qtImages[v.imageKey]?`<div class="relative mt-2"><img src="${qtImages[v.imageKey]}" loading="lazy" decoding="async" class="w-full rounded-xl max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">${qtRotateBtn(v.imageKey)}</div>`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+          ${qtImageSlot(v.imageKey, 'w-full rounded-xl max-h-56 object-cover cursor-pointer', 'key')}
           ${isMe&&!thisWeekLocked?`<button onclick="openQTDay('${dateStr}')" class="text-xs text-gray-500 mt-2 underline">수정</button>`:''}
         </div>`;
       }).join('')
@@ -4724,15 +4779,10 @@ function renderQTSubmit() {
   const filteredEntries = qtFeedFilter ? allWeekEntries.filter(e => e.s.id === qtFeedFilter) : allWeekEntries;
   const qtFeedItems = filteredEntries.map(({ s, v, dateStr }) => {
     const isMe = s.id === state.currentUser;
-    const dayName = DAYNAMES[new Date(dateStr+'T00:00:00').getDay()];
+    const _d = new Date(dateStr+'T00:00:00');
+    const dayName = `${_d.getMonth()+1}/${_d.getDate()}(${DAYNAMES[_d.getDay()]})`;
     const passage = QT_SCHEDULE[dateStr] || '';
-    const imgSrc = v.imageKey ? qtImages[v.imageKey] : null;
-    const imgHtml = v.imageKey
-      ? imgSrc
-        ? `<div class="relative mt-2"><img src="${imgSrc}" loading="lazy" decoding="async" class="w-full rounded-xl object-contain cursor-pointer" onclick="openSrcFullscreen('${v.imageKey}')">${qtRotateBtn(v.imageKey)}</div>`
-        : _qtImagesAttempted.has(v.imageKey) ? ''
-        : `<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`
-      : '';
+    const imgHtml = qtImageSlot(v.imageKey, 'w-full rounded-xl object-contain cursor-pointer', 'src');
     // 비밀댓글
     const commentKey = `${s.id}_${dateStr}`;
     const postComments = (state.qtComments && state.qtComments[commentKey]) || [];
@@ -4821,13 +4871,7 @@ function renderQTSubmit() {
     </div>`;
 
   // 피드 이미지 Firestore에서 비동기 로드 (다른 학생 이미지)
-  const weekImgKeys = allWeekEntries.map(e => e.v.imageKey).filter(Boolean);
-  if (weekImgKeys.length) {
-    loadMissingQTImages(weekImgKeys).then(result => {
-      // result=true: 이미지 로드됨 / result='attempted': 첫 시도(플레이스홀더 교체) / result='retry': 이미 시도, 재렌더 불필요
-      if ((result === true || result === 'attempted') && !qtOpenDay) renderQTSubmit();
-    });
-  }
+  _fillQTImageSlots(allWeekEntries.map(e => e.v.imageKey));
 }
 
 function openQTDay(dateStr) {
@@ -4947,7 +4991,7 @@ function renderQTDayView() {
                 <span class="text-xs text-gray-400">${formatDate(v.createdAt)}</span>
               </div>
               ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : ''}
-              ${v.imageKey?qtImages[v.imageKey]?`<div class="relative mt-2"><img src="${qtImages[v.imageKey]}" class="w-full rounded-xl max-h-56 object-cover cursor-pointer" onclick="zoomQtPhoto('${v.imageKey}')">${qtRotateBtn(v.imageKey)}</div>`:_qtImagesAttempted.has(v.imageKey)?'':`<div class="w-full rounded-xl mt-2 bg-gray-100 flex items-center justify-center h-10"><span class="text-xs text-gray-400">이미지 로딩 중...</span></div>`:''}
+              ${qtImageSlot(v.imageKey, 'w-full rounded-xl max-h-56 object-cover cursor-pointer', 'key')}
             </div>`;
           }).join('')}
         </div>
@@ -4977,12 +5021,7 @@ function renderQTDayView() {
     </div>`;
 
   // 이 날 기록 이미지 Firestore에서 비동기 로드
-  const dayImgKeys = allEntries.map(e => e.v.imageKey).filter(Boolean);
-  if (dayImgKeys.length) {
-    loadMissingQTImages(dayImgKeys).then(result => {
-      if ((result === true || result === 'attempted') && qtOpenDay) renderQTDayView();
-    });
-  }
+  _fillQTImageSlots(allEntries.map(e => e.v.imageKey));
 }
 
 let _passageEditDate = null;
@@ -7055,7 +7094,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-05.1';
+const APP_BUILD = '2026-09-06.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
