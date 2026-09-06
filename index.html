@@ -639,6 +639,7 @@
     <div class="p-2">
       <button onclick="closeModal('modal-user-menu');navigate('mypage')" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl">👤 마이페이지</button>
       <button onclick="closeModal('modal-user-menu');openModal('modal-pin')" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl">🔐 PIN 번호 변경</button>
+      <button id="menu-chime" onclick="toggleChime()" class="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl">🔔 알림 소리</button>
       <button onclick="closeModal('modal-user-menu');doLogout()" class="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl font-semibold">🚪 로그아웃</button>
     </div>
   </div>
@@ -2286,6 +2287,7 @@ function showUserMenu() {
       menuPhoto.innerHTML = `<span class="text-lg font-bold text-gray-500">${u.name[0]}</span>`;
     }
   }
+  syncChimeMenu();
   openModal('modal-user-menu');
 }
 
@@ -3512,6 +3514,142 @@ function openWorshipArchive(openId) {
     </div>`);
 }
 
+// ==========================================
+// 얼굴 자리 찾기 — 사진을 네모에 맞추느라 자를 때, 얼굴이 잘리지 않게
+// 어디를 중심으로 둘지 정한다. 무거운 인식 모델 없이, 작은 목록용 사진에서
+// 살색에 가까운 점들이 가장 많이 모인 곳을 찾는 방식이다.
+// 사람이 없거나 못 찾으면 위쪽(50%, 35%)을 쓴다 — 단체사진은 얼굴이 대개 위에 있다.
+// ==========================================
+const FOCAL_FALLBACK = { x: 50, y: 35 };
+const _focalCache = {};        // id → {x, y}
+const _focalTried = {};
+const _focalWaiting = {};      // 아직 찾는 중일 때 기다리는 쪽들
+
+function _isSkin(r, g, b) {
+  // 흔히 쓰는 판정. 살구빛~갈색을 넓게 잡되 회색·하늘·나무는 뺀다.
+  if (r < 60 || r > 250) return false;
+  if (g < 30 || b < 15) return false;
+  if (r <= g || r <= b) return false;
+  if (Math.abs(r - g) < 12) return false;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (mx - mn < 18) return false;
+  const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+  const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+  return cb > 76 && cb < 128 && cr > 132 && cr < 178;
+}
+
+// 사진 하나에서 살색이 몰린 자리를 % 좌표로 돌려준다.
+function focalOf(id, src, after) {
+  if (_focalCache[id]) return _focalCache[id];
+  // 찾는 중에 화면을 다시 그리면 새 <img>가 답을 기다려야 한다.
+  // 예전에는 두 번째부터 그냥 기본값을 받아, 얼굴을 찾아 놓고도 못 쓰고 넘어갔다.
+  if (typeof after === 'function') (_focalWaiting[id] = _focalWaiting[id] || []).push(after);
+  if (_focalTried[id] || !src) return FOCAL_FALLBACK;
+  _focalTried[id] = true;
+  const img = new Image();
+  img.onload = () => {
+    let out = FOCAL_FALLBACK;
+    try {
+      const W = 64, H = Math.max(1, Math.round(W * img.height / img.width));
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(img, 0, 0, W, H);
+      const d = x.getImageData(0, 0, W, H).data;
+      let sx = 0, sy = 0, n = 0;
+      for (let py = 0; py < H; py++) {
+        for (let px = 0; px < W; px++) {
+          const i = (py * W + px) * 4;
+          if (!_isSkin(d[i], d[i+1], d[i+2])) continue;
+          // 얼굴은 대개 위쪽에 있다. 위에서 찾은 점에 조금 더 무게를 준다.
+          const w = 1 + (1 - py / H) * 0.6;
+          sx += px * w; sy += py * w; n += w;
+        }
+      }
+      // 너무 적으면(사람 없음) 또는 너무 많으면(살구빛 벽·노을) 믿지 않는다.
+      const ratio = n / (W * H);
+      if (ratio > 0.012 && ratio < 0.45) {
+        out = { x: Math.min(85, Math.max(15, Math.round(sx / n / W * 100))),
+                y: Math.min(80, Math.max(12, Math.round(sy / n / H * 100))) };
+      }
+    } catch (_) {}
+    _focalCache[id] = out;
+    (_focalWaiting[id] || []).forEach(fn => { try { fn(out); } catch (_) {} });
+    delete _focalWaiting[id];
+  };
+  img.onerror = () => {
+    _focalCache[id] = FOCAL_FALLBACK;
+    (_focalWaiting[id] || []).forEach(fn => { try { fn(FOCAL_FALLBACK); } catch (_) {} });
+    delete _focalWaiting[id];
+  };
+  img.src = src;
+  return FOCAL_FALLBACK;
+}
+
+// 네모칸에 맞추느라 자르는 사진에 얼굴 자리를 물려 준다.
+function _applyFocal(id, el) {
+  if (!el) return;
+  const set = o => { el.style.objectPosition = `${o.x}% ${o.y}%`; };
+  const known = _focalCache[id];
+  if (known) { set(known); return; }
+  set(focalOf(id, el.currentSrc || el.src, set));
+}
+
+// ==========================================
+// 알림 소리 — "라디!" (한국어 음성으로 미리 만들어 넣어 둔 0.4초짜리)
+// 새 비밀 댓글이 들어왔을 때만 울린다. 소리는 사람마다 끌 수 있다.
+// ==========================================
+const LADI_CHIME = 'data:audio/mpeg;base64,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';
+const CHIME_KEY = 'radi_chime_off';
+let _chimeAudio = null, _chimeUnlocked = false;
+
+function chimeOn() { try { return localStorage.getItem(CHIME_KEY) !== '1'; } catch (_) { return true; } }
+function toggleChime() {
+  const next = chimeOn() ? '1' : '0';
+  try { localStorage.setItem(CHIME_KEY, next); } catch (_) {}
+  const on = chimeOn();
+  syncChimeMenu();
+  if (on) playLadiChime(true);
+  showToast(on ? '알림 소리를 켰어요 — 라디!' : '알림 소리를 껐어요');
+}
+function syncChimeMenu() {
+  const el = document.getElementById('menu-chime');
+  if (el) el.textContent = chimeOn() ? '🔔 알림 소리 켬 — "라디!"' : '🔕 알림 소리 꺼짐';
+}
+
+function _chimeEl() {
+  if (!_chimeAudio) {
+    _chimeAudio = new Audio(LADI_CHIME);
+    _chimeAudio.preload = 'auto';
+  }
+  return _chimeAudio;
+}
+// 폰 브라우저는 사람이 한 번 화면을 누르기 전에는 소리를 못 낸다.
+// 처음 누를 때 소리 없이 한 번 재생해 자물쇠를 풀어 둔다.
+function unlockChime() {
+  if (_chimeUnlocked) return;
+  _chimeUnlocked = true;
+  const a = _chimeEl();
+  const v = a.volume;
+  a.volume = 0;
+  const done = () => { a.pause(); a.currentTime = 0; a.volume = v; };
+  const pr = a.play();
+  if (pr && pr.then) pr.then(done).catch(() => { a.volume = v; });
+  else done();
+}
+document.addEventListener('pointerdown', unlockChime, { once: true });
+document.addEventListener('touchstart', unlockChime, { once: true });
+
+function playLadiChime(force) {
+  if (!force && !chimeOn()) return;
+  try {
+    const a = _chimeEl();
+    a.currentTime = 0;
+    const pr = a.play();
+    if (pr && pr.catch) pr.catch(() => {});
+  } catch (_) {}
+}
+
 // ── 홈 사진 넘김 — 사진첩에 올라온 사진을 1.5초마다 무작위로 바꿔 보여준다 ──
 // 예전에 찬양 영상이 차지하던 자리를 그대로 쓴다(16:9).
 const SLIDE_MS = 1500;
@@ -3542,12 +3680,26 @@ function _slideShow(d) {
   if (!img) return;
   _slideCur = d.id;
   const src = _galleryFull[d.id] || d.thumb;
+  const bg = document.getElementById('home-slide-bg');
   img.style.opacity = '0';
+  if (bg) bg.style.opacity = '0';
   setTimeout(() => {
     const el = document.getElementById('home-slide-img');
     if (!el) return;
     el.src = src;
     el.style.opacity = '1';
+    const b = document.getElementById('home-slide-bg');
+    // 뒤에 깔리는 흐린 사진은 얼굴 쪽을 보게 둔다. 앞 사진은 통째로 다 보이므로
+    // 얼굴이 잘릴 일이 없다.
+    if (b) {
+      const f = focalOf(d.id, src, o => {
+        const b2 = document.getElementById('home-slide-bg');
+        if (b2 && _slideCur === d.id) b2.style.objectPosition = `${o.x}% ${o.y}%`;
+      });
+      b.src = src;
+      b.style.objectPosition = `${f.x}% ${f.y}%`;
+      b.style.opacity = '1';
+    }
     if (cap) cap.textContent = d.caption || '';
   }, 200);
   // 다음번엔 더 또렷하게 — 원본을 조용히 받아 둔다(정해 둔 장수까지만).
@@ -3591,8 +3743,11 @@ function homeSlideCard() {
       </div>
       <div id="home-slide" onclick="navigate('gallery')"
            style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#0B0B0F;cursor:pointer">
+        <img id="home-slide-bg" alt="" aria-hidden="true"
+             style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease;
+                    filter:blur(18px) brightness(.55);transform:scale(1.15)">
         <img id="home-slide-img" alt=""
-             style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease">
+             style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .35s ease">
         <div id="home-slide-empty" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;color:#71717A">
           <p style="font-size:26px">📷</p>
           <p style="font-size:12px;font-weight:600;margin-top:4px">사진첩에 사진을 올려보세요</p>
@@ -3918,6 +4073,7 @@ function markQTCommentsAsRead() {
   saveState();
 }
 
+let _lastUnread = null;
 function updateNotificationBadge() {
   const navBtn = document.getElementById('nav-dashboard');
   if (!navBtn) return;
@@ -3925,6 +4081,12 @@ function updateNotificationBadge() {
   const existing = navBtn.querySelector('.notif-badge');
   if (existing) existing.remove();
   const count = getUnreadQTCommentCount();
+  // 앱을 켜자마자 울리지는 않는다. 열어 둔 사이에 새로 들어온 것만 알린다.
+  if (_lastUnread !== null && count > _lastUnread) {
+    playLadiChime();
+    showToast('💬 새 비밀댓글이 왔어요');
+  }
+  _lastUnread = count;
   if (count > 0) {
     const badge = document.createElement('span');
     badge.className = 'notif-badge';
@@ -5513,7 +5675,10 @@ function renderGallery() {
     grid = `<div class="grid grid-cols-3 gap-1.5">
       ${list.map(d => `
         <div class="relative cursor-pointer active:opacity-80" onclick="openGalleryPhoto('${d.id}')">
-          <img src="${d.thumb}" loading="lazy" decoding="async" class="w-full aspect-square object-cover rounded-lg bg-gray-100">
+          <img src="${d.thumb}" loading="lazy" decoding="async" id="gthumb-${d.id}"
+               onload="_applyFocal('${d.id}', this)"
+               class="w-full aspect-square object-cover rounded-lg bg-gray-100"
+               style="object-position:${(_focalCache[d.id] || FOCAL_FALLBACK).x}% ${(_focalCache[d.id] || FOCAL_FALLBACK).y}%">
           ${d.caption ? `<p class="text-[10px] text-gray-500 mt-0.5 truncate">${_gEsc(d.caption)}</p>` : ''}
         </div>`).join('')}
     </div>`;
@@ -7600,7 +7765,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-06.4';
+const APP_BUILD = '2026-09-06.5';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
