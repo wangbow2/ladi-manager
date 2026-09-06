@@ -54,6 +54,11 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+    // 제자반 알림 토큰 — 폰마다 하나씩. 알림을 보낼 때만 쓴다.
+    match /discipleTokens/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
     match /stateBackups/{document} {
       allow read, create: if true;
       allow update, delete: if false;
