@@ -5760,6 +5760,35 @@ function moveGalleryPhoto(step) {
   _galleryViewer.idx = (_galleryViewer.idx + step + n) % n;
   _renderGalleryViewer();
 }
+// 손가락으로 좌우로 넘겨 사진을 옮긴다. 왼쪽으로 밀면 다음 장, 오른쪽으로 밀면 앞 장.
+// 댓글 칸이 열려 있을 때는 글을 읽으려고 미는 것이므로 넘기지 않는다.
+const SWIPE_MIN = 45;      // 이만큼은 밀어야 넘긴다 (살짝 흔들린 것과 가르려고)
+let _swipeX = 0, _swipeY = 0, _swipeOn = false;
+function _bindGallerySwipe(el) {
+  const start = (x, y) => { _swipeX = x; _swipeY = y; _swipeOn = true; };
+  const end = (x, y) => {
+    if (!_swipeOn) return;
+    _swipeOn = false;
+    if (_gCmtOpen) return;
+    const dx = x - _swipeX, dy = y - _swipeY;
+    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
+    moveGalleryPhoto(dx < 0 ? 1 : -1);
+  };
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { _swipeOn = false; return; }   // 두 손가락은 확대다
+    start(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const t = e.changedTouches && e.changedTouches[0];
+    if (t) end(t.clientX, t.clientY);
+  }, { passive: true });
+  el.addEventListener('touchcancel', () => { _swipeOn = false; }, { passive: true });
+  // 마우스로도 끌어서 넘길 수 있게 (노트북에서 보는 팀장용)
+  el.addEventListener('mousedown', e => { if (e.button === 0) start(e.clientX, e.clientY); });
+  el.addEventListener('mouseup', e => end(e.clientX, e.clientY));
+  el.addEventListener('mouseleave', () => { _swipeOn = false; });
+}
+
 function closeGalleryViewer() {
   _galleryViewer = null;
   _gCmtOpen = false;
@@ -5785,6 +5814,7 @@ function _renderGalleryViewer() {
     el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9999;display:flex;'
       + 'flex-direction:column;align-items:center;justify-content:center;';
     document.body.appendChild(el);
+    _bindGallerySwipe(el);
     document.addEventListener('keydown', _galleryKey);
   }
   const src = _galleryFull[doc.id] || doc.thumb;
@@ -5824,7 +5854,7 @@ function _renderGalleryViewer() {
     <img src="${src}" style="max-width:100%;max-height:${_gCmtOpen ? 34 : 74}vh;object-fit:contain;user-select:none;-webkit-user-select:none;transition:max-height .2s">
     <div style="color:#fff;text-align:center;padding:12px 20px;max-width:92%">
       ${doc.caption ? `<p style="font-size:14px;font-weight:600;margin-bottom:4px">${_gEsc(doc.caption)}</p>` : ''}
-      <p style="font-size:11px;color:#A1A1AA">${_gEsc(who)} · ${_galleryViewer.idx + 1}/${list.length}</p>
+      <p style="font-size:11px;color:#A1A1AA">${_gEsc(who)} · ${_galleryViewer.idx + 1}/${list.length}${list.length > 1 ? ' · 좌우로 넘겨보세요' : ''}</p>
     </div>
     <div style="position:absolute;bottom:18px;left:0;right:0;display:flex;gap:8px;justify-content:center;${_gCmtOpen ? 'display:none' : ''}">
       <button onclick="toggleGalleryComments()" style="${pill}">💬 댓글${cmts.length ? ' ' + cmts.length : ''}</button>
@@ -8002,7 +8032,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-06.7';
+const APP_BUILD = '2026-09-06.8';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
