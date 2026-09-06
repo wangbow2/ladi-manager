@@ -618,6 +618,15 @@
     class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/90 text-gray-900 text-sm font-bold px-5 py-2.5 rounded-full shadow-lg">↻ 돌리기</button>
 </div>
 
+<!-- 비밀 댓글 -->
+<div id="modal-qtcomment" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[82vh] flex flex-col overflow-hidden">
+    <div id="qtcmt-head" class="p-4 border-b"></div>
+    <div id="qtcmt-body" class="p-3 overflow-y-auto flex-1 space-y-2" style="background:#F8F7FF"></div>
+    <div id="qtcmt-foot" class="p-4 pt-3 border-t"></div>
+  </div>
+</div>
+
 <div id="modal-user-menu" class="modal">
   <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
     <div class="p-4 border-b flex items-center gap-3">
@@ -3665,6 +3674,7 @@ function renderDashboard() {
         </div>
       </div>
 
+      ${qtCommentInboxCard()}
       ${homeSlideCard()}
       ${renderWorshipCard()}
 
@@ -3702,6 +3712,8 @@ function renderDashboard() {
         <span class="text-white/50 text-2xl">›</span>
       </div>
     </div>` + html;
+  markQTCommentsAsRead();
+  updateNotificationBadge();
   startHomeSlideshow();
 }
 
@@ -3836,25 +3848,71 @@ function renderEditLogPanel() {
     </div>`;
 }
 
-function getAllMyQTComments() {
+// 나에게 온 비밀 댓글. 팀장은 아이들이 단 답글을, 아이는 자기 큐티에 달린 것을 본다.
+function getInboxQTComments() {
   if (!state.currentUser) return [];
-  const result = [];
-  Object.entries(state.qtComments || {}).forEach(([key, comments]) => {
-    if (!key.startsWith(state.currentUser + '_')) return;
-    const dateStr = key.slice(state.currentUser.length + 1);
-    (comments || []).forEach(c => result.push({ ...c, dateStr }));
+  const out = [];
+  Object.entries(state.qtComments || {}).forEach(([key, list]) => {
+    const sid = key.slice(0, key.length - 11);          // `${id}_YYYY-MM-DD`
+    const dateStr = key.slice(key.length - 10);
+    if (!isLeader() && sid !== state.currentUser) return;
+    (list || []).forEach(c => {
+      if (c.authorId === state.currentUser) return;
+      out.push(Object.assign({}, c, { studentId: sid, dateStr }));
+    });
   });
-  return result.sort((a, b) => b.createdAt - a.createdAt);
+  return out.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 20);
+}
+
+function qtCommentInboxCard() {
+  const list = getInboxQTComments();
+  if (!list.length) return '';
+  const readAt = (state.qtCommentsReadAt || {})[state.currentUser] || 0;
+  const DAYS7 = ['일','월','화','수','목','금','토'];
+  return `
+    <div class="surface px-4 py-3.5">
+      <p class="text-xs font-semibold text-amber-700 mb-2">💬 받은 비밀댓글</p>
+      <div class="space-y-2">
+        ${list.map(c => {
+          const a = qtCmtAuthor(c);
+          const who = state.students.find(x => x.id === c.studentId);
+          const passage = (QT_SCHEDULE[c.dateStr] || '').replace('고린도전서','고전').replace('고린도후서','고후');
+          const d = new Date(c.dateStr + 'T00:00:00');
+          const dateLabel = `${d.getMonth()+1}/${d.getDate()}(${DAYS7[d.getDay()]})`;
+          const isUnread = (c.createdAt || 0) > readAt;
+          return `<div class="qt-private-comment cursor-pointer" onclick="openQTComments('${c.studentId}','${c.dateStr}')">
+            <div class="flex items-center justify-between mb-0.5 flex-wrap gap-1">
+              <span class="text-xs font-semibold text-amber-700">🔒 ${_gEsc(a.name)}${isLeader() && who ? ` → ${_gEsc(who.name)}` : ''}</span>
+              <div class="flex items-center gap-1.5">
+                ${isUnread ? '<span class="text-[10px] bg-red-500 text-white px-1.5 rounded-full font-bold">NEW</span>' : ''}
+                <span class="text-xs text-gray-400">${dateLabel}${passage ? ' · ' + passage : ''}</span>
+              </div>
+            </div>
+            <p class="text-sm text-gray-700 whitespace-pre-wrap">${_gEsc(c.content)}</p>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 function getUnreadQTCommentCount() {
-  if (!state.currentUser || isAdmin()) return 0;
+  if (!state.currentUser) return 0;
   const readAt = (state.qtCommentsReadAt || {})[state.currentUser] || 0;
-  return getAllMyQTComments().filter(c => c.createdAt > readAt).length;
+  // 팀장은 아이들이 단 답글을, 아이는 자기 큐티에 달린 댓글을 받아 본다.
+  // 어느 쪽이든 '내가 쓴 것'은 세지 않는다.
+  let n = 0;
+  Object.entries(state.qtComments || {}).forEach(([key, list]) => {
+    const sid = key.slice(0, key.length - 11);          // `${id}_YYYY-MM-DD`
+    if (!isLeader() && sid !== state.currentUser) return;
+    (list || []).forEach(c => {
+      if (c.authorId !== state.currentUser && (c.createdAt || 0) > readAt) n++;
+    });
+  });
+  return n;
 }
 
 function markQTCommentsAsRead() {
-  if (!state.currentUser || isAdmin()) return;
+  if (!state.currentUser) return;
   if (!state.qtCommentsReadAt) state.qtCommentsReadAt = {};
   state.qtCommentsReadAt[state.currentUser] = Date.now();
   saveState();
@@ -3903,34 +3961,7 @@ function renderMemberDashboard() {
   const photoStyle = myPhoto ? `background-image:url(${myPhoto});background-size:cover;background-position:center` : '';
   const photoInner = myPhoto ? '' : `<span class="text-lg font-bold text-gray-700">${me.name[0]}</span>`;
 
-  // 받은 비밀댓글 섹션
-  const myComments = getAllMyQTComments();
-  const readAt = (state.qtCommentsReadAt || {})[me.id] || 0;
-  const DAYS7 = ['일','월','화','수','목','금','토'];
-  const commentsSection = myComments.length ? `
-    <div class="surface px-4 py-3.5">
-      <p class="text-xs font-semibold text-amber-700 mb-2">💬 받은 비밀댓글</p>
-      <div class="space-y-2">
-        ${myComments.map(c => {
-          const author = state.students.find(x => x.id === c.authorId);
-          const authorName = author ? author.name : '관리자';
-          const passage = (QT_SCHEDULE[c.dateStr] || '').replace('고린도전서','고전').replace('고린도후서','고후');
-          const d = new Date(c.dateStr + 'T00:00:00');
-          const dateLabel = `${d.getMonth()+1}/${d.getDate()}(${DAYS7[d.getDay()]})`;
-          const isUnread = c.createdAt > readAt;
-          return `<div class="qt-private-comment">
-            <div class="flex items-center justify-between mb-0.5 flex-wrap gap-1">
-              <span class="text-xs font-semibold text-amber-700">🔒 ${authorName}</span>
-              <div class="flex items-center gap-1.5">
-                ${isUnread ? '<span class="text-[10px] bg-red-500 text-white px-1.5 rounded-full font-bold">NEW</span>' : ''}
-                <span class="text-xs text-gray-400">${dateLabel}${passage?' · '+passage:''}</span>
-              </div>
-            </div>
-            <p class="text-sm text-gray-700 whitespace-pre-wrap">${c.content}</p>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : '';
+  const commentsSection = qtCommentInboxCard();
 
   const html = `
     <div class="space-y-3">
@@ -4493,9 +4524,127 @@ function formatDate(ts) {
   return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
+// ==========================================
+// 비밀 댓글 팝업 — 확~마 제자반과 같은 방식.
+// 예전에는 관리자만, 그것도 피드 안에 접혀 있는 작은 칸에 썼다. 이제 창을 띄워
+// 오간 이야기를 쭉 보여주고, 아이도 자기 큐티에 답을 달 수 있다.
+// ==========================================
+let _qtCmtTarget = null;   // { studentId, dateStr }
+
+function qtCmtKey(studentId, dateStr) { return `${studentId}_${dateStr}`; }
+function qtCmtList(studentId, dateStr) {
+  const v = (state.qtComments || {})[qtCmtKey(studentId, dateStr)];
+  return Array.isArray(v) ? v.slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)) : [];
+}
+// 아이 본인과 팀장단만 본다. 다른 아이에게는 보이지 않는다.
+function canSeeQTComments(studentId) {
+  return isLeader() || studentId === state.currentUser;
+}
+// 팀장은 어느 큐티에든, 아이는 자기 큐티에만 쓴다.
+function canWriteQTComment(studentId) {
+  if (!state.currentUser) return false;
+  return isLeader() || studentId === state.currentUser;
+}
+function qtCmtAuthor(c) {
+  const s = state.students.find(x => x.id === c.authorId);
+  if (!s) return { name: '관리자', leader: true };
+  const leader = s.adminLevel === 'admin' || s.adminLevel === 'leader' || s.group === '팀장';
+  return { name: s.name + (leader ? (s.grade === '목사' ? ' 목사님' : ' 팀장님') : ''), leader };
+}
+
+function openQTComments(studentId, dateStr) {
+  if (!canSeeQTComments(studentId)) return;
+  _qtCmtTarget = { studentId, dateStr };
+  renderQTCommentModal();
+  openModal('modal-qtcomment');
+  document.addEventListener('keydown', _qtCmtKey);
+  setTimeout(() => {
+    const b = document.getElementById('qtcmt-body');
+    if (b) b.scrollTop = b.scrollHeight;
+  }, 60);
+}
+function closeQTComments() {
+  closeModal('modal-qtcomment');
+  document.removeEventListener('keydown', _qtCmtKey);
+  _qtCmtTarget = null;
+}
+function _qtCmtKey(e) { if (e.key === 'Escape') closeQTComments(); }
+
+function renderQTCommentModal() {
+  if (!_qtCmtTarget) return;
+  const { studentId, dateStr } = _qtCmtTarget;
+  const s = state.students.find(x => x.id === studentId);
+  const mine = studentId === state.currentUser;
+  const list = qtCmtList(studentId, dateStr);
+  const d = new Date(dateStr + 'T00:00:00');
+  const DOW = ['일','월','화','수','목','금','토'];
+  const passage = (QT_SCHEDULE[dateStr] || '').replace('고린도전서','고전').replace('고린도후서','고후');
+
+  const head = document.getElementById('qtcmt-head');
+  if (head) head.innerHTML = `
+    <p class="font-bold text-gray-900 text-sm">🔒 비밀 댓글</p>
+    <p class="text-[11px] text-gray-500 mt-0.5">
+      ${mine ? '나와 팀장님만 봅니다' : `${(s && s.name) || ''}와 팀장님만 봅니다`}
+      · ${d.getMonth()+1}/${d.getDate()}(${DOW[d.getDay()]})${passage ? ' · ' + passage : ''}
+    </p>`;
+
+  const body = document.getElementById('qtcmt-body');
+  if (body) body.innerHTML = list.length
+    ? list.map(c => {
+        const a = qtCmtAuthor(c);
+        const own = c.authorId === state.currentUser;
+        return `<div class="rounded-xl px-3 py-2 ${a.leader ? 'bg-indigo-600' : 'bg-white border'}">
+          <p class="text-sm leading-relaxed whitespace-pre-wrap ${a.leader ? 'text-white' : 'text-gray-800'}">${_gEsc(c.content)}</p>
+          <div class="flex items-center justify-between mt-1 gap-2">
+            <p class="text-[11px] ${a.leader ? 'text-white/60' : 'text-gray-400'} truncate">${_gEsc(a.name)} · ${formatDate(c.createdAt)}</p>
+            ${(isAdmin() || own) ? `<button onclick="deleteQTComment('${studentId}','${dateStr}','${c.id}')" style="min-height:24px"
+              class="text-[11px] px-1 flex-shrink-0 ${a.leader ? 'text-white/60' : 'text-red-400'}">지우기</button>` : ''}
+          </div>
+        </div>`;
+      }).join('')
+    : `<p class="text-xs text-gray-400 text-center py-6">${isLeader() ? '아직 남긴 댓글이 없습니다.' : '아직 팀장님 댓글이 없어요.'}</p>`;
+
+  const foot = document.getElementById('qtcmt-foot');
+  if (foot) foot.innerHTML = canWriteQTComment(studentId) ? `
+    <textarea id="qtcmt-input" rows="2"
+      placeholder="${isLeader() ? '이 아이만 보는 댓글을 적어주세요' : '팀장님께 묻고 싶은 것이나 하고 싶은 말'}"
+      class="w-full border rounded-xl p-2.5 text-sm resize-none"></textarea>
+    <div class="flex gap-2 mt-2">
+      <button onclick="closeQTComments()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">닫기</button>
+      <button onclick="submitQTComment()" class="flex-1 py-2.5 rounded-xl text-sm font-bold ${isLeader() ? 'bg-indigo-600 text-white' : 'bg-gray-900 text-white'}">
+        ${isLeader() ? '댓글 남기기' : '답글 남기기'}
+      </button>
+    </div>`
+    : `<button onclick="closeQTComments()" class="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">닫기</button>`;
+}
+
+function submitQTComment() {
+  if (!_qtCmtTarget) return;
+  const el = document.getElementById('qtcmt-input');
+  const text = el ? el.value : '';
+  if (!text.trim()) { showToast('내용을 적어주세요'); return; }
+  addQTComment(_qtCmtTarget.studentId, _qtCmtTarget.dateStr, text);
+  if (el) el.value = '';
+}
+
+// 피드·달력·홈에 다는 단추 하나. 개수가 있으면 같이 보여준다.
+function qtCommentBtn(studentId, dateStr, cls) {
+  if (!canSeeQTComments(studentId)) return '';
+  const n = qtCmtList(studentId, dateStr).length;
+  const unread = qtUnreadIn(studentId, dateStr);
+  return `<button onclick="event.stopPropagation();openQTComments('${studentId}','${dateStr}')" style="min-height:unset"
+    class="${cls || 'text-xs text-amber-600 mt-2 underline'}">💬 비밀댓글${n ? ` ${n}` : ''}${unread ? ' <span class="text-[10px] bg-red-500 text-white px-1 rounded-full font-bold align-middle">N</span>' : ''}</button>`;
+}
+function qtUnreadIn(studentId, dateStr) {
+  const readAt = (state.qtCommentsReadAt || {})[state.currentUser] || 0;
+  return qtCmtList(studentId, dateStr).filter(c => c.authorId !== state.currentUser && (c.createdAt || 0) > readAt).length;
+}
+
 function addQTComment(studentId, dateStr, content) {
   if (!content || !content.trim()) return;
+  if (!canWriteQTComment(studentId)) return;
   const key = `${studentId}_${dateStr}`;
+  if (!state.qtComments) state.qtComments = {};
   if (!state.qtComments[key]) state.qtComments[key] = [];
   state.qtComments[key].push({
     id: Date.now(),
@@ -4504,16 +4653,22 @@ function addQTComment(studentId, dateStr, content) {
     createdAt: Date.now()
   });
   saveState();
-  renderQTSubmit();
+  renderQTCommentModal();
+  _renderCurrentPage();
   updateNotificationBadge();
 }
 
 function deleteQTComment(studentId, dateStr, commentId) {
   const key = `${studentId}_${dateStr}`;
   if (!state.qtComments[key]) return;
+  // 내가 쓴 것은 내가, 그 밖의 것은 관리자만 지운다.
+  const target = state.qtComments[key].find(c => c.id === Number(commentId));
+  if (!target || !(isAdmin() || target.authorId === state.currentUser)) return;
   state.qtComments[key] = state.qtComments[key].filter(c => c.id !== Number(commentId));
   saveState();
-  renderQTSubmit();
+  renderQTCommentModal();
+  _renderCurrentPage();
+  updateNotificationBadge();
 }
 
 let qtCalMonth = null; // QT 달력이 보고 있는 월 (null=오늘 기준 자동). ‹ › 로 이동.
@@ -4757,7 +4912,10 @@ function renderQTSubmit() {
       </div>
       ${todayEntry.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${todayEntry.content}</p>` : ''}
       ${todayEntry.imageKey && qtImages[todayEntry.imageKey] ? `<div class="relative mt-2"><img src="${qtImages[todayEntry.imageKey]}" class="w-full rounded-xl max-h-48 object-cover cursor-pointer" onclick="zoomQtPhoto('${todayEntry.imageKey}')">${qtRotateBtn(todayEntry.imageKey)}</div>` : ''}
-      ${!todayLocked ? `<button onclick="qtEditMode=true;renderQTSubmit()" class="mt-2 text-xs text-gray-500 underline">수정</button>` : ''}
+      <div class="flex items-center gap-3 mt-2">
+        ${!todayLocked ? `<button onclick="qtEditMode=true;renderQTSubmit()" style="min-height:unset" class="text-xs text-gray-500 underline">수정</button>` : ''}
+        ${qtCommentBtn(state.currentUser, TODAY_STR, 'text-xs text-amber-600 underline')}
+      </div>
     </div>`;
   } else if (todayLocked) {
     todayForm = `<div class="bg-gray-50 rounded-xl p-3 mt-3 text-center"><p class="text-xs text-gray-400">🔒 이 주차는 마감되었습니다</p></div>`;
@@ -4878,34 +5036,8 @@ function renderQTSubmit() {
     const commentKey = `${s.id}_${dateStr}`;
     const postComments = (state.qtComments && state.qtComments[commentKey]) || [];
     const canSeeComments = isAdmin() || isMe;
-    const commentListHtml = canSeeComments && postComments.length
-      ? `<div class="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
-          ${postComments.map(c => {
-            const author = state.students.find(x => x.id === c.authorId);
-            const authorName = author ? author.name : '관리자';
-            return `<div class="qt-private-comment">
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-xs font-semibold text-amber-700">🔒 ${authorName}</span>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-gray-400">${formatDate(c.createdAt)}</span>
-                  ${isAdmin()?`<button onclick="deleteQTComment('${s.id}','${dateStr}','${c.id}')" class="text-xs text-red-400 active:text-red-600">✕</button>`:''}
-                </div>
-              </div>
-              <p class="text-sm text-gray-700 whitespace-pre-wrap">${c.content}</p>
-            </div>`;
-          }).join('')}
-        </div>` : '';
-    const formId = `qtcf-${s.id}-${dateStr.replace(/-/g,'')}`;
-    const inputId = `qtci-${s.id}-${dateStr.replace(/-/g,'')}`;
-    const commentBtnHtml = isAdmin()
-      ? `<button onclick="document.getElementById('${formId}').classList.toggle('hidden')" class="text-xs text-amber-600 mt-2 underline">💬 비밀댓글${postComments.length?' ('+postComments.length+')':''}</button>
-        <div id="${formId}" class="hidden mt-1.5 space-y-1.5">
-          <textarea id="${inputId}" rows="2" placeholder="비밀 댓글을 입력하세요..." class="w-full border rounded-xl p-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-300"></textarea>
-          <div class="flex gap-2">
-            <button onclick="document.getElementById('${formId}').classList.add('hidden')" class="flex-1 py-1.5 rounded-xl text-xs border border-gray-200 text-gray-500">취소</button>
-            <button onclick="addQTComment('${s.id}','${dateStr}',document.getElementById('${inputId}').value)" class="flex-1 bg-amber-500 text-white py-1.5 rounded-xl text-xs font-bold active:bg-amber-600">등록</button>
-          </div>
-        </div>` : '';
+    const commentListHtml = '';
+    const commentBtnHtml = qtCommentBtn(s.id, dateStr);
     return `<div class="bg-white rounded-xl p-4 shadow-sm ${isMe?'border-l-4 border-gray-400':''}">
       <div class="flex items-start justify-between mb-2 gap-2">
         <div class="flex items-center gap-2 flex-wrap">
@@ -5083,6 +5215,7 @@ function renderQTDayView() {
               </div>
               ${v.content ? `<p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mt-1">${v.content}</p>` : ''}
               ${qtImageSlot(v.imageKey, 'w-full rounded-xl max-h-56 object-cover cursor-pointer', 'key')}
+              ${qtCommentBtn(s.id, dateStr)}
             </div>`;
           }).join('')}
         </div>
@@ -7467,7 +7600,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-06.3';
+const APP_BUILD = '2026-09-06.4';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
