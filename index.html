@@ -4581,12 +4581,16 @@ function renderQTSubmit() {
   // ── This week feed ──
   const thisWeekDays = getQTCurrentWeekDays();
   const thisWeekLocked = isDayLocked(thisWeekDays[4]);
+  // 피드는 주일~토요일 7일을 다 모은다. 평일 5일만 모으던 때에는 주일이나
+  // 토요일에 올린 큐티가 아무 데도 안 보였고, 주일에는 피드가 통째로 비었다.
+  // 주말 큐티는 이미 '경건생활'로 따로 세고 있으니 집계 규칙은 그대로다.
+  const feedDays = getQTCurrentWeekAllDays();
   const DAYNAMES = ['일','월','화','수','목','금','토'];
 
   const allWeekEntries = Object.entries(state.qtDayChecks || {})
-    .filter(([k, v]) => thisWeekDays.some(ds => k.endsWith('_'+ds)) && v.done)
+    .filter(([k, v]) => feedDays.some(ds => k.endsWith('_'+ds)) && v.done)
     .map(([k, v]) => {
-      const dsMatch = thisWeekDays.find(ds => k.endsWith('_'+ds));
+      const dsMatch = feedDays.find(ds => k.endsWith('_'+ds));
       const sid = k.slice(0, -(dsMatch.length+1));
       const s = state.students.find(x => x.id === sid);
       return s ? { s, v, dateStr: dsMatch } : null;
@@ -7094,7 +7098,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-06.1';
+const APP_BUILD = '2026-09-06.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
