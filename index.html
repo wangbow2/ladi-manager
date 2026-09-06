@@ -618,6 +618,21 @@
     class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/90 text-gray-900 text-sm font-bold px-5 py-2.5 rounded-full shadow-lg">↻ 돌리기</button>
 </div>
 
+<!-- 내 사진에 달린 댓글 -->
+<div id="modal-galert" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[80vh] flex flex-col overflow-hidden">
+    <div class="p-4 border-b">
+      <p class="font-bold text-gray-900" id="galert-title">내 사진에 댓글이 달렸어요</p>
+      <p class="text-xs text-gray-500 mt-0.5">사진첩에서 이어서 볼 수 있어요</p>
+    </div>
+    <div id="galert-body" class="p-3 overflow-y-auto flex-1 space-y-2"></div>
+    <div class="p-4 pt-2 flex gap-2 border-t">
+      <button onclick="goToGalleryAlert()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">보러 가기</button>
+      <button onclick="dismissGalleryAlert()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">나중에</button>
+    </div>
+  </div>
+</div>
+
 <!-- 비밀 댓글 -->
 <div id="modal-qtcomment" class="modal">
   <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[82vh] flex flex-col overflow-hidden">
@@ -2218,6 +2233,7 @@ function doLogin() {
     navigate('dashboard');
     // 로그인 시점에도 안전사본을 대조한다 (앱 시작 때는 로그인 전이라 못 돈다)
     setTimeout(() => { try { _recoverMissingQTFromBackup(); } catch (e) {} }, 1500);
+    try { watchGalleryAlerts(); } catch (e) {}
   } else {
     errEl.textContent = 'PIN 번호가 올바르지 않습니다';
     errEl.classList.remove('hidden');
@@ -2227,6 +2243,7 @@ function doLogin() {
 
 function doLogout() {
   state.currentUser = null;
+  try { stopGalleryAlerts(); } catch (_) {}
   saveState();
   showLoginScreen();
 }
@@ -5551,6 +5568,181 @@ function deleteGalleryPhoto(id) {
     .catch(e => { console.warn('사진 지우기 실패:', e); showToast('지우지 못했어요'); });
 }
 
+// ── 사진 댓글 알림 ──
+// 내 사진에 댓글이 달리면 알려 준다. 사람마다 문서 하나(radiGalleryAlerts/{내 id})만
+// 두고 거기에 한 줄씩 붙인다. 사진이 들어 있지 않은 작은 문서라 지켜보고 있어도 가볍다.
+const GALERT_KEEP = 40;
+let _galertUnsub = null, _galertFirst = true, _galertQueue = [];
+
+function galertSeenKey() { return 'radi_galert_seen_' + (state.currentUser || ''); }
+function galertLastSeen() {
+  try { return localStorage.getItem(galertSeenKey()) || ''; } catch (_) { return ''; }
+}
+function markGalertSeen() {
+  try { localStorage.setItem(galertSeenKey(), new Date().toISOString()); } catch (_) {}
+  _galertQueue = [];
+}
+
+function _notifyGalleryComment(doc, c) {
+  // 내 사진에 내가 단 댓글은 알리지 않는다.
+  if (!_FS_OK || !doc.uploaderId || doc.uploaderId === state.currentUser) return;
+  _db.collection('radiGalleryAlerts').doc(doc.uploaderId).set({
+    items: firebase.firestore.FieldValue.arrayUnion({
+      id: c.id, photoId: doc.id, cat: doc.cat || '단체',
+      by: c.by, name: c.name || '', text: c.text || '', at: c.at
+    })
+  }, { merge: true }).catch(e => console.warn('사진 댓글 알림 실패:', e));
+}
+
+function watchGalleryAlerts() {
+  if (!_FS_OK || !state.currentUser) return;
+  if (_galertUnsub) { _galertUnsub(); _galertUnsub = null; }
+  _galertFirst = true;
+  const me = state.currentUser;
+  _galertUnsub = _db.collection('radiGalleryAlerts').doc(me).onSnapshot(d => {
+    const items = (d.exists && Array.isArray(d.data().items)) ? d.data().items : [];
+    const since = galertLastSeen();
+    const fresh = items.filter(x => x && x.at && (!since || x.at > since) && x.by !== me)
+                       .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    // 앱을 켜자마자 밀린 것으로 놀라게 하지 않는다. 처음 한 번은 숫자만 세어 둔다.
+    if (_galertFirst) { _galertFirst = false; _galertQueue = fresh; updateGalertBadge(); return; }
+    if (!fresh.length) return;
+    _galertQueue = fresh;
+    showGalleryAlert();
+    // 너무 쌓이면 내 문서를 스스로 줄인다.
+    if (items.length > GALERT_KEEP) {
+      const keep = items.slice().sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-GALERT_KEEP);
+      _db.collection('radiGalleryAlerts').doc(me).set({ items: keep }).catch(() => {});
+    }
+  }, e => console.warn('사진 댓글 알림 끊김:', e));
+}
+function stopGalleryAlerts() { if (_galertUnsub) { _galertUnsub(); _galertUnsub = null; } _galertQueue = []; }
+
+function updateGalertBadge() {
+  const btn = document.getElementById('nav-gallery');
+  if (!btn) return;
+  btn.style.position = 'relative';
+  const old = btn.querySelector('.notif-badge');
+  if (old) old.remove();
+  if (!_galertQueue.length) return;
+  const b = document.createElement('span');
+  b.className = 'notif-badge';
+  b.textContent = _galertQueue.length > 9 ? '9+' : String(_galertQueue.length);
+  btn.appendChild(b);
+}
+
+function showGalleryAlert() {
+  if (!_galertQueue.length) return;
+  const body = document.getElementById('galert-body');
+  const title = document.getElementById('galert-title');
+  if (!body || !title) return;
+  title.textContent = _galertQueue.length > 1 ? `내 사진에 댓글 ${_galertQueue.length}개` : '내 사진에 댓글이 달렸어요';
+  body.innerHTML = _galertQueue.slice(0, 6).map(x => `
+    <div class="rounded-xl border p-3">
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-xs font-bold text-gray-800 truncate">${_gEsc(x.name || '')}</p>
+        <p class="text-[11px] text-gray-400 flex-shrink-0">${_gCmtWhen(x.at)}</p>
+      </div>
+      <p class="text-sm text-gray-700 mt-1 leading-relaxed">${_gEsc(x.text)}</p>
+    </div>`).join('');
+  updateGalertBadge();
+  openModal('modal-galert');
+  playLadiChime();
+}
+function dismissGalleryAlert() {
+  markGalertSeen();
+  closeModal('modal-galert');
+  updateGalertBadge();
+}
+function goToGalleryAlert() {
+  const x = _galertQueue[0];
+  markGalertSeen();
+  closeModal('modal-galert');
+  updateGalertBadge();
+  if (!x) { navigate('gallery'); return; }
+  navigate('gallery');
+  galleryCat = x.cat || '단체';
+  const open = () => {
+    if (!galleryList(galleryCat).some(d => d.id === x.photoId)) return false;
+    renderGallery();
+    openGalleryPhoto(x.photoId);
+    if (!_gCmtOpen) toggleGalleryComments();
+    return true;
+  };
+  if (!open()) { loadGallery(true); setTimeout(open, 900); }
+}
+
+// ── 사진 댓글 ──
+// 사진첩은 다 같이 보는 자리라 댓글도 다 같이 본다(큐티 비밀댓글과 다르다).
+// 사진 목록 문서(radiGallery) 안에 같이 담되, 여럿이 동시에 달아도 서로 지우지
+// 않도록 arrayUnion/arrayRemove로 한 줄씩만 붙였다 뗀다.
+let _gCmtOpen = false;
+
+function galleryComments(doc) {
+  return Array.isArray(doc && doc.comments) ? doc.comments.slice()
+    .sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))) : [];
+}
+function canDeleteGalleryComment(c) {
+  return isLeader() || (!!state.currentUser && c.by === state.currentUser);
+}
+function _gCmtWhen(at) {
+  if (!at) return '';
+  const d = new Date(at);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function toggleGalleryComments() {
+  _gCmtOpen = !_gCmtOpen;
+  _renderGalleryViewer();
+  if (_gCmtOpen) setTimeout(() => {
+    const b = document.getElementById('gcmt-list');
+    if (b) b.scrollTop = b.scrollHeight;
+    const i = document.getElementById('gcmt-input');
+    if (i) i.focus();
+  }, 60);
+}
+async function submitGalleryComment() {
+  if (!_galleryViewer) return;
+  const doc = galleryList(_galleryViewer.cat)[_galleryViewer.idx];
+  const el = document.getElementById('gcmt-input');
+  const text = el ? el.value.trim().slice(0, 300) : '';
+  if (!doc || !text) { showToast('내용을 적어주세요'); return; }
+  if (!state.currentUser || !_FS_OK) { showToast('로그인한 뒤에 쓸 수 있어요'); return; }
+  const me = getCurrentUser();
+  const c = { id: `c${Date.now()}${Math.random().toString(36).slice(2,6)}`,
+              by: state.currentUser, name: (me && me.name) || '', text, at: new Date().toISOString() };
+  if (el) el.value = '';
+  doc.comments = galleryComments(doc).concat(c);      // 화면에 먼저 보여 준다
+  _renderGalleryViewer();
+  try {
+    await _db.collection('radiGallery').doc(doc.id)
+      .update({ comments: firebase.firestore.FieldValue.arrayUnion(c) });
+    _notifyGalleryComment(doc, c);
+  } catch (e) {
+    console.warn('사진 댓글 저장 실패:', e);
+    doc.comments = galleryComments(doc).filter(x => x.id !== c.id);
+    _renderGalleryViewer();
+    showToast('댓글을 올리지 못했어요');
+  }
+}
+async function deleteGalleryComment(cid) {
+  if (!_galleryViewer) return;
+  const doc = galleryList(_galleryViewer.cat)[_galleryViewer.idx];
+  if (!doc) return;
+  const c = galleryComments(doc).find(x => x.id === cid);
+  if (!c || !canDeleteGalleryComment(c)) return;
+  doc.comments = galleryComments(doc).filter(x => x.id !== cid);
+  _renderGalleryViewer();
+  try {
+    await _db.collection('radiGallery').doc(doc.id)
+      .update({ comments: firebase.firestore.FieldValue.arrayRemove(c) });
+  } catch (e) {
+    console.warn('사진 댓글 지우기 실패:', e);
+    doc.comments = galleryComments(doc).concat(c);
+    _renderGalleryViewer();
+    showToast('지우지 못했어요');
+  }
+}
+
 // ── 크게 보기 ──
 function openGalleryPhoto(id) {
   const list = galleryList(galleryCat);
@@ -5561,6 +5753,7 @@ function openGalleryPhoto(id) {
 }
 function moveGalleryPhoto(step) {
   if (!_galleryViewer) return;
+  _gCmtOpen = false;
   const list = galleryList(_galleryViewer.cat);
   const n = list.length;
   if (!n) return;
@@ -5569,12 +5762,14 @@ function moveGalleryPhoto(step) {
 }
 function closeGalleryViewer() {
   _galleryViewer = null;
+  _gCmtOpen = false;
   const el = document.getElementById('gallery-viewer');
   if (el) el.remove();
   document.removeEventListener('keydown', _galleryKey);
 }
 function _galleryKey(e) {
-  if (e.key === 'Escape') closeGalleryViewer();
+  if (e.key === 'Escape') { if (_gCmtOpen) toggleGalleryComments(); else closeGalleryViewer(); }
+  else if (_gCmtOpen) return;                 // 댓글 쓰는 중에는 화살표로 넘기지 않는다
   else if (e.key === 'ArrowRight') moveGalleryPhoto(1);
   else if (e.key === 'ArrowLeft') moveGalleryPhoto(-1);
 }
@@ -5595,17 +5790,51 @@ function _renderGalleryViewer() {
   const src = _galleryFull[doc.id] || doc.thumb;
   const who = [doc.uploaderName, doc.createdAt ? doc.createdAt.slice(0, 10).replace(/-/g, '.') : '']
     .filter(Boolean).join(' · ');
+  const cmts = galleryComments(doc);
+  const pill = 'background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:700;'
+             + 'padding:8px 15px;border:none;border-radius:999px;min-height:unset';
+  const sheet = _gCmtOpen ? `
+    <div style="position:absolute;left:0;right:0;bottom:0;max-height:64vh;display:flex;flex-direction:column;
+                background:#fff;border-radius:18px 18px 0 0;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid #E4E4E7;display:flex;align-items:center;justify-content:space-between">
+        <p style="font-size:13px;font-weight:700;color:#18181B">댓글 ${cmts.length}</p>
+        <button onclick="toggleGalleryComments()" style="min-height:unset;background:none;border:none;font-size:20px;color:#A1A1AA;padding:0 4px">×</button>
+      </div>
+      <div id="gcmt-list" style="flex:1;overflow-y:auto;padding:12px 14px;background:#FAFAFA">
+        ${cmts.length ? cmts.map(c => `
+          <div style="margin-bottom:10px">
+            <div style="display:flex;align-items:baseline;gap:6px">
+              <span style="font-size:12px;font-weight:700;color:#18181B">${_gEsc(c.name || '')}</span>
+              <span style="font-size:11px;color:#A1A1AA">${_gCmtWhen(c.at)}</span>
+              ${canDeleteGalleryComment(c) ? `<button onclick="deleteGalleryComment('${c.id}')" style="min-height:unset;margin-left:auto;background:none;border:none;font-size:11px;color:#F87171;padding:0 2px">지우기</button>` : ''}
+            </div>
+            <p style="font-size:14px;color:#3F3F46;white-space:pre-wrap;line-height:1.5;margin-top:2px">${_gEsc(c.text)}</p>
+          </div>`).join('')
+          : `<p style="font-size:12px;color:#A1A1AA;text-align:center;padding:22px 0">첫 댓글을 남겨보세요</p>`}
+      </div>
+      ${state.currentUser ? `
+      <div style="padding:10px 14px;border-top:1px solid #E4E4E7;display:flex;gap:8px;align-items:flex-end">
+        <textarea id="gcmt-input" rows="1" maxlength="300" placeholder="댓글 달기"
+          style="flex:1;border:1px solid #D1D5DB;border-radius:12px;padding:9px 12px;font-size:14px;resize:none"></textarea>
+        <button onclick="submitGalleryComment()" style="min-height:unset;background:#18181B;color:#fff;font-size:13px;font-weight:700;padding:10px 16px;border:none;border-radius:12px">올리기</button>
+      </div>` : ''}
+    </div>` : '';
+
   el.innerHTML = `
-    <img src="${src}" style="max-width:100%;max-height:78vh;object-fit:contain;user-select:none;-webkit-user-select:none">
+    <img src="${src}" style="max-width:100%;max-height:${_gCmtOpen ? 34 : 74}vh;object-fit:contain;user-select:none;-webkit-user-select:none;transition:max-height .2s">
     <div style="color:#fff;text-align:center;padding:12px 20px;max-width:92%">
       ${doc.caption ? `<p style="font-size:14px;font-weight:600;margin-bottom:4px">${_gEsc(doc.caption)}</p>` : ''}
       <p style="font-size:11px;color:#A1A1AA">${_gEsc(who)} · ${_galleryViewer.idx + 1}/${list.length}</p>
     </div>
+    <div style="position:absolute;bottom:18px;left:0;right:0;display:flex;gap:8px;justify-content:center;${_gCmtOpen ? 'display:none' : ''}">
+      <button onclick="toggleGalleryComments()" style="${pill}">💬 댓글${cmts.length ? ' ' + cmts.length : ''}</button>
+      ${canDeleteGalleryPhoto(doc) ? `<button onclick="deleteGalleryPhoto('${doc.id}')" style="${pill};background:rgba(255,255,255,.92);color:#DC2626">지우기</button>` : ''}
+    </div>
     <button onclick="closeGalleryViewer()" style="position:absolute;top:14px;right:16px;color:#fff;font-size:2.4rem;line-height:1;background:none;border:none;padding:0 8px">×</button>
-    ${list.length > 1 ? `
+    ${list.length > 1 && !_gCmtOpen ? `
       <button onclick="moveGalleryPhoto(-1)" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:2rem;background:none;border:none;padding:10px 14px">‹</button>
       <button onclick="moveGalleryPhoto(1)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:2rem;background:none;border:none;padding:10px 14px">›</button>` : ''}
-    ${canDeleteGalleryPhoto(doc) ? `<button onclick="deleteGalleryPhoto('${doc.id}')" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);color:#DC2626;font-size:13px;font-weight:700;padding:9px 18px;border:none;border-radius:999px">지우기</button>` : ''}`;
+    ${sheet}`;
   // 원본은 열어볼 때만 받는다.
   if (!_galleryFull[doc.id] && _FS_OK) {
     const want = doc.id;
@@ -5685,6 +5914,7 @@ function renderGallery() {
                onload="_applyFocal('${d.id}', this)"
                class="w-full aspect-square object-cover rounded-lg bg-gray-100"
                style="object-position:${(_focalCache[d.id] || FOCAL_FALLBACK).x}% ${(_focalCache[d.id] || FOCAL_FALLBACK).y}%">
+          ${galleryComments(d).length ? `<span class="absolute bottom-1 right-1 text-[10px] text-white px-1.5 rounded-full font-bold" style="background:rgba(0,0,0,.6)">💬 ${galleryComments(d).length}</span>` : ''}
           ${d.caption ? `<p class="text-[10px] text-gray-500 mt-0.5 truncate">${_gEsc(d.caption)}</p>` : ''}
         </div>`).join('')}
     </div>`;
@@ -7755,6 +7985,7 @@ try {
     updateHeaderUser();
     updateNav();
     navigate(state.page && state.page !== 'dashboard' ? state.page : 'dashboard');
+    try { watchGalleryAlerts(); } catch (e) {}
   } else {
     showLoginScreen();
   }
@@ -7771,7 +8002,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-06.6';
+const APP_BUILD = '2026-09-06.7';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
