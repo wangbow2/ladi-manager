@@ -359,6 +359,7 @@
   </div>
 
   <!-- ==================== QT 제출 ==================== -->
+  <div id="page-gallery" class="page p-4 space-y-3"></div>
   <div id="page-qt" class="page p-4">
     <div id="qt-submit-content"></div>
   </div>
@@ -385,9 +386,9 @@
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">큐티</span>
     </button>
-    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('lineup')" id="nav-lineup">
-      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      <span class="text-xs mt-0.5 font-medium text-gray-500">라인업</span>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('gallery')" id="nav-gallery">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">사진</span>
     </button>
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('birthday')" id="nav-birthday">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
@@ -1683,6 +1684,7 @@ function _renderCurrentPage() {
     else if (p === 'qt') { if (typeof renderQT === 'function') renderQT(); }
     else if (p === 'birthday') { if (typeof renderBirthday === 'function') renderBirthday(); }
     else if (p === 'students') { if (typeof renderStudents === 'function') renderStudents(); }
+    else if (p === 'gallery') { if (typeof renderGallery === 'function') renderGallery(); }
     else if (p === 'love') { if (typeof renderLovePage === 'function') renderLovePage(); }
     else if (p === 'stats') { if (typeof renderAdminStats === 'function') renderAdminStats(); }
   } catch(e) {}
@@ -2580,6 +2582,8 @@ function navigate(page, extra, isBack) {
   else if (page==='birthday') renderBirthday();
   else if (page==='lineup') renderLineup();
   else if (page==='qt') renderQTSubmit();
+  else if (page==='gallery') renderGallery();
+  if (page !== 'dashboard') stopHomeSlideshow();
   else if (page==='detail') renderDetail(state.currentStudentId);
   else if (page==='qr') renderQRScanPage();
   else if (page==='love') renderLoveMeeting();
@@ -3499,6 +3503,98 @@ function openWorshipArchive(openId) {
     </div>`);
 }
 
+// ── 홈 사진 넘김 — 사진첩에 올라온 사진을 1.5초마다 무작위로 바꿔 보여준다 ──
+// 예전에 찬양 영상이 차지하던 자리를 그대로 쓴다(16:9).
+const SLIDE_MS = 1500;
+const SLIDE_FULL_CACHE = 12;      // 원본까지 받아 두는 장수 — 읽기 요청이 몰리지 않게 막아 둔다
+let _slideTimer = null, _slideCur = null, _slideBag = [];
+
+function _slideAll() { return (_galleryDocs || []).filter(d => d && d.thumb); }
+
+// 한 바퀴 다 돌면 다시 섞는다 — 무작위로 뽑기만 하면 같은 사진이 연달아 나온다.
+function _slideNext() {
+  const all = _slideAll();
+  if (!all.length) return null;
+  if (!_slideBag.length) {
+    _slideBag = all.map(d => d.id);
+    for (let i = _slideBag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = _slideBag[i]; _slideBag[i] = _slideBag[j]; _slideBag[j] = t;
+    }
+    if (_slideBag.length > 1 && _slideBag[0] === _slideCur) _slideBag.push(_slideBag.shift());
+  }
+  const id = _slideBag.shift();
+  return all.find(d => d.id === id) || null;
+}
+
+function _slideShow(d) {
+  const img = document.getElementById('home-slide-img');
+  const cap = document.getElementById('home-slide-cap');
+  if (!img) return;
+  _slideCur = d.id;
+  const src = _galleryFull[d.id] || d.thumb;
+  img.style.opacity = '0';
+  setTimeout(() => {
+    const el = document.getElementById('home-slide-img');
+    if (!el) return;
+    el.src = src;
+    el.style.opacity = '1';
+    if (cap) cap.textContent = d.caption || '';
+  }, 200);
+  // 다음번엔 더 또렷하게 — 원본을 조용히 받아 둔다(정해 둔 장수까지만).
+  if (!_galleryFull[d.id] && _FS_OK && Object.keys(_galleryFull).length < SLIDE_FULL_CACHE) {
+    _db.collection('radiGalleryImages').doc(d.id).get()
+      .then(doc => { if (doc.exists && doc.data().data) _galleryFull[d.id] = doc.data().data; })
+      .catch(() => {});
+  }
+}
+
+function stopHomeSlideshow() { clearInterval(_slideTimer); _slideTimer = null; }
+
+function startHomeSlideshow() {
+  stopHomeSlideshow();
+  if (!document.getElementById('home-slide')) return;
+  loadGallery();
+  const first = _slideNext();
+  if (first) _slideShow(first);
+  renderHomeSlideEmpty();
+  if (_slideAll().length < 2) return;      // 한 장뿐이면 굳이 돌리지 않는다
+  _slideTimer = setInterval(() => {
+    const box = document.getElementById('home-slide');
+    if (!box) { stopHomeSlideshow(); return; }
+    const d = _slideNext();
+    if (d) _slideShow(d);
+  }, SLIDE_MS);
+}
+
+function renderHomeSlideEmpty() {
+  const box = document.getElementById('home-slide-empty');
+  if (!box) return;
+  box.style.display = _slideAll().length ? 'none' : 'flex';
+}
+
+function homeSlideCard() {
+  return `
+    <div class="surface px-3 py-3">
+      <div class="flex items-center justify-between mb-2">
+        <p class="sec">우리 사진</p>
+        <button onclick="navigate('gallery')" style="min-height:unset" class="text-xs text-gray-500 font-semibold">사진첩 ›</button>
+      </div>
+      <div id="home-slide" onclick="navigate('gallery')"
+           style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#0B0B0F;cursor:pointer">
+        <img id="home-slide-img" alt=""
+             style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease">
+        <div id="home-slide-empty" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;color:#71717A">
+          <p style="font-size:26px">📷</p>
+          <p style="font-size:12px;font-weight:600;margin-top:4px">사진첩에 사진을 올려보세요</p>
+        </div>
+        <p id="home-slide-cap"
+           style="position:absolute;left:0;right:0;bottom:0;padding:16px 12px 8px;color:#fff;font-size:12px;font-weight:600;
+                  background:linear-gradient(to top,rgba(0,0,0,.55),transparent)"></p>
+      </div>
+    </div>`;
+}
+
 function renderWorshipCard() {
   loadWorship();
   const list = (_worship || []).filter(v => !/후기|수련회 영상/.test(v.title));
@@ -3511,52 +3607,39 @@ function renderWorshipCard() {
     </div>`;
   }
   const c = clipOf(top.id);
-  const q = c ? `?start=${c.start || 0}${c.end ? '&end=' + c.end : ''}` : '';
-  // 올해 찬양을 작은 썸네일로 죽 늘어놓는다 — 한 화면에서 많이 보이도록.
+  // 홈에서는 크게 띄우지 않는다. 눌러야 재생기가 뜨고, 그 자리는 사진 넘김이 쓴다.
+  // 올해 찬양을 한 줄로 죽 늘어놓아, 옆으로 밀면서 고르게 한다.
   const thisYear = new Date().getFullYear();
   const past = list.slice(1).filter(v => (v.date || '').startsWith(String(thisYear)));
+  const thumb = (v, w, h, badge) => {
+    const vc = clipOf(v.id);
+    return `<button onclick="openWorshipArchive('${v.id}')" style="min-height:unset"
+      class="flex-shrink-0 text-left" title="${worshipTitle(v.title).replace(/"/g, '')}">
+      <div style="position:relative;width:${w}px;height:${h}px;border-radius:7px;overflow:hidden;background:#000">
+        <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy"
+             style="width:100%;height:100%;object-fit:cover;display:block">
+        <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${badge ? 18 : 13}px;text-shadow:0 1px 4px rgba(0,0,0,.6)">▶</span>
+        ${vc ? `<span class="absolute bottom-0.5 right-0.5 text-[8px] text-white px-1 rounded" style="background:rgba(0,0,0,.65)">${fmtSec(vc.start || 0)}</span>` : ''}
+        ${badge ? `<span class="absolute top-0.5 left-0.5 text-[8px] text-white px-1 rounded font-bold" style="background:rgba(17,17,17,.8)">이번 주</span>` : ''}
+      </div>
+      <p class="text-[9px] text-gray-400 font-semibold mt-0.5">${worshipDate(v.date)}</p>
+    </button>`;
+  };
   return `
     <div class="surface px-3 py-3">
       <div class="flex items-center justify-between mb-2">
-        <p class="sec">이번 주 찬양</p>
+        <p class="sec">찬양</p>
         <div class="flex items-center gap-2.5">
           ${isLeader() ? `<button onclick="openClipEditor('${top.id}')" style="min-height:unset" class="text-xs text-gray-500 font-semibold">${c ? '구간 수정' : '찬양 구간 지정'}</button>` : ''}
           <button onclick="openWorshipArchive()" style="min-height:unset" class="text-xs text-gray-500 font-semibold">전체 보기</button>
         </div>
       </div>
-      <div style="position:relative;padding-top:56.25%;border-radius:10px;overflow:hidden;background:#000">
-        <iframe src="https://www.youtube.com/embed/${top.id}${q}"
-          style="position:absolute;inset:0;width:100%;height:100%;border:0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"
-          title="고등부 찬양"></iframe>
+      <div class="flex gap-1.5 overflow-x-auto pb-1" style="-webkit-overflow-scrolling:touch">
+        ${thumb(top, 124, 70, true)}
+        ${past.map(v => thumb(v, 92, 52, false)).join('')}
       </div>
-      <p class="text-sm font-bold text-gray-800 mt-2 leading-snug">${worshipTitle(top.title)}</p>
-      <p class="text-[11px] text-gray-400 mt-0.5">
-        ${worshipDate(top.date)}${c ? ` · 찬양 ${fmtSec(c.start || 0)}${c.end ? '~' + fmtSec(c.end) : '부터'}` : ' · 전체 영상'}
-      </p>
-      ${!c && isLeader() ? `<p class="text-[11px] text-amber-600 mt-1">찬양 구간을 지정하면 그 부분만 재생됩니다</p>` : ''}
-      ${past.length ? `
-      <div class="mt-2 pt-2 border-t">
-        <div class="flex items-center justify-between mb-1.5">
-          <p class="text-[11px] font-semibold text-gray-500">${thisYear}년 찬양 ${past.length}편</p>
-          <button onclick="openWorshipArchive()" style="min-height:unset" class="text-[11px] text-gray-400">더보기 ›</button>
-        </div>
-        <div class="flex gap-1.5 overflow-x-auto pb-1" style="-webkit-overflow-scrolling:touch">
-        ${past.map(v => {
-          const pc = clipOf(v.id);
-          return `<button onclick="openWorshipArchive('${v.id}')" style="min-height:unset"
-            class="flex-shrink-0 text-left" title="${worshipTitle(v.title).replace(/"/g,'')}">
-            <div style="position:relative;width:92px;height:52px;border-radius:6px;overflow:hidden;background:#000">
-              <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy"
-                   style="width:100%;height:100%;object-fit:cover;display:block">
-              ${pc ? `<span class="absolute bottom-0.5 right-0.5 text-[8px] text-white px-1 rounded" style="background:rgba(0,0,0,.65)">${fmtSec(pc.start || 0)}</span>` : ''}
-            </div>
-            <p class="text-[9px] text-gray-400 font-semibold mt-0.5">${worshipDate(v.date)}</p>
-          </button>`;
-        }).join('')}
-        </div>
-      </div>` : ''}
+      <p class="text-[11px] text-gray-500 mt-1 leading-snug truncate">${worshipTitle(top.title)}</p>
+      ${!c && isLeader() ? `<p class="text-[11px] text-amber-600 mt-0.5">찬양 구간을 지정하면 그 부분만 재생됩니다</p>` : ''}
     </div>`;
 }
 
@@ -3576,12 +3659,13 @@ function renderDashboard() {
         <div class="qm">
           <button onclick="navigate('check')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>체크표</span></button>
           <button onclick="navigate('qt')"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>큐티</span></button>
-          <button onclick="navigate('lineup')"><svg viewBox="0 0 24 24"><polygon points="12 2 15.1 8.3 22 9.3 17 14.1 18.2 21 12 17.8 5.8 21 7 14.1 2 9.3 8.9 8.3 12 2"/></svg><span>라인업</span></button>
+          <button onclick="navigate('gallery')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>사진첩</span></button>
           <button onclick="navigate('students')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg><span>학생</span></button>
           <button onclick="navigate('birthday')"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span>생일</span></button>
         </div>
       </div>
 
+      ${homeSlideCard()}
       ${renderWorshipCard()}
 
       <!-- 목양 알림 -->
@@ -3618,6 +3702,7 @@ function renderDashboard() {
         <span class="text-white/50 text-2xl">›</span>
       </div>
     </div>` + html;
+  startHomeSlideshow();
 }
 
 function getCurrentWeekRef() {
@@ -3849,6 +3934,7 @@ function renderMemberDashboard() {
 
   const html = `
     <div class="space-y-3">
+      ${homeSlideCard()}
       ${renderWorshipCard()}
       ${todayBirthdays.length ? `
         <div class="bg-gradient-to-r from-pink-500 to-gray-900 rounded-2xl px-4 py-2.5 text-white">
@@ -3914,6 +4000,7 @@ function renderMemberDashboard() {
   _initTodayBirthdayBanner();
   markQTCommentsAsRead();
   updateNotificationBadge();
+  startHomeSlideshow();
 }
 
 // ==========================================
@@ -5026,6 +5113,288 @@ function renderQTDayView() {
 
   // 이 날 기록 이미지 Firestore에서 비동기 로드
   _fillQTImageSlots(allEntries.map(e => e.v.imageKey));
+}
+
+// ==========================================
+// 사진첩 — 단체 · 액기스 · 라디스 · 솔라디
+// 문서를 둘로 나눈다: 목록용 작은 사진(radiGallery)과 원본(radiGalleryImages).
+// 목록만 받으면 한 장에 20KB 남짓이라 화면이 금방 뜨고, 원본은 눌러서 볼 때만 받는다.
+// ==========================================
+const GALLERY_CATS = ['단체', '액기스', '라디스', '솔라디'];
+function _gEsc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+const GALLERY_MAX_AT_ONCE = 10;
+let galleryCat = '단체';
+let _galleryDocs = null;        // null = 아직 안 받아옴
+let _galleryLoading = false;
+let _galleryFull = {};          // id → 원본 base64 (열어본 것만 담아 둔다)
+let _galleryPending = [];       // 올리기 전 미리보기
+let _galleryUploading = false;
+let _galleryViewer = null;
+
+function galleryDefaultCat() {
+  const me = getCurrentUser();
+  return (me && GALLERY_CATS.indexOf(me.group) >= 0) ? me.group : '단체';
+}
+
+function loadGallery(force) {
+  if (!_FS_OK || _galleryLoading) return;
+  if (_galleryDocs && !force) return;
+  _galleryLoading = true;
+  _db.collection('radiGallery').get().then(snap => {
+    _galleryDocs = snap.docs.map(d => Object.assign({ id: d.id }, d.data()))
+      .filter(x => x && !x.deleted && x.thumb)
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  }).catch(e => {
+    console.warn('사진첩 불러오기 실패:', e);
+  }).then(() => {
+    _galleryLoading = false;
+    if (state.page === 'gallery') renderGallery();
+    else if (state.page === 'dashboard' && document.getElementById('home-slide')) startHomeSlideshow();
+  });
+}
+
+function galleryList(cat) {
+  return (_galleryDocs || []).filter(x => (x.cat || '단체') === cat);
+}
+
+function canDeleteGalleryPhoto(doc) {
+  return isLeader() || (!!state.currentUser && doc.uploaderId === state.currentUser);
+}
+
+// ── 고르기 ──
+function galleryPickImgs(input) {
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if (!files.length) return;
+  if (_galleryPending.length + files.length > GALLERY_MAX_AT_ONCE) {
+    showToast(`한 번에 ${GALLERY_MAX_AT_ONCE}장까지 고를 수 있어요`);
+    return;
+  }
+  const fail = () => showToast('사진 하나를 읽지 못했어요');
+  files.forEach(f => {
+    // 원본(눌러서 크게 볼 때) → 목록용 작은 사진, 두 벌을 만든다.
+    compressImage(f, full => {
+      if (!full) return;
+      compressImage(f, thumb => {
+        if (!thumb) return;
+        _galleryPending.push({ full, thumb });
+        if (state.page === 'gallery') renderGallery();
+      }, { max: 320, quality: 0.72, maxBytes: 60000, onError: fail });
+    }, { max: 1280, quality: 0.8, maxBytes: 600000, onError: fail });
+  });
+}
+
+function galleryDropPending(i) {
+  _galleryPending.splice(i, 1);
+  renderGallery();
+}
+
+// ── 올리기 ──
+async function galleryUpload() {
+  if (_galleryUploading) { showToast('올리는 중이에요'); return; }
+  if (!_galleryPending.length) { showToast('사진을 먼저 고르세요'); return; }
+  if (!_FS_OK) { showToast('서버에 연결되지 않았어요'); return; }
+  const me = getCurrentUser();
+  const capEl = document.getElementById('gallery-caption');
+  const caption = (capEl ? capEl.value : '').trim().slice(0, 60);
+  const shots = _galleryPending.slice();
+  _galleryUploading = true;
+  renderGallery();
+  let done = 0;
+  try {
+    for (let i = 0; i < shots.length; i++) {
+      const id = `g_${Date.now()}_${state.currentUser || 'x'}_${i}_${Math.random().toString(36).slice(2, 7)}`;
+      // 원본을 먼저 넣는다. 목록 문서가 있는데 원본이 없는 상태를 만들지 않기 위해서다.
+      await _db.collection('radiGalleryImages').doc(id).set({ data: shots[i].full });
+      await _db.collection('radiGallery').doc(id).set({
+        cat: galleryCat, thumb: shots[i].thumb, caption,
+        uploaderId: state.currentUser || '', uploaderName: (me && me.name) || '',
+        createdAt: new Date().toISOString()
+      });
+      _galleryFull[id] = shots[i].full;
+      done++;
+    }
+    _galleryPending = [];
+    if (capEl) capEl.value = '';
+    showToast(`${done}장 올렸습니다`);
+  } catch (e) {
+    console.warn('사진 올리기 실패:', e);
+    _galleryPending = shots.slice(done);   // 올라간 것만 빼고 남긴다
+    showToast(done ? `${done}장만 올라갔어요. 남은 것은 다시 눌러 주세요` : '올리지 못했어요');
+  }
+  _galleryUploading = false;
+  loadGallery(true);
+  renderGallery();
+}
+
+function setGalleryCat(cat) {
+  galleryCat = cat;
+  renderGallery();
+}
+
+// ── 지우기 — 규칙상 진짜 삭제는 막혀 있어 '지움' 표시를 남긴다 ──
+let _galleryDelArm = null;
+function armGalleryDelete(id) { _galleryDelArm = id; renderGallery(); }
+function cancelGalleryDelete() { _galleryDelArm = null; renderGallery(); }
+function deleteGalleryPhoto(id) {
+  const doc = (_galleryDocs || []).find(x => x.id === id);
+  if (!doc || !canDeleteGalleryPhoto(doc)) return;
+  _db.collection('radiGallery').doc(id).set({ deleted: true }, { merge: true })
+    .then(() => {
+      _galleryDocs = (_galleryDocs || []).filter(x => x.id !== id);
+      _galleryDelArm = null;
+      closeGalleryViewer();
+      renderGallery();
+      showToast('지웠습니다');
+    })
+    .catch(e => { console.warn('사진 지우기 실패:', e); showToast('지우지 못했어요'); });
+}
+
+// ── 크게 보기 ──
+function openGalleryPhoto(id) {
+  const list = galleryList(galleryCat);
+  const idx = list.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  _galleryViewer = { cat: galleryCat, idx };
+  _renderGalleryViewer();
+}
+function moveGalleryPhoto(step) {
+  if (!_galleryViewer) return;
+  const list = galleryList(_galleryViewer.cat);
+  const n = list.length;
+  if (!n) return;
+  _galleryViewer.idx = (_galleryViewer.idx + step + n) % n;
+  _renderGalleryViewer();
+}
+function closeGalleryViewer() {
+  _galleryViewer = null;
+  const el = document.getElementById('gallery-viewer');
+  if (el) el.remove();
+  document.removeEventListener('keydown', _galleryKey);
+}
+function _galleryKey(e) {
+  if (e.key === 'Escape') closeGalleryViewer();
+  else if (e.key === 'ArrowRight') moveGalleryPhoto(1);
+  else if (e.key === 'ArrowLeft') moveGalleryPhoto(-1);
+}
+function _renderGalleryViewer() {
+  if (!_galleryViewer) return;
+  const list = galleryList(_galleryViewer.cat);
+  const doc = list[_galleryViewer.idx];
+  if (!doc) { closeGalleryViewer(); return; }
+  let el = document.getElementById('gallery-viewer');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'gallery-viewer';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9999;display:flex;'
+      + 'flex-direction:column;align-items:center;justify-content:center;';
+    document.body.appendChild(el);
+    document.addEventListener('keydown', _galleryKey);
+  }
+  const src = _galleryFull[doc.id] || doc.thumb;
+  const who = [doc.uploaderName, doc.createdAt ? doc.createdAt.slice(0, 10).replace(/-/g, '.') : '']
+    .filter(Boolean).join(' · ');
+  el.innerHTML = `
+    <img src="${src}" style="max-width:100%;max-height:78vh;object-fit:contain;user-select:none;-webkit-user-select:none">
+    <div style="color:#fff;text-align:center;padding:12px 20px;max-width:92%">
+      ${doc.caption ? `<p style="font-size:14px;font-weight:600;margin-bottom:4px">${_gEsc(doc.caption)}</p>` : ''}
+      <p style="font-size:11px;color:#A1A1AA">${_gEsc(who)} · ${_galleryViewer.idx + 1}/${list.length}</p>
+    </div>
+    <button onclick="closeGalleryViewer()" style="position:absolute;top:14px;right:16px;color:#fff;font-size:2.4rem;line-height:1;background:none;border:none;padding:0 8px">×</button>
+    ${list.length > 1 ? `
+      <button onclick="moveGalleryPhoto(-1)" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:2rem;background:none;border:none;padding:10px 14px">‹</button>
+      <button onclick="moveGalleryPhoto(1)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:2rem;background:none;border:none;padding:10px 14px">›</button>` : ''}
+    ${canDeleteGalleryPhoto(doc) ? `<button onclick="deleteGalleryPhoto('${doc.id}')" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);color:#DC2626;font-size:13px;font-weight:700;padding:9px 18px;border:none;border-radius:999px">지우기</button>` : ''}`;
+  // 원본은 열어볼 때만 받는다.
+  if (!_galleryFull[doc.id] && _FS_OK) {
+    const want = doc.id;
+    _db.collection('radiGalleryImages').doc(want).get().then(d => {
+      if (d.exists && d.data().data) {
+        _galleryFull[want] = d.data().data;
+        if (_galleryViewer && galleryList(_galleryViewer.cat)[_galleryViewer.idx]?.id === want) _renderGalleryViewer();
+      }
+    }).catch(e => console.warn('원본 사진 불러오기 실패:', e));
+  }
+}
+
+// ── 화면 ──
+function renderGallery() {
+  const el = document.getElementById('page-gallery');
+  if (!el) return;
+  loadGallery();
+  const list = galleryList(galleryCat);
+  const counts = {};
+  GALLERY_CATS.forEach(c => { counts[c] = galleryList(c).length; });
+
+  const tabs = `<div class="grid grid-cols-4 gap-1.5">
+    ${GALLERY_CATS.map(c => `
+      <button onclick="setGalleryCat('${c}')" style="min-height:38px"
+        class="rounded-xl text-xs font-bold py-2 ${galleryCat === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}">
+        ${c === '단체' ? '단체사진' : c}
+        <span class="block text-[10px] font-semibold ${galleryCat === c ? 'text-gray-300' : 'text-gray-400'}">${counts[c]}</span>
+      </button>`).join('')}
+  </div>`;
+
+  const pending = _galleryPending.length ? `
+    <div class="flex gap-1.5 flex-wrap">
+      ${_galleryPending.map((p, i) => `
+        <div class="relative">
+          <img src="${p.thumb}" class="w-16 h-16 object-cover rounded-lg">
+          <button onclick="galleryDropPending(${i})" style="min-height:20px"
+            class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white text-[11px] leading-none">×</button>
+        </div>`).join('')}
+    </div>
+    <input type="text" id="gallery-caption" maxlength="60" placeholder="한 줄 설명 (안 써도 됩니다)"
+      class="w-full border rounded-xl px-3 py-2 text-sm">
+    <button onclick="galleryUpload()" ${_galleryUploading ? 'disabled' : ''}
+      class="w-full bg-gray-900 text-white py-2.5 rounded-xl font-bold text-sm ${_galleryUploading ? 'opacity-50' : 'active:bg-black'}">
+      ${_galleryUploading ? '올리는 중...' : `${galleryCat === '단체' ? '단체사진' : galleryCat}에 ${_galleryPending.length}장 올리기`}
+    </button>` : '';
+
+  const uploadCard = state.currentUser ? `
+    <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+      <p class="text-xs font-semibold text-gray-500">사진 올리기</p>
+      <div class="flex gap-2">
+        <label for="gallery-cam" class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-xl p-2.5 cursor-pointer">
+          <span>📷</span><span class="text-xs text-gray-500">카메라</span>
+        </label>
+        <label for="gallery-pick" class="flex-1 flex items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-xl p-2.5 cursor-pointer">
+          <span>🖼</span><span class="text-xs text-gray-500">갤러리 (여러 장)</span>
+        </label>
+      </div>
+      <input type="file" id="gallery-cam" accept="image/*" capture="environment" class="hidden" onchange="galleryPickImgs(this)">
+      <input type="file" id="gallery-pick" accept="image/*" multiple class="hidden" onchange="galleryPickImgs(this)">
+      ${pending}
+    </div>` : '';
+
+  let grid;
+  if (_galleryDocs === null) {
+    grid = `<div class="text-center py-12 text-gray-300 text-sm">사진을 불러오는 중...</div>`;
+  } else if (!list.length) {
+    grid = `<div class="bg-white rounded-2xl text-center py-10 shadow-sm">
+      <p class="text-3xl">📷</p>
+      <p class="text-sm text-gray-500 mt-2 font-semibold">아직 올라온 사진이 없어요</p>
+      <p class="text-xs text-gray-400 mt-1">첫 장을 올려보세요</p>
+    </div>`;
+  } else {
+    grid = `<div class="grid grid-cols-3 gap-1.5">
+      ${list.map(d => `
+        <div class="relative cursor-pointer active:opacity-80" onclick="openGalleryPhoto('${d.id}')">
+          <img src="${d.thumb}" loading="lazy" decoding="async" class="w-full aspect-square object-cover rounded-lg bg-gray-100">
+          ${d.caption ? `<p class="text-[10px] text-gray-500 mt-0.5 truncate">${_gEsc(d.caption)}</p>` : ''}
+        </div>`).join('')}
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="flex items-center justify-between">
+      <h2 class="font-bold text-gray-900">사진첩</h2>
+      <button onclick="loadGallery(true)" style="min-height:30px" class="text-xs text-gray-500 underline">새로고침</button>
+    </div>
+    ${tabs}
+    ${uploadCard}
+    ${grid}
+    <p class="text-[11px] text-gray-400 text-center">사진을 누르면 크게 볼 수 있어요 · 올린 사람과 팀장은 지울 수 있습니다</p>`;
 }
 
 let _passageEditDate = null;
@@ -7098,7 +7467,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-06.2';
+const APP_BUILD = '2026-09-06.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;

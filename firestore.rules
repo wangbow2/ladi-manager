@@ -34,6 +34,14 @@ service cloud.firestore {
       allow create, update: if true;
       allow delete: if false;
     }
+    // 부산 장안고 기도모임 '바라다' — barada/site 아래에만 산다(다른 앱과 완전 분리).
+    // 익명 마음 나눔(barada/site/inbox)은 누구나 읽히지만 본문이 RSA로 잠겨 있어
+    // 관리자 비밀번호 없이는 열리지 않는다. 규칙이 아니라 암호가 가림막이다.
+    match /barada/{document=**} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
     // 확~마! 제자반(disciple/) — LADI 본 앱·신입생 앱과 완전히 분리된 문서.
     match /disciple/{document} {
       allow read: if true;
@@ -76,6 +84,17 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /profiles/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+    // 사진첩 — 목록용 작은 사진과 한 줄 설명만 담는다(한 장에 20KB 남짓).
+    // 지우기는 문서를 없애지 않고 deleted 표시를 남긴다.
+    match /radiGallery/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+    // 사진첩 원본 — 눌러서 크게 볼 때만 받아 간다.
+    match /radiGalleryImages/{document} {
       allow read, create, update: if true;
       allow delete: if false;
     }
