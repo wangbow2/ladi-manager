@@ -64,6 +64,9 @@
   #login-screen { display:flex; }
   .pin-input { letter-spacing:0.5em; font-size:1.5rem; text-align:center; }
 
+  .notif-badge { position:absolute; top:0; right:2px; background:#EF4444; color:#fff; border-radius:9999px;
+    font-size:9px; font-weight:700; min-width:14px; height:14px; display:flex; align-items:center;
+    justify-content:center; padding:0 2px; pointer-events:none; }
   .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
   .modal.open { display:flex; }
 
@@ -222,6 +225,30 @@
 </div>
 
 <!-- User menu -->
+<!-- 비밀 댓글 -->
+<div id="modal-cmt" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[82vh] flex flex-col overflow-hidden">
+    <div id="cmt-head" class="p-4 border-b"></div>
+    <div id="cmt-body" class="p-3 overflow-y-auto flex-1 space-y-2" style="background:#F8F7FF"></div>
+    <div id="cmt-foot" class="p-4 pt-3 border-t"></div>
+  </div>
+</div>
+
+<!-- 목사님 댓글 알림 -->
+<div id="modal-alert" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[80vh] flex flex-col overflow-hidden">
+    <div class="p-4 border-b">
+      <p class="font-bold text-gray-900" id="alert-title">목사님이 댓글을 남겼어요</p>
+      <p class="text-xs text-gray-500 mt-0.5">나와 목사님만 볼 수 있는 글이에요</p>
+    </div>
+    <div id="alert-body" class="p-3 overflow-y-auto flex-1 space-y-2"></div>
+    <div class="p-4 pt-2 flex gap-2 border-t">
+      <button onclick="goToAlert()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">보러 가기</button>
+      <button onclick="dismissAlert()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">나중에</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-user-menu" class="modal">
   <div class="bg-white rounded-2xl w-full max-w-xs mx-4">
     <div class="p-4 border-b">
@@ -230,6 +257,7 @@
     </div>
     <div class="p-2">
       <button onclick="closeModal('modal-user-menu');openModal('modal-pin')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50">🔐 PIN 번호 변경</button>
+      <button id="menu-chime" onclick="toggleChime()" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50">🔔 알림 소리</button>
       <button id="btn-settings" onclick="closeModal('modal-user-menu');openModal('modal-settings')" class="w-full text-left px-4 py-3 text-sm text-gray-700 rounded-xl active:bg-gray-50 hidden">📅 과정 시작일 설정</button>
       <button onclick="doLogout()" class="w-full text-left px-4 py-3 text-sm text-red-600 rounded-xl active:bg-gray-50">로그아웃</button>
       <button onclick="closeModal('modal-user-menu')" class="w-full text-left px-4 py-3 text-sm text-gray-400 rounded-xl active:bg-gray-50">닫기</button>
@@ -300,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-05.3';
+const APP_BUILD = '2026-09-07.1';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -788,9 +816,11 @@ function doLogin() {
   checkWeek = currentWeek();
   qtDate = qtSlotOf(iso(today0())) ? iso(today0()) : qtDateOf(currentWeek(), 0);
   renderAll();
+  try { watchAlerts(); } catch (_) {}
 }
 function doLogout() {
   currentUser = null;
+  try { stopAlerts(); } catch (_) {}
   try { localStorage.removeItem('ladi_newcomer_user'); } catch (_) {}
   closeModal('modal-user-menu');
   fillLoginSelect();
@@ -1209,6 +1239,310 @@ function submitQT(id, n, i, date) {
     });
 }
 
+// ==========================================
+// 비밀 댓글 — 목사님만 씁니다. 그 아이와 목사님, 둘만 봅니다.
+// 큐티 문서(newcomerQT)와 따로 둔다. 큐티는 아이가 통째로 덮어쓰며 저장하므로
+// 같이 담아 두면 댓글이 함께 지워질 수 있다.
+// ==========================================
+const _qtCmts = {};        // `${id}_${date}` → {items:[...]} | null
+const _qtCmtLoading = {};
+let _cmtTarget = null;     // { id, date }
+
+function canWriteQtComment() { return canManageQT(); }                       // 목사님만
+function canSeeQtComment(id) { return canManageQT() || id === currentUser; } // 그 아이와 목사님
+
+function loadQtComments(id, date) {
+  const k = qtKey(id, date);
+  if (_qtCmts[k] !== undefined || _qtCmtLoading[k]) return;
+  if (!_FS_OK) { _qtCmts[k] = null; return; }
+  _qtCmtLoading[k] = true;
+  _db.collection('newcomerQTComments').doc(k).get()
+    .then(d => { _qtCmts[k] = d.exists ? d.data() : null; })
+    .catch(e => { console.warn('댓글 불러오기 실패:', e); _qtCmts[k] = null; })
+    .then(() => { delete _qtCmtLoading[k]; renderAll(); });
+}
+function qtCommentList(id, date) {
+  const v = _qtCmts[qtKey(id, date)];
+  const items = (v && Array.isArray(v.items)) ? v.items.slice() : [];
+  return items.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+}
+// 받침이 있으면 '과', 없으면 '와'. 이름을 그대로 붙이면 '남예진와'가 된다.
+function withParticle(name) {
+  const t = String(name || '');
+  if (!t) return '';
+  const code = t.charCodeAt(t.length - 1) - 0xAC00;
+  const hasJong = code >= 0 && code < 11172 && code % 28 !== 0;
+  return t + (hasJong ? '과' : '와');
+}
+function cmtWhen(at) {
+  if (!at) return '';
+  const d = new Date(at);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// 아이 한 명 · 하루치 댓글을 여는 단추
+function qtCommentBtn(id, date) {
+  if (!canSeeQtComment(id)) return '';
+  const n = qtCommentList(id, date).length;
+  const isNew = cmtUnread(id, date);
+  return `<button onclick="event.stopPropagation();openQtComments('${id}','${date}')" style="min-height:32px"
+    class="text-xs px-3 py-1.5 rounded-full font-semibold bg-white border ${n ? 'text-indigo-600 border-indigo-200' : 'text-gray-500'}">
+    💬 비밀 댓글${n ? ' ' + n : ''}${isNew ? ' <span class="text-[10px] bg-red-500 text-white px-1 rounded-full font-bold align-middle">N</span>' : ''}</button>`;
+}
+
+function openQtComments(id, date) {
+  if (!canSeeQtComment(id)) return;
+  _cmtTarget = { id, date };
+  loadQtComments(id, date);
+  renderQtCommentModal();
+  openModal('modal-cmt');
+  document.addEventListener('keydown', _cmtKeyDown);
+  if (id === currentUser) markCmtSeen(id, date);
+  setTimeout(() => {
+    const b = document.getElementById('cmt-body');
+    if (b) b.scrollTop = b.scrollHeight;
+  }, 60);
+}
+function closeQtComments() {
+  closeModal('modal-cmt');
+  document.removeEventListener('keydown', _cmtKeyDown);
+  _cmtTarget = null;
+}
+function _cmtKeyDown(e) { if (e.key === 'Escape') closeQtComments(); }
+
+function renderQtCommentModal() {
+  if (!_cmtTarget) return;
+  const { id, date } = _cmtTarget;
+  const s = findUser(id) || {};
+  const list = qtCommentList(id, date);
+  const loading = _qtCmts[qtKey(id, date)] === undefined;
+  const d = parseDate(date);
+
+  const head = document.getElementById('cmt-head');
+  if (head) head.innerHTML = `
+    <p class="font-bold text-gray-900 text-sm">🔒 비밀 댓글</p>
+    <p class="text-[11px] text-gray-500 mt-0.5">
+      ${id === currentUser ? '나와 목사님만 봅니다' : `${esc(withParticle(s.name))} 목사님만 봅니다`}
+      · ${d.getMonth()+1}월 ${d.getDate()}일${QT_SCHEDULE[date] ? ' · ' + esc(QT_SCHEDULE[date]) : ''}
+    </p>`;
+
+  const body = document.getElementById('cmt-body');
+  if (body) body.innerHTML = loading
+    ? `<p class="text-xs text-gray-400 text-center py-6">불러오는 중…</p>`
+    : (list.length
+      ? list.map(c => `
+        <div class="rounded-xl px-3 py-2 bg-indigo-600">
+          <p class="text-sm leading-relaxed whitespace-pre-wrap text-white">${esc(c.text)}</p>
+          <div class="flex items-center justify-between mt-1 gap-2">
+            <p class="text-[11px] text-white/60 truncate">${esc(c.name || '목사님')} · ${cmtWhen(c.at)}</p>
+            ${canWriteQtComment() ? `<button onclick="deleteQtComment('${c.id}')" style="min-height:24px"
+              class="text-[11px] px-1 flex-shrink-0 text-white/60">지우기</button>` : ''}
+          </div>
+        </div>`).join('')
+      : `<p class="text-xs text-gray-400 text-center py-6">${canWriteQtComment() ? '아직 남긴 댓글이 없습니다.' : '아직 목사님 댓글이 없어요.'}</p>`);
+
+  const foot = document.getElementById('cmt-foot');
+  if (foot) foot.innerHTML = canWriteQtComment() ? `
+    <textarea id="cmt-input" rows="2" maxlength="500" placeholder="이 아이만 보는 댓글을 적어주세요"
+      class="w-full border rounded-xl p-2.5 text-sm resize-none"></textarea>
+    <div class="flex gap-2 mt-2">
+      <button onclick="closeQtComments()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">닫기</button>
+      <button onclick="submitQtComment()" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white">댓글 남기기</button>
+    </div>`
+    : `<button onclick="closeQtComments()" class="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">닫기</button>`;
+}
+
+async function submitQtComment() {
+  if (!_cmtTarget || !canWriteQtComment()) return;
+  const { id, date } = _cmtTarget;
+  const el = document.getElementById('cmt-input');
+  const text = el ? el.value.trim().slice(0, 500) : '';
+  if (!text) { toast('내용을 적어주세요'); return; }
+  if (!_FS_OK) { toast('인터넷이 없어 지금은 못 올려요'); return; }
+  const me = findUser(currentUser) || {};
+  const c = { id: `c${Date.now()}${Math.random().toString(36).slice(2,6)}`,
+              by: currentUser, name: (me.name || '') + ' 목사님', text, at: new Date().toISOString() };
+  if (el) el.value = '';
+  const k = qtKey(id, date);
+  _qtCmts[k] = { items: qtCommentList(id, date).concat(c) };   // 화면에 먼저 보여 준다
+  renderQtCommentModal();
+  try {
+    await _db.collection('newcomerQTComments').doc(k)
+      .set({ studentId: id, date, items: firebase.firestore.FieldValue.arrayUnion(c) }, { merge: true });
+    notifyQtComment(id, date, c);
+  } catch (e) {
+    console.warn('댓글 저장 실패:', e);
+    _qtCmts[k] = { items: qtCommentList(id, date).filter(x => x.id !== c.id) };
+    renderQtCommentModal();
+    toast('댓글을 올리지 못했어요');
+  }
+}
+
+async function deleteQtComment(cid) {
+  if (!_cmtTarget || !canWriteQtComment()) return;
+  const { id, date } = _cmtTarget;
+  const k = qtKey(id, date);
+  const c = qtCommentList(id, date).find(x => x.id === cid);
+  if (!c) return;
+  _qtCmts[k] = { items: qtCommentList(id, date).filter(x => x.id !== cid) };
+  renderQtCommentModal();
+  try {
+    await _db.collection('newcomerQTComments').doc(k)
+      .set({ items: firebase.firestore.FieldValue.arrayRemove(c) }, { merge: true });
+  } catch (e) {
+    console.warn('댓글 지우기 실패:', e);
+    _qtCmts[k] = { items: qtCommentList(id, date).concat(c) };
+    renderQtCommentModal();
+    toast('지우지 못했어요');
+  }
+}
+
+// ==========================================
+// 알림 — 목사님이 댓글을 달면 그 아이에게 알린다.
+// 아이마다 문서 하나(newcomerAlerts/{id})만 지켜본다. 큐티 사진이 안 들어 있어 가볍다.
+// ==========================================
+const ALERT_KEEP = 40;
+let _alertUnsub = null, _alertFirst = true, _alertQueue = [];
+
+function alertSeenKey() { return 'ladi_nc_alert_seen_' + (currentUser || ''); }
+function alertLastSeen() { try { return localStorage.getItem(alertSeenKey()) || ''; } catch (_) { return ''; } }
+function markAlertSeen() {
+  try { localStorage.setItem(alertSeenKey(), new Date().toISOString()); } catch (_) {}
+  _alertQueue = [];
+}
+// 낱개 표시 — 이 날 댓글 가운데 아직 안 본 것이 있는가
+function cmtUnread(id, date) {
+  if (id !== currentUser) return false;
+  const since = alertLastSeen();
+  return qtCommentList(id, date).some(c => c.at && (!since || c.at > since));
+}
+
+function notifyQtComment(id, date, c) {
+  if (!_FS_OK || id === currentUser) return;
+  _db.collection('newcomerAlerts').doc(id).set({
+    items: firebase.firestore.FieldValue.arrayUnion({
+      id: c.id, date, name: c.name || '목사님', text: c.text || '', at: c.at })
+  }, { merge: true }).catch(e => console.warn('알림 보내기 실패:', e));
+}
+
+function watchAlerts() {
+  if (!_FS_OK || !currentUser) return;
+  if (_alertUnsub) { _alertUnsub(); _alertUnsub = null; }
+  _alertFirst = true;
+  const me = currentUser;
+  _alertUnsub = _db.collection('newcomerAlerts').doc(me).onSnapshot(d => {
+    const items = (d.exists && Array.isArray(d.data().items)) ? d.data().items : [];
+    const since = alertLastSeen();
+    const fresh = items.filter(x => x && x.at && (!since || x.at > since))
+                       .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    _alertQueue = fresh;
+    updateAlertBadge();
+    // 앱을 켜자마자 밀린 것으로 놀라게 하지 않는다. 처음 한 번은 숫자만 띄운다.
+    if (_alertFirst) { _alertFirst = false; return; }
+    if (!fresh.length) return;
+    showAlert();
+    if (items.length > ALERT_KEEP) {
+      const keep = items.slice().sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-ALERT_KEEP);
+      _db.collection('newcomerAlerts').doc(me).set({ items: keep }, { merge: true }).catch(() => {});
+    }
+  }, e => console.warn('알림 끊김:', e));
+}
+function stopAlerts() { if (_alertUnsub) { _alertUnsub(); _alertUnsub = null; } _alertQueue = []; }
+
+function updateAlertBadge() {
+  const btn = document.getElementById('nav-qt');
+  if (!btn) return;
+  btn.style.position = 'relative';
+  const old = btn.querySelector('.notif-badge');
+  if (old) old.remove();
+  if (!_alertQueue.length) return;
+  const b = document.createElement('span');
+  b.className = 'notif-badge';
+  b.textContent = _alertQueue.length > 9 ? '9+' : String(_alertQueue.length);
+  btn.appendChild(b);
+}
+
+function showAlert() {
+  if (!_alertQueue.length) return;
+  const title = document.getElementById('alert-title');
+  const body = document.getElementById('alert-body');
+  if (!title || !body) return;
+  title.textContent = _alertQueue.length > 1 ? `목사님 댓글 ${_alertQueue.length}개` : '목사님이 댓글을 남겼어요';
+  body.innerHTML = _alertQueue.slice(0, 6).map(x => `
+    <div class="rounded-xl border p-3">
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-xs font-bold text-gray-800 truncate">${esc(x.name || '목사님')}</p>
+        <p class="text-[11px] text-gray-400 flex-shrink-0">${cmtWhen(x.at)}</p>
+      </div>
+      <p class="text-sm text-gray-700 mt-1 leading-relaxed">${esc(x.text)}</p>
+    </div>`).join('');
+  openModal('modal-alert');
+  playLadiChime();
+}
+function dismissAlert() {
+  markAlertSeen();
+  closeModal('modal-alert');
+  updateAlertBadge();
+  renderAll();
+}
+function goToAlert() {
+  const x = _alertQueue[0];
+  markAlertSeen();
+  closeModal('modal-alert');
+  updateAlertBadge();
+  if (x && x.date) qtDate = x.date;
+  navigate('qt');
+  if (x) setTimeout(() => openQtComments(currentUser, x.date), 120);
+}
+// 화면에 남아 있는 낱개 N 표시를 지운다
+function markCmtSeen(id, date) {
+  if (id !== currentUser) return;
+  if (!cmtUnread(id, date)) return;
+  markAlertSeen();
+  updateAlertBadge();
+  renderAll();
+}
+
+// ==========================================
+// 알림 소리 — "라디!" (한국어 음성으로 미리 만들어 넣어 둔 0.4초짜리)
+// ==========================================
+const LADI_CHIME = 'data:audio/mpeg;base64,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';
+const CHIME_KEY = 'ladi_nc_chime_off';
+let _chimeAudio = null, _chimeUnlocked = false;
+
+function chimeOn() { try { return localStorage.getItem(CHIME_KEY) !== '1'; } catch (_) { return true; } }
+function toggleChime() {
+  try { localStorage.setItem(CHIME_KEY, chimeOn() ? '1' : '0'); } catch (_) {}
+  const on = chimeOn();
+  syncChimeMenu();
+  if (on) playLadiChime(true);
+  toast(on ? '알림 소리를 켰어요 — 라디!' : '알림 소리를 껐어요');
+}
+function syncChimeMenu() {
+  const el = document.getElementById('menu-chime');
+  if (el) el.textContent = chimeOn() ? '🔔 알림 소리 켬 — "라디!"' : '🔕 알림 소리 꺼짐';
+}
+function _chimeEl() {
+  if (!_chimeAudio) { _chimeAudio = new Audio(LADI_CHIME); _chimeAudio.preload = 'auto'; }
+  return _chimeAudio;
+}
+// 폰 브라우저는 사람이 한 번 화면을 누르기 전에는 소리를 못 낸다.
+function unlockChime() {
+  if (_chimeUnlocked) return;
+  _chimeUnlocked = true;
+  const a = _chimeEl(), v = a.volume;
+  a.volume = 0;
+  const pr = a.play();
+  if (pr && pr.then) pr.then(() => { a.pause(); a.currentTime = 0; a.volume = v; }).catch(() => { a.volume = v; });
+}
+document.addEventListener('pointerdown', unlockChime, { once: true });
+document.addEventListener('touchstart', unlockChime, { once: true });
+
+function playLadiChime(force) {
+  if (!force && !chimeOn()) return;
+  try { const a = _chimeEl(); a.currentTime = 0; const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (_) {}
+}
+
 // ── 목사님 전용: 아이 큐티 고치기·지우기 ──
 function startEditQT(id) { if (!canManageQT()) return; _qtEditing = id; _qtDelArm = null; renderAll(); }
 function cancelEditQT()  { _qtEditing = null; renderAll(); }
@@ -1425,6 +1759,7 @@ function renderQT() {
       <p class="text-[11px] text-gray-400 mb-2">이름을 누르면 그날 올린 묵상을 볼 수 있어요</p>
       ${qtPeople.map(s => {
         loadQtDoc(s.id, qtDate);
+        if (canSeeQtComment(s.id)) loadQtComments(s.id, qtDate);
         const raw = _qtDocs[qtKey(s.id, qtDate)];
         // 글도 사진도 없는 빈 문서는 낸 것으로 치지 않는다.
         const doc = raw && ((raw.text || '').trim() || raw.image) ? raw : (raw === undefined ? undefined : null);
@@ -1439,6 +1774,7 @@ function renderQT() {
               ${doc === undefined ? '<span class="text-[11px] text-gray-300">…</span>'
                 : (doc ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">올림</span>'
                        : '<span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">아직</span>')}
+              ${cmtUnread(s.id, qtDate) ? '<span class="text-[10px] bg-red-500 text-white px-1.5 rounded-full font-bold">댓글</span>' : ''}
             </div>
             ${isLeader() ? `<span class="text-xs font-bold ${c>=4?'text-blue-600':(c>0?'text-amber-600':'text-gray-300')}">주 ${c}/5</span>` : ''}
           </div>
@@ -1477,7 +1813,8 @@ function renderQT() {
                   <button onclick="armDeleteQT('${s.id}')" style="min-height:32px"
                     class="text-xs px-3 py-1.5 rounded-full font-semibold bg-white border text-red-500">지우기</button>
                 </div>`) : ''}
-              ${doc.editedBy ? `<p class="text-[11px] text-gray-400 mt-1">${doc.editedBy} 목사님이 손댄 기록이 있어요</p>` : ''}`}
+              ${doc.editedBy ? `<p class="text-[11px] text-gray-400 mt-1">${doc.editedBy} 목사님이 손댄 기록이 있어요</p>` : ''}
+              ${canSeeQtComment(s.id) ? `<div class="mt-2">${qtCommentBtn(s.id, qtDate)}</div>` : ''}`}
           </div>` : (open ? `<p class="text-xs text-gray-400 pb-3">아직 올리지 않았어요</p>` : '')}
         </div>`;
       }).join('')}
@@ -2014,6 +2351,7 @@ function renderRules() {
 // 작은 도구들
 // ==========================================
 function openModal(id) {
+  if (id === 'modal-user-menu') syncChimeMenu();
   if (id === 'modal-settings') {
     document.getElementById('set-start-date').value = state.startDate || DEFAULT_START;
     updateSettingsPreview();
@@ -2094,6 +2432,7 @@ try {
     currentUser = saved;
     document.getElementById('login-screen').style.display = 'none';
     renderAll();
+    try { watchAlerts(); } catch (_) {}
   }
 } catch (_) {}
 
