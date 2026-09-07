@@ -2230,6 +2230,7 @@ function doLogin() {
     document.getElementById('login-pin').value = '';
     updateHeaderUser();
     updateNav();
+    galleryCat = galleryDefaultCat();
     navigate('dashboard');
     // 로그인 시점에도 안전사본을 대조한다 (앱 시작 때는 로그인 전이라 못 돈다)
     setTimeout(() => { try { _recoverMissingQTFromBackup(); } catch (e) {} }, 1500);
@@ -3686,7 +3687,10 @@ const SLIDE_MS = 1500;
 const SLIDE_FULL_CACHE = 12;      // 원본까지 받아 두는 장수 — 읽기 요청이 몰리지 않게 막아 둔다
 let _slideTimer = null, _slideCur = null, _slideBag = [];
 
-function _slideAll() { return (_galleryDocs || []).filter(d => d && d.thumb); }
+function _slideAll() {
+  const cats = (typeof galleryCatsFor === 'function') ? galleryCatsFor() : ['단체'];
+  return (_galleryDocs || []).filter(d => d && d.thumb && cats.indexOf(d.cat || '단체') >= 0);
+}
 
 // 한 바퀴 다 돌면 다시 섞는다 — 무작위로 뽑기만 하면 같은 사진이 연달아 나온다.
 function _slideNext() {
@@ -5459,9 +5463,30 @@ let _galleryPending = [];       // 올리기 전 미리보기
 let _galleryUploading = false;
 let _galleryViewer = null;
 
+// 사진첩은 자기 분과와 단체사진만 본다. 다른 분과 사진까지 죽 뜨면
+// 우리 팀 사진첩이 아니라 남의 앨범을 넘기는 느낌이 된다.
+// 팀장은 맡은 분과를 함께 본다(김예찬 팀장은 액기스와 솔라디 둘 다).
+const GALLERY_LEADER_CATS = {
+  t1: ['단체', '액기스', '라디스', '솔라디'],   // 황영환 목사 — 전부
+  t2: ['단체', '액기스'],                       // 김희원
+  t3: ['단체', '액기스', '솔라디'],             // 김예찬
+  t4: ['단체', '액기스'],                       // 정민지
+  t5: ['단체', '라디스']                        // 정여명
+};
+function galleryCatsFor() {
+  const me = getCurrentUser();
+  if (!me) return ['단체'];
+  const fixed = GALLERY_LEADER_CATS[me.id];
+  if (fixed) return fixed.slice();
+  // 아이는 자기 분과 + 단체. 분과가 없는 사람(맡은 곳이 없는 팀장 등)은 단체만.
+  return GALLERY_CATS.indexOf(me.group) >= 0 ? ['단체', me.group] : ['단체'];
+}
+function canSeeGalleryCat(cat) { return galleryCatsFor().indexOf(cat) >= 0; }
 function galleryDefaultCat() {
   const me = getCurrentUser();
-  return (me && GALLERY_CATS.indexOf(me.group) >= 0) ? me.group : '단체';
+  const mine = me && GALLERY_CATS.indexOf(me.group) >= 0 ? me.group : null;
+  const allowed = galleryCatsFor();
+  return (mine && allowed.indexOf(mine) >= 0) ? mine : allowed[0];
 }
 
 function loadGallery(force) {
@@ -5482,6 +5507,7 @@ function loadGallery(force) {
 }
 
 function galleryList(cat) {
+  if (!canSeeGalleryCat(cat)) return [];
   return (_galleryDocs || []).filter(x => (x.cat || '단체') === cat);
 }
 
@@ -5556,6 +5582,7 @@ async function galleryUpload() {
 }
 
 function setGalleryCat(cat) {
+  if (!canSeeGalleryCat(cat)) return;
   galleryCat = cat;
   renderGallery();
 }
@@ -5671,7 +5698,7 @@ function goToGalleryAlert() {
   updateGalertBadge();
   if (!x) { navigate('gallery'); return; }
   navigate('gallery');
-  galleryCat = x.cat || '단체';
+  if (canSeeGalleryCat(x.cat || '단체')) galleryCat = x.cat || '단체';
   const open = () => {
     if (!galleryList(galleryCat).some(d => d.id === x.photoId)) return false;
     renderGallery();
@@ -5892,12 +5919,14 @@ function renderGallery() {
   const el = document.getElementById('page-gallery');
   if (!el) return;
   loadGallery();
+  const myCats = galleryCatsFor();
+  if (myCats.indexOf(galleryCat) < 0) galleryCat = galleryDefaultCat();
   const list = galleryList(galleryCat);
   const counts = {};
-  GALLERY_CATS.forEach(c => { counts[c] = galleryList(c).length; });
+  myCats.forEach(c => { counts[c] = galleryList(c).length; });
 
-  const tabs = `<div class="grid grid-cols-4 gap-1.5">
-    ${GALLERY_CATS.map(c => `
+  const tabs = `<div class="grid gap-1.5" style="grid-template-columns:repeat(${myCats.length},minmax(0,1fr))">
+    ${myCats.map(c => `
       <button onclick="setGalleryCat('${c}')" style="min-height:38px"
         class="rounded-xl text-xs font-bold py-2 ${galleryCat === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}">
         ${c === '단체' ? '단체사진' : c}
@@ -8042,7 +8071,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-07.1';
+const APP_BUILD = '2026-09-07.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
