@@ -328,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-07.1';
+const APP_BUILD = '2026-09-07.2';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -892,7 +892,15 @@ function cycleGate(id, n) {
 // ==========================================
 // 렌더링
 // ==========================================
+// 아래 메뉴를 누르면 떠 있던 창은 모두 닫는다.
+function closeAllOverlays() {
+  document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+  try { document.removeEventListener('keydown', _cmtKeyDown); } catch (_) {}
+  _cmtTarget = null;
+}
+
 function navigate(page) {
+  closeAllOverlays();
   // 명단은 팀장 전용 — 아이들에게 다른 아이들 명단·판정을 보여주지 않는다.
   if (page === 'roster' && !isLeader()) page = 'home';
   // 지원서도 팀장 전용 — 아이가 주소로 들어와도 홈으로 돌린다.
