@@ -151,7 +151,16 @@
   .statrow > div + div { border-left:1px solid #EFEFF1; }
   .statrow .v { font-size:21px; font-weight:800; color:#18181B; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
   .statrow .k { font-size:10px; color:#9CA3AF; font-weight:700; margin-top:1px; }
-  nav .nav-btn { padding-left:4px; padding-right:4px; }
+  nav .nav-btn { padding-left:4px; padding-right:4px; position:relative; }
+  /* 아래 메뉴 '가테'에 붙는 NEW 표 — 새로 생긴 것이라 눈에 띄게 */
+  .nav-new { position:absolute; top:-2px; right:-9px; background:#EF4444; color:#fff;
+    font-size:6.5px; font-weight:900; letter-spacing:0; line-height:1;
+    padding:1.5px 3px; border-radius:999px; pointer-events:none;
+    box-shadow:0 1px 3px rgba(0,0,0,.28); animation:navNewPulse 2s ease-in-out infinite; }
+  @keyframes navNewPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.14); } }
+  #nav-gate svg { stroke:#6D28D9 !important; }
+  #nav-gate span:not(.nav-new) { color:#6D28D9 !important; font-weight:700; }
+  @media (prefers-reduced-motion: reduce) { .nav-new { animation:none; } }
   nav .nav-btn span { font-size:10.5px; letter-spacing:-.04em; white-space:nowrap; }
   nav .nav-btn svg { width:21px; height:21px; }
   nav .nav-btn.active { position:relative; }
@@ -413,6 +422,7 @@
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('gate')" id="nav-gate">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">가테</span>
+      <span class="nav-new">NEW</span>
     </button>
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('students')" id="nav-students">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -8474,7 +8484,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-08.4';
+const APP_BUILD = '2026-09-08.5';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
