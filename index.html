@@ -360,6 +360,7 @@
 
   <!-- ==================== QT 제출 ==================== -->
   <div id="page-gallery" class="page p-4 space-y-3"></div>
+  <div id="page-gate" class="page p-4 space-y-3"></div>
   <div id="page-qt" class="page p-4">
     <div id="qt-submit-content"></div>
   </div>
@@ -1713,6 +1714,7 @@ function _renderCurrentPage() {
     else if (p === 'birthday') { if (typeof renderBirthday === 'function') renderBirthday(); }
     else if (p === 'students') { if (typeof renderStudents === 'function') renderStudents(); }
     else if (p === 'gallery') { if (typeof renderGallery === 'function') renderGallery(); }
+    else if (p === 'gate') { /* 시험 보는 중에는 다시 그리지 않는다 — 쓰던 글이 날아가지 않도록 */ }
     else if (p === 'love') { if (typeof renderLovePage === 'function') renderLovePage(); }
     else if (p === 'stats') { if (typeof renderAdminStats === 'function') renderAdminStats(); }
   } catch(e) {}
@@ -2625,6 +2627,7 @@ function navigate(page, extra, isBack) {
   else if (page==='lineup') renderLineup();
   else if (page==='qt') renderQTSubmit();
   else if (page==='gallery') renderGallery();
+  else if (page==='gate') renderGate();
   if (page !== 'dashboard') stopHomeSlideshow();
   else if (page==='detail') renderDetail(state.currentStudentId);
   else if (page==='qr') renderQRScanPage();
@@ -3861,6 +3864,15 @@ function renderDashboard() {
           <button onclick="navigate('students')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg><span>학생</span></button>
           <button onclick="navigate('birthday')"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span>생일</span></button>
         </div>
+        <button onclick="navigate('gate')" style="min-height:unset"
+          class="w-full mt-1.5 flex items-center gap-2.5 bg-white border border-gray-200 rounded-[10px] px-3 py-2.5 active:bg-gray-50">
+          <span class="text-base">🎤</span>
+          <span class="text-left flex-1 min-w-0">
+            <span class="block text-[12px] font-bold text-gray-800">가테 — 가사 시험</span>
+            <span class="block text-[10px] text-gray-400">이번 주 콘티 4곡 · 절·후렴·브릿지 따로</span>
+          </span>
+          <span class="text-gray-300 text-sm">›</span>
+        </button>
       </div>
 
       ${qtCommentInboxCard()}
@@ -4210,10 +4222,19 @@ function renderMemberDashboard() {
         <p class="text-xs text-gray-500 font-semibold mb-2">빠른 메뉴</p>
         <div class="grid grid-cols-2 gap-2">
           <button onclick="navigate('qt')" class="bg-gray-50 text-gray-900 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">📖 말씀 큐티</button>
-          <button onclick="navigate('lineup')" class="bg-green-50 text-green-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">⭐ 라인업</button>
+          <button onclick="navigate('gallery')" class="bg-gray-50 text-gray-900 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">🖼 사진첩</button>
           <button onclick="navigate('birthday')" class="bg-pink-50 text-pink-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">🎂 생일</button>
           <button onclick="navigate('mypage')" class="bg-blue-50 text-blue-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">👤 마이페이지</button>
         </div>
+        <button onclick="navigate('gate')" style="min-height:unset"
+          class="w-full mt-2 flex items-center gap-2.5 bg-gray-900 text-white rounded-xl px-4 py-3 active:bg-black">
+          <span class="text-base">🎤</span>
+          <span class="text-left flex-1 min-w-0">
+            <span class="block text-sm font-bold">가테 — 가사 시험</span>
+            <span class="block text-[11px] text-white/60">이번 주 콘티 4곡 · 절·후렴·브릿지 따로</span>
+          </span>
+          <span class="text-white/40 text-sm">›</span>
+        </button>
       </div>
     </div>
   `;
@@ -5448,6 +5469,282 @@ function renderQTDayView() {
 }
 
 // ==========================================
+// ==========================================
+// 가테 — 가사 시험. 곡을 고르고, 파트를 고르고, 외운 대로 적은 뒤 맞춰 본다.
+// 띄어쓰기와 문장부호는 보지 않는다. 글자만 맞으면 맞은 것으로 친다.
+// 콘티: 260913(주일) 고등부 예배 — 악보에서 그대로 옮겨 적었다.
+// ==========================================
+const GATE_SONGS = [
+  { id:'bef', title:'나는 보기 원하네', sub:'BEF · 이성균', sections:[
+    { id:'v1', label:'1절', lines:[
+      '나는 보기 원하네 하나님의 어린 양',
+      '나를 대신하여 죽으신 하나님의 어린 양',
+      '나를 구원하신 분 영원한 목자 되신 분',
+      '시온산 위에 있는 어린 양 그분을 보기 원하네' ] }
+  ]},
+  { id:'song1', title:'찬양의 제사 드리며', sub:'1번곡 · Kirk Dearman', sections:[
+    { id:'v1', label:'1절', lines:[
+      '주의 이름 안에서 주의 성소로 가네',
+      '영광스러운 이곳에 우리 기쁘게 왔네',
+      '거룩한 보좌 앞에서 따뜻함을 느끼네',
+      '우리 마음 경배하며 찬양의 제사 드리네' ] },
+    { id:'v2', label:'2절', lines:[
+      '주의 말씀 주시고 우리 감사드리네',
+      '주의 날개 그늘 밑 우리 피난처 되네',
+      '주의 길을 따르며 우리 주께 순종해',
+      '모든 상황 속에서도 찬양의 제사 드리네' ] },
+    { id:'ch', label:'후렴', lines:[
+      '찬양의 제사 드리며 성소로 들어갑니다',
+      '찬양의 제사 드리며 성소로 들어갑니다' ] },
+    { id:'br', label:'브릿지', lines:[
+      '우리 모두 주님께 감사의 제사를 드리세',
+      '우리 모두 주님께 기쁨의 제사 드리네' ] }
+  ]},
+  { id:'song2', title:'왕 되신 주께 감사하세', sub:'2번곡 · Forever · Chris Tomlin', sections:[
+    { id:'v1', label:'1절', lines:[
+      '왕 되신 주께 감사하세 그 사랑 영원하리라',
+      '모든 것 위에 뛰어나신 주 그 사랑 영원하리라' ] },
+    { id:'v2', label:'2절', lines:[
+      '능력의 손과 펴신 팔로 그 사랑 영원하리라',
+      '거듭난 영혼들을 위하여 그 사랑 영원하리라' ] },
+    { id:'v3', label:'3절', lines:[
+      '해 뜨는 데서 지는 데까지 그 사랑 영원하리라',
+      '주 은혜로 우리 걸어가리 그 사랑 영원하리라' ] },
+    { id:'ch', label:'후렴', lines:[ '찬양 찬양 찬양 찬양' ] },
+    { id:'br', label:'브릿지', lines:[
+      '영원히 신실하신 능력의 하나님',
+      '영원히 함께하리 영원히 영원히 영원히 영원히' ] }
+  ]},
+  { id:'song3', title:'나의 죄를 씻기는', sub:'3번곡 · THE GOSPEL II · R. Lowry', sections:[
+    { id:'v1', label:'1절', lines:[
+      '나의 죄를 씻기는 예수의 피밖에 없네',
+      '다시 성케 하기도 예수의 피밖에 없네' ] },
+    { id:'v2', label:'2절', lines:[
+      '나를 정케 하기는 예수의 피밖에 없네',
+      '사죄하는 증거도 예수의 피밖에 없네' ] },
+    { id:'v3', label:'3절', lines:[
+      '나의 죄 속하기는 예수의 피밖에 없네',
+      '나는 공로 없도다 예수의 피밖에 없네' ] },
+    { id:'v4', label:'4절', lines:[
+      '평안함과 소망은 예수의 피밖에 없네',
+      '나의 하는 이것뿐 예수의 피밖에 없네' ] },
+    { id:'v5', label:'5절', lines:[
+      '영원토록 내 할 말 예수의 피밖에 없네',
+      '나의 찬미 제목은 예수의 피밖에 없네' ] },
+    { id:'ch', label:'후렴', lines:[
+      '예수의 흘린 피 날 희게 하오니',
+      '귀하고 귀하다 예수의 피밖에 없네' ] }
+  ]}
+];
+
+let gateSong = null, gateSection = null, gateResult = null;
+
+function gateFind(sid) { return GATE_SONGS.find(s => s.id === sid) || null; }
+function gateSectionsOf(song) {
+  if (!song) return [];
+  const all = { id:'all', label:'전체', lines: song.sections.reduce((a, s) => a.concat(s.lines), []) };
+  return song.sections.length > 1 ? song.sections.concat([all]) : song.sections;
+}
+function gateFindSection(song, secId) { return gateSectionsOf(song).find(s => s.id === secId) || null; }
+
+// 띄어쓰기와 문장부호는 보지 않는다 — 글자만 센다.
+function gateSignificant(ch) { return /[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]/.test(ch); }
+
+// 가장 긴 공통 부분을 찾아, 어느 글자가 맞았는지 표시한다.
+function gateDiff(answer, typed) {
+  const A = [], B = [];
+  for (let i = 0; i < answer.length; i++) if (gateSignificant(answer[i])) A.push({ c: answer[i], i });
+  for (let i = 0; i < typed.length; i++) if (gateSignificant(typed[i])) B.push({ c: typed[i], i });
+  const n = A.length, m = B.length;
+  const dp = new Uint16Array((n + 1) * (m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i * (m + 1) + j] = A[i].c === B[j].c
+        ? dp[(i + 1) * (m + 1) + (j + 1)] + 1
+        : Math.max(dp[(i + 1) * (m + 1) + j], dp[i * (m + 1) + (j + 1)]);
+    }
+  }
+  const okA = new Set(), okB = new Set();
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (A[i].c === B[j].c) { okA.add(A[i].i); okB.add(B[j].i); i++; j++; }
+    else if (dp[(i + 1) * (m + 1) + j] >= dp[i * (m + 1) + (j + 1)]) i++;
+    else j++;
+  }
+  return { okA, okB, total: n, right: okA.size, typedTotal: m };
+}
+
+function _gateMark(text, okSet, mode) {
+  // mode 'answer' — 못 쓴 글자를 빨갛게 / mode 'typed' — 틀리게 쓴 글자를 빨갛게
+  let out = '', run = '', runOk = null;
+  const flush = () => {
+    if (!run) return;
+    if (runOk) out += `<span class="text-gray-400">${_gEsc(run)}</span>`;
+    else out += mode === 'answer'
+      ? `<span class="text-red-600 font-bold" style="background:#FEE2E2;border-radius:3px">${_gEsc(run)}</span>`
+      : `<span class="text-red-500" style="text-decoration:line-through">${_gEsc(run)}</span>`;
+    run = '';
+  };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const ok = gateSignificant(ch) ? okSet.has(i) : true;   // 띄어쓰기·부호는 늘 맞은 것으로
+    if (ok !== runOk) { flush(); runOk = ok; }
+    run += ch;
+  }
+  flush();
+  return out || '<span class="text-gray-300">(빈칸)</span>';
+}
+
+// 최고 점수는 이 기기에만 남긴다 (서버를 건드리지 않는다)
+function gateBestKey(songId, secId) { return `radi_gate_${state.currentUser || 'x'}_${songId}_${secId}`; }
+function gateBest(songId, secId) {
+  try { return Number(localStorage.getItem(gateBestKey(songId, secId)) || 0); } catch (_) { return 0; }
+}
+function gateSaveBest(songId, secId, pct) {
+  if (pct <= gateBest(songId, secId)) return;
+  try { localStorage.setItem(gateBestKey(songId, secId), String(pct)); } catch (_) {}
+}
+
+function openGateSong(id) { gateSong = id; gateSection = null; gateResult = null; renderGate(); }
+function openGateSection(id) { gateSection = id; gateResult = null; renderGate(); }
+function gateBack() {
+  if (gateResult) { gateResult = null; }
+  else if (gateSection) { gateSection = null; }
+  else if (gateSong) { gateSong = null; }
+  else { navigate('dashboard'); return; }
+  renderGate();
+}
+function gateRetry() { gateResult = null; renderGate(); }
+
+function gradeGate() {
+  const song = gateFind(gateSong), sec = gateFindSection(song, gateSection);
+  if (!song || !sec) return;
+  const ta = document.getElementById('gate-input');
+  const typed = ta ? ta.value : '';
+  if (!typed.trim()) { showToast('먼저 적어보세요'); return; }
+  const answer = sec.lines.join('\n');
+  const d = gateDiff(answer, typed);
+  const pct = d.total ? Math.round(d.right / d.total * 100) : 0;
+  gateSaveBest(song.id, sec.id, pct);
+  gateResult = { typed, answer, d, pct };
+  renderGate();
+}
+
+function renderGate() {
+  const el = document.getElementById('page-gate');
+  if (!el) return;
+  const song = gateFind(gateSong);
+  const sec = gateFindSection(song, gateSection);
+
+  // ① 곡 고르기
+  if (!song) {
+    el.innerHTML = `
+      <div class="flex items-center justify-between">
+        <h2 class="font-bold text-gray-900">가테 — 가사 시험</h2>
+        <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
+      </div>
+      <p class="text-xs text-gray-500">곡을 고르면 절·후렴·브릿지를 따로 볼 수 있어요. 띄어쓰기는 틀려도 괜찮습니다.</p>
+      ${GATE_SONGS.map(s => {
+        const done = gateSectionsOf(s).filter(x => x.id !== 'all' && gateBest(s.id, x.id) >= 100).length;
+        const total = s.sections.length;
+        return `<button onclick="openGateSong('${s.id}')" style="min-height:unset"
+          class="w-full text-left bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <p class="font-bold text-gray-900 text-sm truncate">${_gEsc(s.title)}</p>
+              <p class="text-[11px] text-gray-400 mt-0.5 truncate">${_gEsc(s.sub)}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-[11px] font-bold ${done === total ? 'text-green-600' : 'text-gray-400'}">${done}/${total} 완벽</p>
+              <p class="text-[11px] text-gray-300">${total}개 파트 ›</p>
+            </div>
+          </div>
+        </button>`;
+      }).join('')}
+      <p class="text-[11px] text-gray-400 text-center">260913(주일) 고등부 예배 콘티</p>`;
+    return;
+  }
+
+  // ② 파트 고르기
+  if (!sec) {
+    el.innerHTML = `
+      <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 곡 목록</button>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="font-bold text-gray-900">${_gEsc(song.title)}</p>
+        <p class="text-[11px] text-gray-400 mt-0.5">${_gEsc(song.sub)}</p>
+      </div>
+      <div class="space-y-2">
+        ${gateSectionsOf(song).map(x => {
+          const best = gateBest(song.id, x.id);
+          const chars = x.lines.join('').replace(/\s/g, '').length;
+          return `<button onclick="openGateSection('${x.id}')" style="min-height:unset"
+            class="w-full text-left bg-white rounded-xl px-4 py-3 shadow-sm active:bg-gray-50 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <p class="font-bold text-gray-800 text-sm">${x.id === 'all' ? '전체 이어서' : _gEsc(x.label)}</p>
+              <p class="text-[11px] text-gray-400">${x.lines.length}줄 · ${chars}자</p>
+            </div>
+            ${best ? `<span class="text-[11px] font-bold flex-shrink-0 ${best >= 100 ? 'text-green-600' : best >= 80 ? 'text-amber-600' : 'text-gray-400'}">최고 ${best}%</span>`
+                   : '<span class="text-[11px] text-gray-300 flex-shrink-0">아직 안 봄</span>'}
+          </button>`;
+        }).join('')}
+      </div>`;
+    return;
+  }
+
+  // ③ 결과
+  if (gateResult) {
+    const { typed, answer, d, pct } = gateResult;
+    const tone = pct >= 100 ? ['text-green-700','bg-green-50','완벽합니다!']
+               : pct >= 90  ? ['text-green-700','bg-green-50','거의 다 왔어요']
+               : pct >= 70  ? ['text-amber-700','bg-amber-50','조금만 더']
+                            : ['text-red-700','bg-red-50','한 번 더 외워봐요'];
+    el.innerHTML = `
+      <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 다시 고르기</button>
+      <div class="rounded-2xl p-4 ${tone[1]}">
+        <p class="text-xs text-gray-500">${_gEsc(song.title)} · ${_gEsc(sec.label)}</p>
+        <p class="text-3xl font-black ${tone[0]} mt-1">${pct}<span class="text-lg">%</span></p>
+        <p class="text-sm font-bold ${tone[0]}">${tone[2]}</p>
+        <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${gateBest(song.id, sec.id) > pct ? ` · 최고 ${gateBest(song.id, sec.id)}%` : ''}</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-500 mb-2">정답 — <span class="text-red-600">빨간 곳</span>을 못 썼어요</p>
+        <p class="text-sm leading-loose whitespace-pre-wrap">${_gateMark(answer, d.okA, 'answer')}</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-500 mb-2">내가 쓴 것 — <span class="text-red-500">빨간 줄</span>은 틀린 글자예요</p>
+        <p class="text-sm leading-loose whitespace-pre-wrap">${_gateMark(typed, d.okB, 'typed')}</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="gateRetry()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">다시 하기</button>
+        <button onclick="gateSection=null;gateResult=null;renderGate()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">다른 파트</button>
+      </div>`;
+    return;
+  }
+
+  // ④ 시험 보기
+  const best = gateBest(song.id, sec.id);
+  el.innerHTML = `
+    <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 파트 목록</button>
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="font-bold text-gray-900 text-sm truncate">${_gEsc(song.title)}</p>
+          <p class="text-[11px] text-gray-400 mt-0.5">${sec.id === 'all' ? '전체 이어서' : _gEsc(sec.label)} · ${sec.lines.length}줄</p>
+        </div>
+        ${best ? `<span class="text-[11px] font-bold text-gray-400 flex-shrink-0">최고 ${best}%</span>` : ''}
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+      <p class="text-xs font-semibold text-gray-500">외운 대로 적어보세요</p>
+      <textarea id="gate-input" rows="${Math.max(4, sec.lines.length + 1)}"
+        placeholder="여기에 가사를 적어주세요&#10;줄은 나눠 써도 되고 이어 써도 됩니다"
+        class="w-full border rounded-xl p-3 text-sm resize-none leading-relaxed"></textarea>
+      <p class="text-[11px] text-gray-400">띄어쓰기와 쉼표·마침표는 안 봅니다. 글자만 맞으면 맞은 것으로 셉니다.</p>
+      <button onclick="gradeGate()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">결과 보기</button>
+    </div>`;
+  setTimeout(() => { const t = document.getElementById('gate-input'); if (t) t.focus(); }, 60);
+}
+
 // 사진첩 — 단체 · 액기스 · 라디스 · 솔라디
 // 문서를 둘로 나눈다: 목록용 작은 사진(radiGallery)과 원본(radiGalleryImages).
 // 목록만 받으면 한 장에 20KB 남짓이라 화면이 금방 뜨고, 원본은 눌러서 볼 때만 받는다.
@@ -8065,7 +8362,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-07.4';
+const APP_BUILD = '2026-09-08.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
