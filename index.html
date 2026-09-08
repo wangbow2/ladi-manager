@@ -5537,15 +5537,37 @@ const GATE_SONGS = [
   ]}
 ];
 
-let gateSong = null, gateSection = null, gateResult = null;
+// ── 한 바퀴로 돈다: 가사 보기 → 시험 → 결과 → 다음 곡 → 마지막에 총평 ──
+const GATE_PASS = 90;                    // 이 점수부터 '통과'로 친다
+let gateStep = 'intro';                  // intro | study | test | result | done
+let gateIdx = 0;                         // 지금 몇 번째 곡
+let gateResult = null;
+let gateRun = [];                        // 이번 바퀴에서 곡마다 받은 점수
+let gateWord = null;                     // 마지막에 건넬 한마디(한 번 뽑으면 고정)
 
-function gateFind(sid) { return GATE_SONGS.find(s => s.id === sid) || null; }
-function gateSectionsOf(song) {
-  if (!song) return [];
-  const all = { id:'all', label:'전체', lines: song.sections.reduce((a, s) => a.concat(s.lines), []) };
-  return song.sections.length > 1 ? song.sections.concat([all]) : song.sections;
-}
-function gateFindSection(song, secId) { return gateSectionsOf(song).find(s => s.id === secId) || null; }
+// 잘 외웠을 때
+const GATE_PRAISE = [
+  '열심히 외우셨네요! 그 마음이 곧 예배입니다.',
+  '가사가 입에 붙었습니다. 이제 마음으로 부르시면 됩니다.',
+  '준비된 예배자의 모습입니다. 수고 많으셨어요.',
+  '한 글자도 흘리지 않으셨네요. 귀한 열심입니다.',
+  '외운 만큼 더 깊이 부르게 됩니다. 잘하셨어요!',
+  '이렇게 준비하고 서는 자리가 다릅니다. 고맙습니다.'
+];
+// 더 해야 할 때
+const GATE_PUSH = [
+  '귀한 열심 감사합니다. 가사를 더 묵상하며 하나님 앞에 예배자로 준비합시다.',
+  '한 번 더 읽고 오면 훨씬 가까워집니다. 조금만 더 해볼까요?',
+  '눈으로 외우지 말고 소리 내어 불러보세요. 그러면 마음에 남습니다.',
+  '아직 몇 글자가 남았습니다. 그 구절만 다시 붙들어 봅시다.',
+  '외우는 것보다 묵상이 먼저입니다. 천천히 다시 가봅시다.',
+  '가사 한 줄이 기도가 됩니다. 그 마음으로 다시 한 번!'
+];
+function gatePick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function gateSongAt(i) { return GATE_SONGS[i] || null; }
+function gateAllLines(song) { return song.sections.reduce((a, s) => a.concat(s.lines), []); }
+function gateAnswer(song) { return gateAllLines(song).join('\n'); }
 
 // 띄어쓰기와 문장부호는 보지 않는다 — 글자만 센다.
 function gateSignificant(ch) { return /[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]/.test(ch); }
@@ -5596,153 +5618,216 @@ function _gateMark(text, okSet, mode) {
 }
 
 // 최고 점수는 이 기기에만 남긴다 (서버를 건드리지 않는다)
-function gateBestKey(songId, secId) { return `radi_gate_${state.currentUser || 'x'}_${songId}_${secId}`; }
-function gateBest(songId, secId) {
-  try { return Number(localStorage.getItem(gateBestKey(songId, secId)) || 0); } catch (_) { return 0; }
+function gateBestKey(songId) { return `radi_gate_${state.currentUser || 'x'}_${songId}`; }
+function gateBest(songId) {
+  try { return Number(localStorage.getItem(gateBestKey(songId)) || 0); } catch (_) { return 0; }
 }
-function gateSaveBest(songId, secId, pct) {
-  if (pct <= gateBest(songId, secId)) return;
-  try { localStorage.setItem(gateBestKey(songId, secId), String(pct)); } catch (_) {}
+function gateSaveBest(songId, pct) {
+  if (pct <= gateBest(songId)) return;
+  try { localStorage.setItem(gateBestKey(songId), String(pct)); } catch (_) {}
 }
 
-function openGateSong(id) { gateSong = id; gateSection = null; gateResult = null; renderGate(); }
-function openGateSection(id) { gateSection = id; gateResult = null; renderGate(); }
+function gateStart() { gateIdx = 0; gateRun = []; gateResult = null; gateWord = null; gateStep = 'study'; renderGate(); }
+function gateGoStudy(i) { gateIdx = i; gateResult = null; gateStep = 'study'; renderGate(); }
+function gateGoTest() { gateResult = null; gateStep = 'test'; renderGate(); }
+function gateRetry() { gateResult = null; gateStep = 'test'; renderGate(); }
+function gateSeeAgain() { gateResult = null; gateStep = 'study'; renderGate(); }
+function gateNext() {
+  if (gateIdx + 1 < GATE_SONGS.length) { gateIdx++; gateResult = null; gateStep = 'study'; }
+  else { gateWord = null; gateStep = 'done'; }
+  renderGate();
+}
+function gateHome() { gateStep = 'intro'; gateResult = null; renderGate(); }
 function gateBack() {
-  if (gateResult) { gateResult = null; }
-  else if (gateSection) { gateSection = null; }
-  else if (gateSong) { gateSong = null; }
+  if (gateStep === 'result') { gateResult = null; gateStep = 'test'; }
+  else if (gateStep === 'test') gateStep = 'study';
+  else if (gateStep === 'study' || gateStep === 'done') gateStep = 'intro';
   else { navigate('dashboard'); return; }
   renderGate();
 }
-function gateRetry() { gateResult = null; renderGate(); }
 
 function gradeGate() {
-  const song = gateFind(gateSong), sec = gateFindSection(song, gateSection);
-  if (!song || !sec) return;
+  const song = gateSongAt(gateIdx);
+  if (!song) return;
   const ta = document.getElementById('gate-input');
   const typed = ta ? ta.value : '';
   if (!typed.trim()) { showToast('먼저 적어보세요'); return; }
-  const answer = sec.lines.join('\n');
+  const answer = gateAnswer(song);
   const d = gateDiff(answer, typed);
   const pct = d.total ? Math.round(d.right / d.total * 100) : 0;
-  gateSaveBest(song.id, sec.id, pct);
+  gateSaveBest(song.id, pct);
+  gateRun[gateIdx] = pct;
   gateResult = { typed, answer, d, pct };
+  gateStep = 'result';
   renderGate();
+}
+
+function _gateBar(pct) {
+  const col = pct >= 100 ? '#16A34A' : pct >= GATE_PASS ? '#65A30D' : pct >= 70 ? '#D97706' : '#DC2626';
+  return `<div style="height:6px;border-radius:999px;background:#E4E4E7;overflow:hidden">
+    <div style="height:100%;width:${Math.max(2, pct)}%;background:${col};border-radius:999px"></div></div>`;
 }
 
 function renderGate() {
   const el = document.getElementById('page-gate');
   if (!el) return;
-  const song = gateFind(gateSong);
-  const sec = gateFindSection(song, gateSection);
+  const song = gateSongAt(gateIdx);
+  const stepLabel = `${gateIdx + 1} / ${GATE_SONGS.length}`;
 
-  // ① 곡 고르기
-  if (!song) {
+  // ① 시작 화면
+  if (gateStep === 'intro') {
+    const bests = GATE_SONGS.map(s => gateBest(s.id));
+    const doneAll = bests.every(b => b >= GATE_PASS);
     el.innerHTML = `
       <div class="flex items-center justify-between">
         <h2 class="font-bold text-gray-900">가테 — 가사 시험</h2>
         <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
       </div>
-      <p class="text-xs text-gray-500">곡을 고르면 절·후렴·브릿지를 따로 볼 수 있어요. 띄어쓰기는 틀려도 괜찮습니다.</p>
-      ${GATE_SONGS.map(s => {
-        const done = gateSectionsOf(s).filter(x => x.id !== 'all' && gateBest(s.id, x.id) >= 100).length;
-        const total = s.sections.length;
-        return `<button onclick="openGateSong('${s.id}')" style="min-height:unset"
-          class="w-full text-left bg-white rounded-2xl p-4 shadow-sm active:bg-gray-50">
-          <div class="flex items-center justify-between gap-2">
-            <div class="min-w-0">
-              <p class="font-bold text-gray-900 text-sm truncate">${_gEsc(s.title)}</p>
-              <p class="text-[11px] text-gray-400 mt-0.5 truncate">${_gEsc(s.sub)}</p>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-sm text-gray-700 leading-relaxed">네 곡을 차례로 봅니다. 곡마다 <b>가사를 먼저 보여드리고</b>, 다 외우면 그대로 적으시면 됩니다.</p>
+        <p class="text-[11px] text-gray-400 mt-1.5">띄어쓰기와 쉼표·마침표는 보지 않습니다 · ${GATE_PASS}% 이상이면 통과</p>
+      </div>
+      <div class="space-y-2">
+        ${GATE_SONGS.map((s, i) => `
+          <button onclick="gateGoStudy(${i})" style="min-height:unset"
+            class="w-full text-left bg-white rounded-xl px-4 py-3 shadow-sm active:bg-gray-50">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <div class="min-w-0">
+                <p class="font-bold text-gray-800 text-sm truncate">${i + 1}. ${_gEsc(s.title)}</p>
+                <p class="text-[11px] text-gray-400 truncate">${_gEsc(s.sub)}</p>
+              </div>
+              <span class="text-[11px] font-bold flex-shrink-0 ${bests[i] >= GATE_PASS ? 'text-green-600' : bests[i] ? 'text-amber-600' : 'text-gray-300'}">
+                ${bests[i] ? (bests[i] >= GATE_PASS ? '통과 ' : '') + bests[i] + '%' : '아직'}
+              </span>
             </div>
-            <div class="text-right flex-shrink-0">
-              <p class="text-[11px] font-bold ${done === total ? 'text-green-600' : 'text-gray-400'}">${done}/${total} 완벽</p>
-              <p class="text-[11px] text-gray-300">${total}개 파트 ›</p>
-            </div>
-          </div>
-        </button>`;
-      }).join('')}
+            ${_gateBar(bests[i])}
+          </button>`).join('')}
+      </div>
+      <button onclick="gateStart()" class="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm active:bg-black">
+        ${doneAll ? '처음부터 다시 보기' : '1번곡부터 시작하기'}
+      </button>
       <p class="text-[11px] text-gray-400 text-center">260913(주일) 고등부 예배 콘티</p>`;
     return;
   }
 
-  // ② 파트 고르기
-  if (!sec) {
+  // ⑤ 마지막 — 총평
+  if (gateStep === 'done') {
+    const scores = GATE_SONGS.map((s, i) => (gateRun[i] != null ? gateRun[i] : gateBest(s.id)));
+    const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    const perfect = scores.every(x => x >= 100);
+    const passed = scores.every(x => x >= GATE_PASS);
+    if (!gateWord) gateWord = passed ? gatePick(GATE_PRAISE) : gatePick(GATE_PUSH);
     el.innerHTML = `
-      <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 곡 목록</button>
-      <div class="bg-white rounded-2xl p-4 shadow-sm">
-        <p class="font-bold text-gray-900">${_gEsc(song.title)}</p>
-        <p class="text-[11px] text-gray-400 mt-0.5">${_gEsc(song.sub)}</p>
+      <div class="rounded-2xl p-5 text-center ${passed ? 'bg-green-50' : 'bg-amber-50'}">
+        <p class="text-4xl mb-1">${perfect ? '🎉' : passed ? '👏' : '🌱'}</p>
+        <p class="text-lg font-black ${passed ? 'text-green-700' : 'text-amber-700'}">
+          ${perfect ? '100% 가사 테스트 통과!' : passed ? '가사 테스트 통과!' : `평균 ${avg}%`}
+        </p>
+        <p class="text-sm text-gray-600 mt-2 leading-relaxed">${_gEsc(gateWord)}</p>
       </div>
-      <div class="space-y-2">
-        ${gateSectionsOf(song).map(x => {
-          const best = gateBest(song.id, x.id);
-          const chars = x.lines.join('').replace(/\s/g, '').length;
-          return `<button onclick="openGateSection('${x.id}')" style="min-height:unset"
-            class="w-full text-left bg-white rounded-xl px-4 py-3 shadow-sm active:bg-gray-50 flex items-center justify-between gap-2">
-            <div class="min-w-0">
-              <p class="font-bold text-gray-800 text-sm">${x.id === 'all' ? '전체 이어서' : _gEsc(x.label)}</p>
-              <p class="text-[11px] text-gray-400">${x.lines.length}줄 · ${chars}자</p>
+      <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+        ${GATE_SONGS.map((s, i) => `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <p class="text-xs font-semibold text-gray-700 truncate">${i + 1}. ${_gEsc(s.title)}</p>
+              <span class="text-xs font-bold flex-shrink-0 ${scores[i] >= GATE_PASS ? 'text-green-600' : 'text-amber-600'}">${scores[i]}%</span>
             </div>
-            ${best ? `<span class="text-[11px] font-bold flex-shrink-0 ${best >= 100 ? 'text-green-600' : best >= 80 ? 'text-amber-600' : 'text-gray-400'}">최고 ${best}%</span>`
-                   : '<span class="text-[11px] text-gray-300 flex-shrink-0">아직 안 봄</span>'}
-          </button>`;
-        }).join('')}
-      </div>`;
-    return;
-  }
-
-  // ③ 결과
-  if (gateResult) {
-    const { typed, answer, d, pct } = gateResult;
-    const tone = pct >= 100 ? ['text-green-700','bg-green-50','완벽합니다!']
-               : pct >= 90  ? ['text-green-700','bg-green-50','거의 다 왔어요']
-               : pct >= 70  ? ['text-amber-700','bg-amber-50','조금만 더']
-                            : ['text-red-700','bg-red-50','한 번 더 외워봐요'];
-    el.innerHTML = `
-      <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 다시 고르기</button>
-      <div class="rounded-2xl p-4 ${tone[1]}">
-        <p class="text-xs text-gray-500">${_gEsc(song.title)} · ${_gEsc(sec.label)}</p>
-        <p class="text-3xl font-black ${tone[0]} mt-1">${pct}<span class="text-lg">%</span></p>
-        <p class="text-sm font-bold ${tone[0]}">${tone[2]}</p>
-        <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${gateBest(song.id, sec.id) > pct ? ` · 최고 ${gateBest(song.id, sec.id)}%` : ''}</p>
-      </div>
-      <div class="bg-white rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-semibold text-gray-500 mb-2">정답 — <span class="text-red-600">빨간 곳</span>을 못 썼어요</p>
-        <p class="text-sm leading-loose whitespace-pre-wrap">${_gateMark(answer, d.okA, 'answer')}</p>
-      </div>
-      <div class="bg-white rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-semibold text-gray-500 mb-2">내가 쓴 것 — <span class="text-red-500">빨간 줄</span>은 틀린 글자예요</p>
-        <p class="text-sm leading-loose whitespace-pre-wrap">${_gateMark(typed, d.okB, 'typed')}</p>
+            ${_gateBar(scores[i])}
+          </div>`).join('')}
       </div>
       <div class="flex gap-2">
-        <button onclick="gateRetry()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">다시 하기</button>
-        <button onclick="gateSection=null;gateResult=null;renderGate()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">다른 파트</button>
+        <button onclick="gateStart()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">처음부터 다시</button>
+        <button onclick="gateHome()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">목록으로</button>
       </div>`;
     return;
   }
 
-  // ④ 시험 보기
-  const best = gateBest(song.id, sec.id);
-  el.innerHTML = `
-    <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 파트 목록</button>
-    <div class="bg-white rounded-2xl p-4 shadow-sm">
-      <div class="flex items-center justify-between gap-2">
-        <div class="min-w-0">
-          <p class="font-bold text-gray-900 text-sm truncate">${_gEsc(song.title)}</p>
-          <p class="text-[11px] text-gray-400 mt-0.5">${sec.id === 'all' ? '전체 이어서' : _gEsc(sec.label)} · ${sec.lines.length}줄</p>
+  if (!song) { gateStep = 'intro'; renderGate(); return; }
+
+  // ② 가사 먼저 보기
+  if (gateStep === 'study') {
+    el.innerHTML = `
+      <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 목록</button>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p class="font-bold text-gray-900 truncate">${gateIdx + 1}. ${_gEsc(song.title)}</p>
+            <p class="text-[11px] text-gray-400 mt-0.5 truncate">${_gEsc(song.sub)}</p>
+          </div>
+          <span class="text-[11px] font-bold text-gray-300 flex-shrink-0">${stepLabel}</span>
         </div>
-        ${best ? `<span class="text-[11px] font-bold text-gray-400 flex-shrink-0">최고 ${best}%</span>` : ''}
       </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-500 mb-2">이대로 외워서 적으시면 됩니다</p>
+        ${song.sections.map(sec => `
+          <div class="mb-3 last:mb-0">
+            <p class="text-[11px] font-bold text-blue-600 mb-1">${_gEsc(sec.label)}</p>
+            <p class="text-[15px] text-gray-800 leading-loose whitespace-pre-wrap">${_gEsc(sec.lines.join('\n'))}</p>
+          </div>`).join('')}
+      </div>
+      <button onclick="gateGoTest()" class="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm active:bg-black">다 외웠어요 — 시험 보기</button>`;
+    return;
+  }
+
+  // ③ 시험
+  if (gateStep === 'test') {
+    const lines = gateAllLines(song);
+    el.innerHTML = `
+      <button onclick="gateBack()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 가사 다시 보기</button>
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p class="font-bold text-gray-900 text-sm truncate">${gateIdx + 1}. ${_gEsc(song.title)}</p>
+            <p class="text-[11px] text-gray-400 mt-0.5">${song.sections.map(s => s.label).join(' · ')} · 모두 ${lines.length}줄</p>
+          </div>
+          <span class="text-[11px] font-bold text-gray-300 flex-shrink-0">${stepLabel}</span>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+        <p class="text-xs font-semibold text-gray-500">외운 대로 처음부터 끝까지 적어보세요</p>
+        <textarea id="gate-input" rows="${Math.min(14, Math.max(6, lines.length + 1))}"
+          placeholder="여기에 가사를 적어주세요&#10;줄은 나눠 써도 되고 이어 써도 됩니다"
+          class="w-full border rounded-xl p-3 text-sm resize-none leading-relaxed"></textarea>
+        <p class="text-[11px] text-gray-400">띄어쓰기와 쉼표·마침표는 안 봅니다. 글자만 맞으면 맞은 것으로 셉니다.</p>
+        <button onclick="gradeGate()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">결과 보기</button>
+      </div>`;
+    setTimeout(() => { const t = document.getElementById('gate-input'); if (t) t.focus(); }, 60);
+    return;
+  }
+
+  // ④ 결과
+  const { typed, answer, d, pct } = gateResult;
+  const passed = pct >= GATE_PASS;
+  const last = gateIdx + 1 >= GATE_SONGS.length;
+  const tone = pct >= 100 ? ['text-green-700','bg-green-50','완벽합니다!']
+             : passed     ? ['text-green-700','bg-green-50','통과입니다']
+             : pct >= 70  ? ['text-amber-700','bg-amber-50','조금만 더']
+                          : ['text-red-700','bg-red-50','한 번 더 외워봐요'];
+  el.innerHTML = `
+    <div class="rounded-2xl p-4 ${tone[1]}">
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-xs text-gray-500 truncate">${gateIdx + 1}. ${_gEsc(song.title)}</p>
+        <span class="text-[11px] font-bold text-gray-400 flex-shrink-0">${stepLabel}</span>
+      </div>
+      <p class="text-3xl font-black ${tone[0]} mt-1">${pct}<span class="text-lg">%</span></p>
+      <p class="text-sm font-bold ${tone[0]}">${tone[2]}</p>
+      <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${gateBest(song.id) > pct ? ` · 최고 ${gateBest(song.id)}%` : ''}</p>
     </div>
-    <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
-      <p class="text-xs font-semibold text-gray-500">외운 대로 적어보세요</p>
-      <textarea id="gate-input" rows="${Math.max(4, sec.lines.length + 1)}"
-        placeholder="여기에 가사를 적어주세요&#10;줄은 나눠 써도 되고 이어 써도 됩니다"
-        class="w-full border rounded-xl p-3 text-sm resize-none leading-relaxed"></textarea>
-      <p class="text-[11px] text-gray-400">띄어쓰기와 쉼표·마침표는 안 봅니다. 글자만 맞으면 맞은 것으로 셉니다.</p>
-      <button onclick="gradeGate()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">결과 보기</button>
-    </div>`;
-  setTimeout(() => { const t = document.getElementById('gate-input'); if (t) t.focus(); }, 60);
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-500 mb-2">정답 — <span class="text-red-600">빨간 곳</span>을 못 썼어요</p>
+      <p class="text-sm leading-loose whitespace-pre-wrap">${_gateMark(answer, d.okA, 'answer')}</p>
+    </div>
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-500 mb-2">내가 쓴 것 — <span class="text-red-500">빨간 줄</span>은 틀린 글자예요</p>
+      <p class="text-sm leading-loose whitespace-pre-wrap">${_gateMark(typed, d.okB, 'typed')}</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="gateRetry()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">다시 하기</button>
+      <button onclick="gateSeeAgain()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">가사 보기</button>
+    </div>
+    <button onclick="gateNext()" class="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm active:bg-black">
+      ${last ? '마치고 결과 보기' : `다음 곡 — ${_gEsc(GATE_SONGS[gateIdx + 1].title)} ›`}
+    </button>`;
 }
 
 // 사진첩 — 단체 · 액기스 · 라디스 · 솔라디
@@ -8362,7 +8447,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-08.2';
+const APP_BUILD = '2026-09-08.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
