@@ -43,6 +43,18 @@
   .qt-0 { background:#FEE2E2; color:#DC2626; font-weight:600; }
   .qt-X { background:#F3F4F6; color:#6B7280; }
   .qt-private-comment { background:#FFFBEB; border-left:3px solid #F59E0B; border-radius:0 8px 8px 0; padding:8px 10px; }
+  /* 가테 — 새로 생긴 것이라 눈에 띄게. 리본 + 천천히 지나가는 빛 */
+  .gate-card { position:relative; overflow:hidden; border-radius:14px;
+    background:linear-gradient(118deg,#4338CA 0%,#6D28D9 48%,#BE185D 100%);
+    box-shadow:0 6px 18px rgba(76,29,149,.28); }
+  .gate-card::after { content:''; position:absolute; top:-60%; left:-40%; width:38%; height:220%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);
+    transform:rotate(18deg); animation:gateShine 3.6s ease-in-out infinite; pointer-events:none; }
+  @keyframes gateShine { 0%,68% { left:-40%; } 100% { left:120%; } }
+  .gate-ribbon { position:absolute; top:11px; right:-32px; transform:rotate(45deg);
+    background:#FACC15; color:#3F2D00; font-size:10px; font-weight:900; letter-spacing:.1em;
+    padding:3px 36px; box-shadow:0 1px 5px rgba(0,0,0,.3); z-index:1; }
+  @media (prefers-reduced-motion: reduce) { .gate-card::after { animation:none; display:none; } }
   .notif-badge { position:absolute; top:1px; right:1px; background:#EF4444; color:#fff; border-radius:9999px; font-size:9px; font-weight:700; min-width:14px; height:14px; display:flex; align-items:center; justify-content:center; padding:0 2px; pointer-events:none; }
   .lineup-가능 { background:#DCFCE7; color:#166534; font-weight:700; }
   .lineup-조건부 { background:#FEF9C3; color:#B45309; font-weight:700; }
@@ -139,6 +151,9 @@
   .statrow > div + div { border-left:1px solid #EFEFF1; }
   .statrow .v { font-size:21px; font-weight:800; color:#18181B; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
   .statrow .k { font-size:10px; color:#9CA3AF; font-weight:700; margin-top:1px; }
+  nav .nav-btn { padding-left:4px; padding-right:4px; }
+  nav .nav-btn span { font-size:10.5px; letter-spacing:-.04em; white-space:nowrap; }
+  nav .nav-btn svg { width:21px; height:21px; }
   nav .nav-btn.active { position:relative; }
   nav .nav-btn.active::before { content:''; position:absolute; top:-4px; left:50%; transform:translateX(-50%);
     width:16px; height:2px; border-radius:2px; background:#18181B; }
@@ -374,7 +389,7 @@
 
 <!-- Bottom Navigation -->
 <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg">
-  <div class="flex justify-around items-center max-w-2xl mx-auto py-1">
+  <div class="flex justify-around items-center max-w-2xl mx-auto py-1 px-0.5">
     <button class="nav-btn active flex flex-col items-center py-1 px-2" onclick="navigate('dashboard')" id="nav-dashboard">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">홈</span>
@@ -394,6 +409,10 @@
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('birthday')" id="nav-birthday">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
       <span class="text-xs mt-0.5 font-medium text-gray-500">생일</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('gate')" id="nav-gate">
+      <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
+      <span class="text-xs mt-0.5 font-medium text-gray-500">가테</span>
     </button>
     <button class="nav-btn flex flex-col items-center py-1 px-2" onclick="navigate('students')" id="nav-students">
       <svg class="w-6 h-6 stroke-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -3864,16 +3883,8 @@ function renderDashboard() {
           <button onclick="navigate('students')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg><span>학생</span></button>
           <button onclick="navigate('birthday')"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span>생일</span></button>
         </div>
-        <button onclick="navigate('gate')" style="min-height:unset"
-          class="w-full mt-1.5 flex items-center gap-2.5 bg-white border border-gray-200 rounded-[10px] px-3 py-2.5 active:bg-gray-50">
-          <span class="text-base">🎤</span>
-          <span class="text-left flex-1 min-w-0">
-            <span class="block text-[12px] font-bold text-gray-800">가테 — 가사 시험</span>
-            <span class="block text-[10px] text-gray-400">이번 주 콘티 4곡 · 절·후렴·브릿지 따로</span>
-          </span>
-          <span class="text-gray-300 text-sm">›</span>
-        </button>
       </div>
+      ${gateHomeCard()}
 
       ${qtCommentInboxCard()}
       ${homeSlideCard()}
@@ -4226,15 +4237,7 @@ function renderMemberDashboard() {
           <button onclick="navigate('birthday')" class="bg-pink-50 text-pink-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">🎂 생일</button>
           <button onclick="navigate('mypage')" class="bg-blue-50 text-blue-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">👤 마이페이지</button>
         </div>
-        <button onclick="navigate('gate')" style="min-height:unset"
-          class="w-full mt-2 flex items-center gap-2.5 bg-gray-900 text-white rounded-xl px-4 py-3 active:bg-black">
-          <span class="text-base">🎤</span>
-          <span class="text-left flex-1 min-w-0">
-            <span class="block text-sm font-bold">가테 — 가사 시험</span>
-            <span class="block text-[11px] text-white/60">이번 주 콘티 4곡 · 절·후렴·브릿지 따로</span>
-          </span>
-          <span class="text-white/40 text-sm">›</span>
-        </button>
+        <div class="mt-2">${gateHomeCard()}</div>
       </div>
     </div>
   `;
@@ -5625,6 +5628,30 @@ function gateBest(songId) {
 function gateSaveBest(songId, pct) {
   if (pct <= gateBest(songId)) return;
   try { localStorage.setItem(gateBestKey(songId), String(pct)); } catch (_) {}
+}
+
+// 홈에 거는 가테 칸 — 새로 생긴 것이라 리본을 둘러 눈에 띄게 한다.
+function gateHomeCard() {
+  const bests = GATE_SONGS.map(s => gateBest(s.id));
+  const done = bests.filter(b => b >= GATE_PASS).length;
+  const started = bests.some(b => b > 0);
+  // 오른쪽 위 리본과 겹치지 않도록 그쪽 여백을 넉넉히 둔다.
+  return `<button onclick="navigate('gate')" style="min-height:unset;padding-right:56px"
+    class="gate-card w-full text-left pl-4 py-3.5 active:opacity-90">
+    <span class="gate-ribbon">NEW</span>
+    <span class="flex items-center gap-3">
+      <span class="text-2xl flex-shrink-0">🎤</span>
+      <span class="min-w-0 flex-1">
+        <span class="block text-white font-black text-[15px] tracking-tight">가테 — 가사 시험</span>
+        <span class="block text-[11px] text-white/70 mt-0.5 truncate">
+          ${started ? `이번 주 콘티 4곡 · ${done}곡 통과` : '이번 주 콘티 4곡 · 가사 보고 → 외워서 쓰기'}
+        </span>
+      </span>
+      <span class="flex-shrink-0 text-[11px] font-bold text-white/90 bg-white/20 rounded-full px-2.5 py-1">
+        ${started ? `${done}/${GATE_SONGS.length}` : '시작'}
+      </span>
+    </span>
+  </button>`;
 }
 
 function gateStart() { gateIdx = 0; gateRun = []; gateResult = null; gateWord = null; gateStep = 'study'; renderGate(); }
@@ -8447,7 +8474,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-08.3';
+const APP_BUILD = '2026-09-08.4';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
