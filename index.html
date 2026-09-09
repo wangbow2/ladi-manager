@@ -5707,6 +5707,26 @@ function gateBlockCopy(e) {
 }
 function _gateStopTick() { if (_gateTick) { clearInterval(_gateTick); _gateTick = null; } }
 
+// 쓰는 동안 시계와 타수를 같이 굴린다 — 한컴 타자연습처럼.
+function gateTick() {
+  const c = document.getElementById('gate-clock');
+  // 화면을 벗어났으면 스스로 멈춘다 (페이지가 숨겨져도 요소는 남아 있다).
+  if (!c || state.page !== 'gate' || gateStep !== 'test') { _gateStopTick(); return; }
+  const sec = (Date.now() - gateT0) / 1000;
+  c.textContent = fmtClock(sec);
+  const ta = document.getElementById('gate-input');
+  const txt = ta ? ta.value : '';
+  const keys = gateKeystrokes(txt);
+  const cpm = sec >= 2 ? Math.round(keys / (sec / 60)) : 0;   // 처음 2초는 값이 널뛰어서 0으로 둔다
+  const el = document.getElementById('gate-cpm');
+  if (el) {
+    el.textContent = cpm;
+    el.style.color = cpm >= 300 ? '#7C3AED' : cpm >= 180 ? '#16A34A' : '#27272A';
+  }
+  const t = document.getElementById('gate-typed');
+  if (t) t.textContent = keys ? `${txt.replace(/\s/g, '').length}자 · ${keys}타 쳤어요` : '아직 안 쓰기 시작했어요';
+}
+
 function gateSongAt(i) { return GATE_SONGS[i] || null; }
 function gateAllLines(song) { return song.sections.reduce((a, s) => a.concat(s.lines), []); }
 function gateAnswer(song) { return gateAllLines(song).join('\n'); }
@@ -6284,30 +6304,33 @@ function renderGate() {
           </div>
           <span class="text-[11px] font-bold text-gray-300 flex-shrink-0">${stepLabel}</span>
         </div>
-        <div class="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl" style="background:#F4F4F5">
-          <span class="text-base">⏱</span>
-          <span id="gate-clock" class="text-[22px] font-black text-gray-800" style="font-variant-numeric:tabular-nums;letter-spacing:-.02em">0:00</span>
-          <span class="text-[11px] text-gray-400 font-semibold">지나는 중</span>
+        <div class="flex items-stretch gap-2 mt-3">
+          <div class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl" style="background:#F4F4F5">
+            <span class="text-sm">⏱</span>
+            <span id="gate-clock" class="text-[22px] font-black text-gray-800" style="font-variant-numeric:tabular-nums;letter-spacing:-.02em">0:00</span>
+          </div>
+          <div class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl" style="background:#F4F4F5">
+            <span class="text-sm">⌨</span>
+            <span id="gate-cpm" class="text-[22px] font-black text-gray-800" style="font-variant-numeric:tabular-nums;letter-spacing:-.02em">0</span>
+            <span class="text-[11px] text-gray-400 font-semibold">타</span>
+          </div>
         </div>
+        <p id="gate-typed" class="text-[11px] text-gray-400 text-center mt-1.5">아직 안 쓰기 시작했어요</p>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
         <p class="text-xs font-semibold text-gray-500">${isAll ? '1번곡부터 4번곡까지 이어서 적어보세요' : '외운 대로 처음부터 끝까지 적어보세요'}</p>
         <textarea id="gate-input" rows="${Math.min(14, Math.max(6, lines.length + 1))}"
           placeholder="여기에 가사를 적어주세요&#10;줄은 나눠 써도 되고 이어 써도 됩니다"
           onpaste="return gateBlockPaste(event)" ondrop="return gateBlockPaste(event)"
-          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="gateTick()" autocomplete="off" autocorrect="off" spellcheck="false"
           class="w-full border rounded-xl p-3 text-sm resize-none leading-relaxed"></textarea>
         <p class="text-[11px] text-gray-400">띄어쓰기와 쉼표·마침표는 안 봅니다. 글자만 맞으면 맞은 것으로 셉니다.<br>붙여넣기는 막아두었어요 — 외운 대로 손으로 적어주세요.</p>
         <button onclick="gradeGate()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">결과 보기</button>
       </div>`;
     setTimeout(() => { const t = document.getElementById('gate-input'); if (t) t.focus(); }, 60);
-    // 지나는 시간을 보여준다. 화면이 바뀌면 스스로 멈춘다.
-    _gateTick = setInterval(() => {
-      const c = document.getElementById('gate-clock');
-      // 화면을 벗어났으면 스스로 멈춘다 (페이지가 숨겨져도 요소는 남아 있다).
-      if (!c || state.page !== 'gate' || gateStep !== 'test') { _gateStopTick(); return; }
-      c.textContent = fmtClock((Date.now() - gateT0) / 1000);
-    }, 1000);
+    gateTick();
+    // 지나는 시간과 타수를 보여준다. 화면이 바뀌면 스스로 멈춘다.
+    _gateTick = setInterval(gateTick, 500);
     return;
   }
 
@@ -8981,7 +9004,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.13';
+const APP_BUILD = '2026-09-09.14';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
