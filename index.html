@@ -2613,6 +2613,39 @@ function goBack() {
   navigate(prev.page, prev.extra, true);
 }
 
+// 화면 왼쪽 가장자리에서 오른쪽으로 밀면 뒤로 간다 (아이폰에서 하던 그 동작).
+// 가장자리에서 시작한 것만 받는다 — 랭킹 칸이나 찬양 띠처럼 옆으로 미는 곳과
+// 부딪히지 않게 하려고.
+const BACK_EDGE = 44;      // 여기서 시작해야 뒤로가기로 친다
+const BACK_MIN = 60;       // 이만큼은 밀어야 한다
+let _bsX = 0, _bsY = 0, _bsOn = false;
+
+function _backSwipeTarget(t) {
+  // 글을 쓰는 중이거나 옆으로 미는 칸 위에서는 뒤로 가지 않는다
+  return !!(t && t.closest && t.closest('textarea, input, .overflow-x-auto, .scroll-table, #gallery-viewer, .modal'));
+}
+function doSwipeBack() {
+  if (state.page === 'gate' && typeof gateStep !== 'undefined' && gateStep !== 'intro') { gateBack(); return; }
+  if (state.page === 'qt' && typeof qtOpenDay !== 'undefined' && qtOpenDay) { closeQTDay(); return; }
+  if (navHistory.length) { goBack(); return; }
+  if (state.page !== 'dashboard') navigate('dashboard');
+}
+document.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) { _bsOn = false; return; }
+  const t = e.touches[0];
+  _bsOn = t.clientX <= BACK_EDGE && !_backSwipeTarget(e.target);
+  _bsX = t.clientX; _bsY = t.clientY;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!_bsOn) return;
+  _bsOn = false;
+  const t = e.changedTouches && e.changedTouches[0];
+  if (!t) return;
+  const dx = t.clientX - _bsX, dy = t.clientY - _bsY;
+  if (dx >= BACK_MIN && Math.abs(dx) > Math.abs(dy) * 1.5) doSwipeBack();
+}, { passive: true });
+document.addEventListener('touchcancel', () => { _bsOn = false; }, { passive: true });
+
 // 아래 메뉴를 누르면 떠 있던 창은 모두 닫는다. 예전에는 댓글이나 알림 창이
 // 화면을 덮은 채로 뒤에서만 화면이 바뀌어, 누른 곳으로 간 줄 몰랐다.
 function closeAllOverlays() {
@@ -8911,7 +8944,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.11';
+const APP_BUILD = '2026-09-09.12';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
