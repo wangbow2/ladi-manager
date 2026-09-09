@@ -5591,6 +5591,10 @@ function fmtGateTime(sec) {
   const m = Math.floor(sec / 60), r = sec % 60;
   return m ? `${m}분 ${r}초` : `${r}초`;
 }
+function fmtClock(sec) {
+  sec = Math.max(0, Math.floor(sec || 0));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
 function gateTimeKey(songId) { return `radi_gatet_${state.currentUser || 'x'}_${songId}`; }
 function gateBestTime(songId) {
   try { return Number(localStorage.getItem(gateTimeKey(songId)) || 0); } catch (_) { return 0; }
@@ -5855,10 +5859,12 @@ function renderGate() {
             <p class="font-bold text-gray-900 text-sm truncate">${gateIdx + 1}. ${_gEsc(song.title)}</p>
             <p class="text-[11px] text-gray-400 mt-0.5">${song.sections.map(s => s.label).join(' · ')} · 모두 ${lines.length}줄</p>
           </div>
-          <div class="text-right flex-shrink-0">
-            <p class="text-[11px] font-bold text-gray-300">${stepLabel}</p>
-            <p id="gate-clock" class="text-[11px] font-bold text-gray-400 mt-0.5" style="font-variant-numeric:tabular-nums">0초</p>
-          </div>
+          <span class="text-[11px] font-bold text-gray-300 flex-shrink-0">${stepLabel}</span>
+        </div>
+        <div class="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl" style="background:#F4F4F5">
+          <span class="text-base">⏱</span>
+          <span id="gate-clock" class="text-[22px] font-black text-gray-800" style="font-variant-numeric:tabular-nums;letter-spacing:-.02em">0:00</span>
+          <span class="text-[11px] text-gray-400 font-semibold">지나는 중</span>
         </div>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
@@ -5875,7 +5881,7 @@ function renderGate() {
       const c = document.getElementById('gate-clock');
       // 화면을 벗어났으면 스스로 멈춘다 (페이지가 숨겨져도 요소는 남아 있다).
       if (!c || state.page !== 'gate' || gateStep !== 'test') { _gateStopTick(); return; }
-      c.textContent = fmtGateTime((Date.now() - gateT0) / 1000);
+      c.textContent = fmtClock((Date.now() - gateT0) / 1000);
     }, 1000);
     return;
   }
@@ -5894,10 +5900,19 @@ function renderGate() {
         <p class="text-xs text-gray-500 truncate">${gateIdx + 1}. ${_gEsc(song.title)}</p>
         <span class="text-[11px] font-bold text-gray-400 flex-shrink-0">${stepLabel}</span>
       </div>
-      <p class="text-3xl font-black ${tone[0]} mt-1">${pct}<span class="text-lg">%</span></p>
-      <p class="text-sm font-bold ${tone[0]}">${tone[2]}</p>
-      <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${gateBest(song.id) > pct ? ` · 최고 ${gateBest(song.id)}%` : ''}</p>
-      <p class="text-[11px] text-gray-500 mt-0.5">⏱ ${fmtGateTime(gateResult.secs)} 걸렸어요${
+      <div class="flex items-end gap-4 mt-1">
+        <div>
+          <p class="text-3xl font-black ${tone[0]} leading-none">${pct}<span class="text-lg">%</span></p>
+          <p class="text-[10px] text-gray-500 font-semibold mt-1">점수</p>
+        </div>
+        <div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
+        <div>
+          <p class="text-3xl font-black text-gray-700 leading-none" style="font-variant-numeric:tabular-nums">${fmtClock(gateResult.secs)}</p>
+          <p class="text-[10px] text-gray-500 font-semibold mt-1">⏱ 걸린 시간</p>
+        </div>
+      </div>
+      <p class="text-sm font-bold ${tone[0]} mt-2">${tone[2]}</p>
+      <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${gateBest(song.id) > pct ? ` · 최고 ${gateBest(song.id)}%` : ''}${
         gateBestTime(song.id) && gateBestTime(song.id) < gateResult.secs ? ` · 가장 빠른 기록 ${fmtGateTime(gateBestTime(song.id))}` : ''}</p>
     </div>
     <div class="bg-white rounded-2xl p-4 shadow-sm">
@@ -8534,7 +8549,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.3';
+const APP_BUILD = '2026-09-09.4';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
