@@ -126,5 +126,10 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+    // 가테 1위 한마디 — 문서 하나(current)를 그때그때 1위가 갈아 쓴다.
+    match /radiGateCrown/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
   }
 }

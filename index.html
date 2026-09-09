@@ -12,8 +12,6 @@
 <meta name="theme-color" content="#000000">
 <link rel="apple-touch-icon" href="icons/icon-152x152.png">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
@@ -5901,9 +5899,17 @@ function loadGateLogs(ids) {
   const want = ids.filter(id => _gateLogs[id] === undefined);
   if (!want.length) return;
   _gateLogLoading = true;
-  Promise.all(want.map(id => _db.collection('radiGateLog').doc(id).get()
-    .then(d => { _gateLogs[id] = (d.exists && Array.isArray(d.data().items)) ? gateLogSort(d.data().items) : []; })
-    .catch(() => { _gateLogs[id] = []; })))
+  // 여러 명이면 컬렉션을 한 번에 받는다 — 예전에는 사람마다 따로 서른세 번 물었다.
+  const job = want.length > 3
+    ? _db.collection('radiGateLog').get().then(snap => {
+        const got = {};
+        snap.docs.forEach(d => { got[d.id] = Array.isArray(d.data().items) ? gateLogSort(d.data().items) : []; });
+        want.forEach(id => { _gateLogs[id] = got[id] || []; });
+      }).catch(e => { console.warn('가테 기록 불러오기 실패:', e); want.forEach(id => { _gateLogs[id] = []; }); })
+    : Promise.all(want.map(id => _db.collection('radiGateLog').doc(id).get()
+        .then(d => { _gateLogs[id] = (d.exists && Array.isArray(d.data().items)) ? gateLogSort(d.data().items) : []; })
+        .catch(() => { _gateLogs[id] = []; })));
+  job
     .then(() => {
       _gateLogLoading = false;
       // 첫 화면(랭킹)과 기록 화면이 이걸 기다린다.
@@ -6072,6 +6078,40 @@ function gateRankPartial() {
     return n > 0 ? { id, n } : null;
   }).filter(Boolean).sort((a, b) => b.n - a.n);
 }
+// ── 1위 한마디 ──
+// 전체 랭킹 1위만 랭킹 위에 한 줄 남길 수 있다. 1위가 바뀌면 그 사람이 새로 쓴다.
+let _gateCrown = undefined;      // undefined=아직 안 받음 | null=없음 | {by,name,text,at}
+let _gateCrownEdit = false;
+
+function gateChampion() { const t = gateRankTotal(); return t.length ? t[0].id : null; }
+function canWriteCrown() { return !!state.currentUser && state.currentUser === gateChampion(); }
+
+function loadGateCrown() {
+  if (!_FS_OK || _gateCrown !== undefined) return;
+  _gateCrown = null;
+  _db.collection('radiGateCrown').doc('current').get()
+    .then(d => {
+      _gateCrown = (d.exists && d.data().text) ? d.data() : null;
+      if (state.page === 'gate' && gateStep === 'intro') renderGate();
+    })
+    .catch(e => console.warn('1위 한마디 불러오기 실패:', e));
+}
+function toggleCrownEdit() { _gateCrownEdit = !_gateCrownEdit; renderGate(); }
+function saveGateCrown() {
+  if (!canWriteCrown()) { showToast('1위만 남길 수 있어요'); return; }
+  const el = document.getElementById('gate-crown-input');
+  const text = el ? el.value.trim().slice(0, 60) : '';
+  if (!text) { showToast('한마디 적어주세요'); return; }
+  const me = getCurrentUser();
+  const doc = { by: state.currentUser, name: (me && me.name) || '', text, at: new Date().toISOString() };
+  _gateCrown = doc; _gateCrownEdit = false;
+  renderGate();
+  if (!_FS_OK) return;
+  _db.collection('radiGateCrown').doc('current').set(doc)
+    .then(() => showToast('한마디를 걸었어요'))
+    .catch(e => { console.warn('1위 한마디 저장 실패:', e); showToast('올리지 못했어요'); });
+}
+
 function gateMedal(i) { return ['🥇','🥈','🥉'][i] || `${i + 1}`; }
 function gateName(id) {
   const s = state.students.find(x => x.id === id);
@@ -6092,17 +6132,46 @@ function gateRankRow(x, i, me) {
 // 가테를 누르면 바로 보이는 랭킹. 따로 들어가는 방이 아니라 첫 화면에 그대로 얹는다.
 function gateRankBlock() {
   loadGateLogs(gateRankPeople());
+  loadGateCrown();
   const loading = gateRankPeople().some(id => _gateLogs[id] === undefined);
   const total = gateRankTotal();
   const partial = gateRankPartial();
   const me = state.currentUser;
   const row = (x, i) => gateRankRow(x, i, me);
 
+  // 1위 한마디 — 지금 1위가 쓴 것만 살아 있는 말로 친다.
+  const champ = gateChampion();
+  const crown = (_gateCrown && _gateCrown.text) ? _gateCrown : null;
+  const crownMine = crown && champ && crown.by === champ;
+  const crownLine = crown
+    ? `<p class="text-[12px] text-white mt-1.5 leading-snug">
+         👑 "${_gEsc(crown.text)}" <span class="text-white/60 text-[10px]">— ${_gEsc(crown.name)}${crownMine ? '' : ' (지난 1위)'}</span>
+       </p>`
+    : (canWriteCrown() ? `<p class="text-[11px] text-white/70 mt-1.5">👑 1위입니다 — 한마디 남겨보세요</p>` : '');
+  const crownForm = canWriteCrown()
+    ? (_gateCrownEdit
+      ? `<div class="px-4 py-3 border-b bg-violet-50 space-y-2">
+           <p class="text-[11px] font-bold text-violet-700">👑 1위 한마디 (60자까지)</p>
+           <input type="text" id="gate-crown-input" maxlength="60" placeholder="예) 다 외웠다! 도전 받는다 ㅋㅋ"
+             value="${crown ? _gEsc(crown.text).replace(/"/g, '&quot;') : ''}"
+             class="w-full border rounded-xl px-3 py-2 text-sm">
+           <div class="flex gap-2">
+             <button onclick="toggleCrownEdit()" style="min-height:36px" class="flex-1 py-2 rounded-xl text-xs font-semibold bg-white border text-gray-600">그만</button>
+             <button onclick="saveGateCrown()" style="min-height:36px" class="flex-1 py-2 rounded-xl text-xs font-bold bg-violet-600 text-white">걸기</button>
+           </div>
+         </div>`
+      : `<button onclick="toggleCrownEdit()" style="min-height:unset"
+           class="w-full text-[11px] font-bold text-violet-700 py-2 border-b bg-violet-50">
+           👑 ${crown && crownMine ? '내 한마디 고치기' : '1위 한마디 남기기'}</button>`)
+    : '';
+
   const totalCard = total.length ? `
     <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div class="px-4 py-2.5 border-b" style="background:linear-gradient(118deg,#4338CA,#7C3AED)">
+      <div class="px-4 py-2.5" style="background:linear-gradient(118deg,#4338CA,#7C3AED)">
         <p class="text-white font-black text-[13px]">🏆 전체 랭킹 <span class="font-semibold text-white/60 text-[10px]">점수 · 시간 · 타수</span></p>
+        ${crownLine}
       </div>
+      ${crownForm}
       ${total.slice(0, gateRankOpen ? 5 : 3).map((x, i) => row(x, i)).join('')}
       ${total.length > 3 ? `<button onclick="toggleGateRank()" style="min-height:unset"
         class="w-full text-[11px] text-gray-500 font-semibold py-2 border-t">
@@ -8022,7 +8091,26 @@ function initKakaoBanner() {
   document.body.classList.add('has-kakao-banner');
 }
 
+// QR은 지금 쓰지 않는 기능이라 라이브러리를 처음부터 받지 않는다(둘이 270KB).
+// 실제로 QR 화면을 열 때만 받아 온다.
+let _qrLibsPromise = null;
+function loadQrLibs() {
+  if (_qrLibsPromise) return _qrLibsPromise;
+  const add = src => new Promise((res, rej) => {
+    const el = document.createElement('script');
+    el.src = src; el.async = true;
+    el.onload = res; el.onerror = () => rej(new Error(src));
+    document.head.appendChild(el);
+  });
+  _qrLibsPromise = Promise.all([
+    typeof QRCode === 'undefined' ? add('https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js') : null,
+    typeof jsQR === 'undefined' ? add('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js') : null
+  ]).catch(e => { console.warn('QR 라이브러리 불러오기 실패:', e); _qrLibsPromise = null; throw e; });
+  return _qrLibsPromise;
+}
+
 function renderQRScanPage() {
+  loadQrLibs().catch(() => {});
   const canGenerate = isLeader();
   const inKakao = isKakaoTalkBrowser();
   document.getElementById('qr-content').innerHTML = `
@@ -8060,6 +8148,7 @@ function renderQRScanPage() {
 }
 
 function startQRCamera() {
+  loadQrLibs().catch(() => {});
   stopQRCamera();
   if (!navigator.mediaDevices?.getUserMedia) {
     document.getElementById('qr-scan-status').textContent = '이 브라우저는 카메라를 지원하지 않습니다';
@@ -8221,7 +8310,9 @@ function generateQR() {
   output.innerHTML = '<p class="text-xs text-gray-400 py-2">생성 중...</p>';
 
   if (typeof QRCode === 'undefined') {
-    output.innerHTML = `<p class="text-xs text-red-500">QR 라이브러리 로드 실패. 페이지를 새로고침해 주세요.</p>`;
+    loadQrLibs().then(() => generateQR()).catch(() => {
+      output.innerHTML = `<p class="text-xs text-red-500">QR 라이브러리를 받지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>`;
+    });
     return;
   }
   output.innerHTML = '<div id="qr-canvas-wrap" style="display:flex;justify-content:center;padding:8px 0"></div>';
@@ -9051,7 +9142,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.16';
+const APP_BUILD = '2026-09-09.17';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
