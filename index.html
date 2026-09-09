@@ -5527,7 +5527,9 @@ const GATE_SONGS = [
     { id:'ch', label:'후렴', lines:[ '찬양 찬양 찬양 찬양' ] },
     { id:'br', label:'브릿지', lines:[
       '영원히 신실하신 능력의 하나님',
-      '영원히 함께하리 영원히 영원히 영원히 영원히' ] }
+      '영원히 함께하리 영원히 영원히',
+      '영원히 신실하신 능력의 하나님',
+      '영원히 함께하리 영원히 영원히 영원히' ] }
   ]},
   { id:'song3', title:'나의 죄를 씻기는', sub:'3번곡 · THE GOSPEL II · R. Lowry', sections:[
     { id:'v1', label:'1절', lines:[
@@ -8532,7 +8534,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.2';
+const APP_BUILD = '2026-09-09.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
