@@ -6012,16 +6012,39 @@ function gateRankBlock() {
 
   return {
     top: `${loading ? `<div class="text-center py-2 text-gray-300 text-xs">랭킹 불러오는 중...</div>` : ''}${totalCard}${partialCard}`,
-    songs: `<button onclick="toggleGateSongRank()" style="min-height:unset"
-        class="w-full bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center justify-between">
-        <span class="text-xs font-bold text-gray-700">곡별 랭킹</span>
-        <span class="text-[11px] text-gray-400">${gateSongRankOpen ? '접기 ▲' : '펼치기 ▼'}</span>
-      </button>
-      ${gateSongRankOpen ? songCards + `
-      <p class="text-[11px] text-gray-400 text-center leading-relaxed">
-        ${GATE_PASS}% 이상 통과한 판만 오릅니다 · 같은 사람은 가장 빠른 판 하나만 셉니다<br>
-        점수가 같으면 시간이 빠른 쪽이 앞섭니다
-      </p>` : ''}`
+    // 접어 두면 있는 줄도 모른다. 곡마다 1등만 한 줄씩 보여주고, 누르면 전부 편다.
+    songs: gateSongRankOpen
+      ? `<button onclick="toggleGateSongRank()" style="min-height:unset"
+           class="w-full bg-white rounded-2xl px-4 py-2.5 shadow-sm flex items-center justify-between">
+           <span class="text-xs font-bold text-gray-700">곡별 랭킹</span>
+           <span class="text-[11px] text-gray-400">간단히 ▲</span>
+         </button>
+         ${songCards}
+         <p class="text-[11px] text-gray-400 text-center leading-relaxed">
+           ${GATE_PASS}% 이상 통과한 판만 오릅니다 · 같은 사람은 가장 빠른 판 하나만 셉니다<br>
+           점수가 같으면 시간이 빠른 쪽이 앞섭니다
+         </p>`
+      : `<div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+           <div class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+             <p class="text-xs font-bold text-gray-700">곡별 1등</p>
+             <span class="text-[10px] text-gray-400">각개 시험 기록</span>
+           </div>
+           ${GATE_SONGS.map((sg, si) => {
+             const first = gateRankSong(sg.id)[0];
+             const isMe = first && first.id === me;
+             return `<div class="flex items-center gap-2 px-4 py-1.5 border-b last:border-0 ${isMe ? 'bg-amber-50' : ''}">
+               <span class="text-[11px] text-gray-400 w-3 flex-shrink-0">${si + 1}</span>
+               <span class="text-[11px] text-gray-600 truncate flex-1 min-w-0">${_gEsc(sg.title)}</span>
+               ${first
+                 ? `<span class="text-[11px] flex-shrink-0">🥇</span>
+                    <span class="text-xs font-bold text-gray-800 flex-shrink-0 truncate" style="max-width:72px">${_gEsc(gateName(first.id))}</span>
+                    <span class="text-xs font-black text-gray-700 flex-shrink-0 w-12 text-right" style="font-variant-numeric:tabular-nums">${fmtClock(first.secs)}</span>`
+                 : `<span class="text-[11px] text-gray-300 flex-shrink-0">아직 없음</span>`}
+             </div>`;
+           }).join('')}
+           <button onclick="toggleGateSongRank()" style="min-height:unset"
+             class="w-full text-[11px] text-gray-500 font-semibold py-2 border-t">곡별 전체 순위 보기</button>
+         </div>`
   };
 }
 
@@ -8888,7 +8911,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.10';
+const APP_BUILD = '2026-09-09.11';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
