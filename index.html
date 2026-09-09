@@ -5598,13 +5598,22 @@ function fmtClock(sec) {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
 function gateTimeKey(songId) { return `radi_gatet_${state.currentUser || 'x'}_${songId}`; }
-function gateBestTime(songId) {
+function gateBestTimeLocal(songId) {
   try { return Number(localStorage.getItem(gateTimeKey(songId)) || 0); } catch (_) { return 0; }
+}
+function gateBestTime(songId) {
+  const mine = _gateLogs[state.currentUser] || [];
+  const srv = mine.reduce((a, x) => (x.song === songId && x.pct >= GATE_PASS && x.secs > 0)
+    ? (a ? Math.min(a, x.secs) : x.secs) : a, 0);
+  const loc = gateBestTimeLocal(songId);
+  if (!loc) return srv;
+  if (!srv) return loc;
+  return Math.min(loc, srv);
 }
 // 가장 빠른 기록은 '통과한 판'만 남긴다 — 대충 쓰고 빨리 낸 것이 기록이 되면 안 되니까.
 function gateSaveTime(songId, sec, pct) {
   if (pct < GATE_PASS) return;
-  const cur = gateBestTime(songId);
+  const cur = gateBestTimeLocal(songId);
   if (cur && sec >= cur) return;
   try { localStorage.setItem(gateTimeKey(songId), String(sec)); } catch (_) {}
 }
@@ -5676,11 +5685,18 @@ function _gateMark(text, okSet, mode) {
 
 // 최고 점수는 이 기기에만 남긴다 (서버를 건드리지 않는다)
 function gateBestKey(songId) { return `radi_gate_${state.currentUser || 'x'}_${songId}`; }
-function gateBest(songId) {
+function gateBestLocal(songId) {
   try { return Number(localStorage.getItem(gateBestKey(songId)) || 0); } catch (_) { return 0; }
 }
+// 이 폰에 남은 것과 서버 기록 중 높은 쪽. 폰을 바꾸거나 저장소가 지워져도
+// 서버에 남은 판이 있으면 '아직'으로 보이지 않는다.
+function gateBest(songId) {
+  const mine = _gateLogs[state.currentUser] || [];
+  const srv = mine.reduce((a, x) => (x.song === songId ? Math.max(a, x.pct || 0) : a), 0);
+  return Math.max(gateBestLocal(songId), srv);
+}
 function gateSaveBest(songId, pct) {
-  if (pct <= gateBest(songId)) return;
+  if (pct <= gateBestLocal(songId)) return;
   try { localStorage.setItem(gateBestKey(songId), String(pct)); } catch (_) {}
 }
 
@@ -5717,7 +5733,7 @@ function gateLogPush(songId, pct, secs) {
 const GATE_RESTORED_AT = '1970-01-01T00:00:00.000Z';   // 목록 맨 아래로 가도록
 function gateLocalLeftovers() {
   if (!state.currentUser) return [];
-  return GATE_SONGS.map(s => ({ song: s.id, pct: gateBest(s.id), secs: gateBestTime(s.id) }))
+  return GATE_SONGS.map(s => ({ song: s.id, pct: gateBestLocal(s.id), secs: gateBestTimeLocal(s.id) }))
     .filter(x => x.pct > 0);
 }
 function gateHasRestored() {
@@ -6075,10 +6091,15 @@ function renderGate() {
       </div>
       ${gateRestoreCard()}
       ${rank.top}
+      ${rank.songs}
+      <button onclick="gateStart()" class="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm active:bg-black">
+        ${doneAll ? '처음부터 다시 보기' : '1번곡부터 시작하기'}
+      </button>
       <div class="bg-white rounded-2xl p-4 shadow-sm">
         <p class="text-sm text-gray-700 leading-relaxed">네 곡을 차례로 봅니다. 곡마다 <b>가사를 먼저 보여드리고</b>, 다 외우면 그대로 적으시면 됩니다.</p>
         <p class="text-[11px] text-gray-400 mt-1.5">띄어쓰기와 쉼표·마침표는 보지 않습니다 · ${GATE_PASS}% 이상이면 통과</p>
       </div>
+      <p class="text-xs font-bold text-gray-500 px-1">내 점수</p>
       <div class="space-y-2">
         ${GATE_SONGS.map((s, i) => `
           <button onclick="gateGoStudy(${i})" style="min-height:unset"
@@ -6095,11 +6116,7 @@ function renderGate() {
             ${_gateBar(bests[i])}
           </button>`).join('')}
       </div>
-      <button onclick="gateStart()" class="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm active:bg-black">
-        ${doneAll ? '처음부터 다시 보기' : '1번곡부터 시작하기'}
-      </button>
-      <p class="text-[11px] text-gray-400 text-center">260913(주일) 고등부 예배 콘티</p>
-      ${rank.songs}`;
+      <p class="text-[11px] text-gray-400 text-center">260913(주일) 고등부 예배 콘티</p>`;
     return;
   }
 
@@ -8876,7 +8893,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.8';
+const APP_BUILD = '2026-09-09.9';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
