@@ -6029,17 +6029,27 @@ function gateBestRun(uid, songId) {
   if (!runs.length) return null;
   return runs.slice().sort((a, b) => a.secs - b.secs || b.pct - a.pct)[0];
 }
+// 그 판의 타수. 예전 기록엔 타수가 없어 시간과 글자 수로 되짚어 낸다.
+function gateRunCpm(r, songId) {
+  if (!r) return 0;
+  if (r.cpm) return r.cpm;
+  if (!r.secs) return 0;
+  const songs = songId === GATE_ALL ? GATE_SONGS : GATE_SONGS.filter(s => s.id === songId);
+  if (!songs.length) return 0;
+  const text = songs.reduce((a, s) => a.concat(gateAllLines(s)), []).join(' ');
+  return Math.round(gateKeystrokes(text) * (r.pct / 100) / (r.secs / 60));
+}
 function gateRankSong(songId) {
   return gateRankPeople().map(id => {
     const r = gateBestRun(id, songId);
-    return r ? { id, secs: r.secs, pct: r.pct } : null;
+    return r ? { id, secs: r.secs, pct: r.pct, cpm: gateRunCpm(r, songId) } : null;
   }).filter(Boolean).sort((a, b) => a.secs - b.secs || b.pct - a.pct);
 }
 // 전체 랭킹은 '전체 시험'을 한 판에 통과한 것만 센다. 각개 점수를 더해 만들지 않는다.
 function gateRankTotal() {
   return gateRankPeople().map(id => {
     const r = gateBestRun(id, GATE_ALL);
-    return r ? { id, secs: r.secs, pct: r.pct } : null;
+    return r ? { id, secs: r.secs, pct: r.pct, cpm: gateRunCpm(r, GATE_ALL) } : null;
   }).filter(Boolean).sort((a, b) => a.secs - b.secs || b.pct - a.pct);
 }
 // 타수 랭킹 — 시험 종류를 가리지 않고 그 사람이 가장 빠르게 친 판.
@@ -6074,7 +6084,8 @@ function gateRankRow(x, i, me) {
     <span class="w-7 text-center font-black flex-shrink-0 ${i < 3 ? 'text-lg' : 'text-xs text-gray-400'}">${gateMedal(i)}</span>
     <span class="min-w-0 flex-1 text-sm font-bold text-gray-800 truncate">${_gEsc(gateName(x.id))}${mine ? ' <span class="text-[11px] font-semibold text-amber-600">나</span>' : ''}</span>
     <span class="text-[11px] font-bold flex-shrink-0 ${x.pct >= 100 ? 'text-green-600' : 'text-gray-500'}">${x.pct}%</span>
-    <span class="text-sm font-black text-gray-800 flex-shrink-0 w-14 text-right" style="font-variant-numeric:tabular-nums">${fmtClock(x.secs)}</span>
+    <span class="text-sm font-black text-gray-800 flex-shrink-0 w-12 text-right" style="font-variant-numeric:tabular-nums">${fmtClock(x.secs)}</span>
+    <span class="text-[11px] font-bold text-gray-400 flex-shrink-0 w-11 text-right" style="font-variant-numeric:tabular-nums">${x.cpm ? x.cpm + '타' : '—'}</span>
   </div>`;
 }
 
@@ -6090,7 +6101,7 @@ function gateRankBlock() {
   const totalCard = total.length ? `
     <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
       <div class="px-4 py-2.5 border-b" style="background:linear-gradient(118deg,#4338CA,#7C3AED)">
-        <p class="text-white font-black text-[13px]">🏆 전체 랭킹 <span class="font-semibold text-white/60 text-[10px]">전체 시험을 한 판에 통과한 기록</span></p>
+        <p class="text-white font-black text-[13px]">🏆 전체 랭킹 <span class="font-semibold text-white/60 text-[10px]">점수 · 시간 · 타수</span></p>
       </div>
       ${total.slice(0, gateRankOpen ? 5 : 3).map((x, i) => row(x, i)).join('')}
       ${total.length > 3 ? `<button onclick="toggleGateRank()" style="min-height:unset"
@@ -6125,25 +6136,6 @@ function gateRankBlock() {
 
   return {
     top: `${loading ? `<div class="text-center py-2 text-gray-300 text-xs">랭킹 불러오는 중...</div>` : ''}${totalCard}${partialCard}`,
-    cpm: (() => {
-      const list = gateRankCpm();
-      return `<div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
-          <p class="text-xs font-bold text-gray-700">⌨ 타수 랭킹</p>
-          <span class="text-[10px] text-gray-400">가장 빠르게 친 기록</span>
-        </div>
-        ${list.length ? list.slice(0, 3).map((x, i) => {
-          const mine = x.id === me;
-          return `<div class="flex items-center gap-2.5 px-4 py-2 border-b last:border-0 ${mine ? 'bg-amber-50' : ''}">
-            <span class="w-7 text-center font-black flex-shrink-0 ${i < 3 ? 'text-lg' : 'text-xs text-gray-400'}">${gateMedal(i)}</span>
-            <span class="min-w-0 flex-1 text-sm font-bold text-gray-800 truncate">${_gEsc(gateName(x.id))}${mine ? ' <span class="text-[11px] font-semibold text-amber-600">나</span>' : ''}</span>
-            <span class="text-[10px] text-gray-400 flex-shrink-0 truncate" style="max-width:96px">${_gEsc(gateLogTitle(x.song))}</span>
-            <span class="text-sm font-black text-gray-800 flex-shrink-0 w-14 text-right" style="font-variant-numeric:tabular-nums">${x.cpm}타</span>
-          </div>`;
-        }).join('')
-        : `<p class="text-xs text-gray-400 text-center py-4">아직 친 기록이 없어요</p>`}
-      </div>`;
-    })(),
     // 접어 두면 있는 줄도 모른다. 곡마다 1등만 한 줄씩 보여주고, 누르면 전부 편다.
     songs: gateSongRankOpen
       ? `<button onclick="toggleGateSongRank()" style="min-height:unset"
@@ -6169,8 +6161,9 @@ function gateRankBlock() {
                <span class="text-[11px] text-gray-600 truncate flex-1 min-w-0">${_gEsc(sg.title)}</span>
                ${first
                  ? `<span class="text-[11px] flex-shrink-0">🥇</span>
-                    <span class="text-xs font-bold text-gray-800 flex-shrink-0 truncate" style="max-width:72px">${_gEsc(gateName(first.id))}</span>
-                    <span class="text-xs font-black text-gray-700 flex-shrink-0 w-12 text-right" style="font-variant-numeric:tabular-nums">${fmtClock(first.secs)}</span>`
+                    <span class="text-xs font-bold text-gray-800 flex-shrink-0 truncate" style="max-width:60px">${_gEsc(gateName(first.id))}</span>
+                    <span class="text-xs font-black text-gray-700 flex-shrink-0 w-11 text-right" style="font-variant-numeric:tabular-nums">${fmtClock(first.secs)}</span>
+                    <span class="text-[10px] font-bold text-gray-400 flex-shrink-0 w-10 text-right" style="font-variant-numeric:tabular-nums">${first.cpm ? first.cpm + '타' : '—'}</span>`
                  : `<span class="text-[11px] text-gray-300 flex-shrink-0">아직 없음</span>`}
              </div>`;
            }).join('')}
@@ -6305,7 +6298,6 @@ function renderGate() {
       <p class="text-[11px] text-gray-400 text-center -mt-1">가사를 먼저 보여드리고, 다 외우면 그대로 적으시면 됩니다 · ${GATE_PASS}% 이상이면 통과</p>
       ${rank.top}
       ${rank.songs}
-      ${rank.cpm}
       <p class="text-[11px] text-gray-400 text-center">260913(주일) 고등부 예배 콘티</p>`;
     return;
   }
@@ -9059,7 +9051,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.15';
+const APP_BUILD = '2026-09-09.16';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
