@@ -5614,6 +5614,7 @@ let gateT0 = 0;                          // 쓰기 시작한 시각
 let _gateTick = null;                    // 시험 화면에서 도는 시계
 let gateWord = null;                     // 결과에 건넬 한마디(한 번 뽑으면 고정)
 let gateRang = false;                    // 통과 소리를 이미 울렸는지
+let _gateNewCpmRecord = false;           // 이번 판이 타수 최고 기록인지
 let gateRankOpen = false;                // 전체 랭킹을 5위까지 펼쳤는지
 let gateSongRankOpen = false;            // 곡별 랭킹을 폈는지
 function toggleGateRank() { gateRankOpen = !gateRankOpen; renderGate(); }
@@ -5663,6 +5664,11 @@ function gateKeystrokes(text) {
     else k += 1;                                    // 영문·숫자·띄어쓰기·부호
   }
   return k;
+}
+// 그 시험에서 내가 낸 가장 빠른 타수 — 쫓아갈 목표로 보여준다.
+function gateBestCpmFor(id) {
+  return (_gateLogs[state.currentUser] || [])
+    .reduce((a, x) => (x.song === id ? Math.max(a, x.cpm || 0) : a), 0);
 }
 function gateCpm(text, secs) {
   if (!secs) return 0;
@@ -5725,6 +5731,17 @@ function gateTick() {
   }
   const t = document.getElementById('gate-typed');
   if (t) t.textContent = keys ? `${txt.replace(/\s/g, '').length}자 · ${keys}타 쳤어요` : '아직 안 쓰기 시작했어요';
+  const bestEl = document.getElementById('gate-bestcpm');
+  if (bestEl) {
+    const best = gateBestCpmFor(gateTargetId());
+    if (cpm > best) {
+      bestEl.textContent = `🔥 최고 기록을 넘었어요! (지난 최고 ${best}타)`;
+      bestEl.style.color = '#7C3AED';
+    } else {
+      bestEl.textContent = `내 최고 ${best}타`;
+      bestEl.style.color = '';
+    }
+  }
 }
 
 function gateSongAt(i) { return GATE_SONGS[i] || null; }
@@ -6025,6 +6042,18 @@ function gateRankTotal() {
     return r ? { id, secs: r.secs, pct: r.pct } : null;
   }).filter(Boolean).sort((a, b) => a.secs - b.secs || b.pct - a.pct);
 }
+// 타수 랭킹 — 시험 종류를 가리지 않고 그 사람이 가장 빠르게 친 판.
+// 몇 점을 받았든 '얼마나 빨리 치는가'는 그 자체로 재미있는 기록이다.
+function gateRankCpm() {
+  return gateRankPeople().map(id => {
+    let best = null;
+    (_gateLogs[id] || []).forEach(x => {
+      if (x.cpm > 0 && (!best || x.cpm > best.cpm)) best = x;
+    });
+    return best ? { id, cpm: best.cpm, song: best.song, pct: best.pct } : null;
+  }).filter(Boolean).sort((a, b) => b.cpm - a.cpm);
+}
+
 // 각개는 넘겼지만 전체 시험은 아직인 사람 — 몇 곡까지 왔는지
 function gateRankPartial() {
   return gateRankPeople().map(id => {
@@ -6096,6 +6125,25 @@ function gateRankBlock() {
 
   return {
     top: `${loading ? `<div class="text-center py-2 text-gray-300 text-xs">랭킹 불러오는 중...</div>` : ''}${totalCard}${partialCard}`,
+    cpm: (() => {
+      const list = gateRankCpm();
+      return `<div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+          <p class="text-xs font-bold text-gray-700">⌨ 타수 랭킹</p>
+          <span class="text-[10px] text-gray-400">가장 빠르게 친 기록</span>
+        </div>
+        ${list.length ? list.slice(0, 3).map((x, i) => {
+          const mine = x.id === me;
+          return `<div class="flex items-center gap-2.5 px-4 py-2 border-b last:border-0 ${mine ? 'bg-amber-50' : ''}">
+            <span class="w-7 text-center font-black flex-shrink-0 ${i < 3 ? 'text-lg' : 'text-xs text-gray-400'}">${gateMedal(i)}</span>
+            <span class="min-w-0 flex-1 text-sm font-bold text-gray-800 truncate">${_gEsc(gateName(x.id))}${mine ? ' <span class="text-[11px] font-semibold text-amber-600">나</span>' : ''}</span>
+            <span class="text-[10px] text-gray-400 flex-shrink-0 truncate" style="max-width:96px">${_gEsc(gateLogTitle(x.song))}</span>
+            <span class="text-sm font-black text-gray-800 flex-shrink-0 w-14 text-right" style="font-variant-numeric:tabular-nums">${x.cpm}타</span>
+          </div>`;
+        }).join('')
+        : `<p class="text-xs text-gray-400 text-center py-4">아직 친 기록이 없어요</p>`}
+      </div>`;
+    })(),
     // 접어 두면 있는 줄도 모른다. 곡마다 1등만 한 줄씩 보여주고, 누르면 전부 편다.
     songs: gateSongRankOpen
       ? `<button onclick="toggleGateSongRank()" style="min-height:unset"
@@ -6192,6 +6240,8 @@ function gradeGate() {
   const secs = gateT0 ? Math.max(1, Math.round((Date.now() - gateT0) / 1000)) : 0;
   const id = gateTargetId();
   const cpm = gateCpm(typed, secs);
+  const prevCpm = gateBestCpmFor(id);
+  _gateNewCpmRecord = cpm > 0 && cpm > prevCpm;
   if (gateMode !== GATE_ALL) { gateSaveBest(id, pct); gateSaveTime(id, secs, pct); }
   gateLogPush(id, pct, secs, cpm);
   gateWord = pct >= GATE_PASS ? gatePick(GATE_PRAISE) : gatePick(GATE_PUSH);
@@ -6255,6 +6305,7 @@ function renderGate() {
       <p class="text-[11px] text-gray-400 text-center -mt-1">가사를 먼저 보여드리고, 다 외우면 그대로 적으시면 됩니다 · ${GATE_PASS}% 이상이면 통과</p>
       ${rank.top}
       ${rank.songs}
+      ${rank.cpm}
       <p class="text-[11px] text-gray-400 text-center">260913(주일) 고등부 예배 콘티</p>`;
     return;
   }
@@ -6316,6 +6367,7 @@ function renderGate() {
           </div>
         </div>
         <p id="gate-typed" class="text-[11px] text-gray-400 text-center mt-1.5">아직 안 쓰기 시작했어요</p>
+        ${gateBestCpmFor(gateTargetId()) ? `<p id="gate-bestcpm" class="text-[11px] font-bold text-gray-400 text-center mt-0.5">내 최고 ${gateBestCpmFor(gateTargetId())}타</p>` : ''}
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
         <p class="text-xs font-semibold text-gray-500">${isAll ? '1번곡부터 4번곡까지 이어서 적어보세요' : '외운 대로 처음부터 끝까지 적어보세요'}</p>
@@ -6362,13 +6414,16 @@ function renderGate() {
         </div>
         <div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
         <div>
-          <p class="text-3xl font-black text-gray-700 leading-none" style="font-variant-numeric:tabular-nums">${gateResult.cpm || 0}</p>
-          <p class="text-[10px] text-gray-500 font-semibold mt-1">⌨ 분당 타수</p>
+          <p class="text-3xl font-black leading-none" style="font-variant-numeric:tabular-nums;color:${_gateNewCpmRecord ? '#7C3AED' : '#3F3F46'}">${gateResult.cpm || 0}</p>
+          <p class="text-[10px] font-semibold mt-1 ${_gateNewCpmRecord ? 'text-violet-600' : 'text-gray-500'}">${_gateNewCpmRecord ? '🔥 최고 타수!' : '⌨ 분당 타수'}</p>
         </div>
       </div>
       <p class="text-sm font-bold ${tone[0]} mt-2">${isAll && perfect ? '🎉 100% 가사 테스트 통과!' : isAll && passed ? '가사 테스트 통과!' : tone[2]}</p>
       <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${!isAll && gateBest(tid) > pct ? ` · 최고 ${gateBest(tid)}%` : ''}${
         !isAll && gateBestTime(tid) && gateBestTime(tid) < gateResult.secs ? ` · 가장 빠른 기록 ${fmtGateTime(gateBestTime(tid))}` : ''}</p>
+      ${(() => { const pb = gateBestCpmFor(tid);
+        return (!_gateNewCpmRecord && pb && pb > (gateResult.cpm || 0))
+          ? `<p class="text-[11px] text-gray-500 mt-0.5">⌨ 내 최고 타수 ${pb}타</p>` : ''; })()}
       ${gateWord ? `<p class="text-sm text-gray-600 mt-2 leading-relaxed">${_gEsc(gateWord)}</p>` : ''}
     </div>
     <div class="bg-white rounded-2xl p-4 shadow-sm">
@@ -9004,7 +9059,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.14';
+const APP_BUILD = '2026-09-09.15';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
