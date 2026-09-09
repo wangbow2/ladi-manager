@@ -5645,6 +5645,30 @@ function fmtGateTime(sec) {
   const m = Math.floor(sec / 60), r = sec % 60;
   return m ? `${m}분 ${r}초` : `${r}초`;
 }
+// ── 타수 ──
+// 한글은 한 글자가 자판 여러 번이다. '가'는 2타, '값'은 4타(ㄱ ㅏ ㅂ ㅅ).
+// 두벌식 기준으로 초성·중성·종성을 풀어 세고, 분으로 나눠 분당 타수를 낸다.
+const _CHO_KEYS  = [1,2,1,1,2,1,1,1,2,1,2,1,1,2,1,1,1,1,1];
+const _JUNG_KEYS = [1,1,1,1,1,1,1,1,1,2,3,2,1,1,2,3,2,1,1,2,1];
+const _JONG_KEYS = [0,1,2,2,1,2,2,1,1,2,2,2,2,2,2,2,1,1,2,1,2,1,1,1,1,1,1,1];
+function gateKeystrokes(text) {
+  let k = 0;
+  for (const ch of String(text || '')) {
+    const c = ch.charCodeAt(0);
+    if (c >= 0xAC00 && c <= 0xD7A3) {              // 완성된 한글
+      const x = c - 0xAC00;
+      k += _CHO_KEYS[Math.floor(x / 588)] + _JUNG_KEYS[Math.floor((x % 588) / 28)] + _JONG_KEYS[x % 28];
+    } else if (c >= 0x3131 && c <= 0x3163) k += 1; // 낱자
+    else if (ch === '\n') k += 1;
+    else k += 1;                                    // 영문·숫자·띄어쓰기·부호
+  }
+  return k;
+}
+function gateCpm(text, secs) {
+  if (!secs) return 0;
+  return Math.round(gateKeystrokes(text) / (secs / 60));
+}
+
 function fmtClock(sec) {
   sec = Math.max(0, Math.floor(sec || 0));
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
@@ -5763,9 +5787,10 @@ let gateLogWho = null;         // 지금 보고 있는 사람 (팀장이 다른 
 
 function gateLogSort(a) { return (a || []).slice().sort((x, y) => String(y.at).localeCompare(String(x.at))); }
 
-function gateLogPush(songId, pct, secs) {
+function gateLogPush(songId, pct, secs, cpm) {
   if (!state.currentUser) return;
   const item = { at: new Date().toISOString(), song: songId, pct, secs };
+  if (cpm) item.cpm = cpm;
   if (songId === GATE_ALL) item.mode = GATE_ALL;
   _gateLogs[state.currentUser] = [item].concat(_gateLogs[state.currentUser] || []);
   if (!_FS_OK) return;
@@ -5866,7 +5891,10 @@ function gateLogSum(list) {
   const n = (list || []).length;
   const sec = (list || []).reduce((a, x) => a + (x.secs || 0), 0);
   const best = (list || []).reduce((a, x) => Math.max(a, x.pct || 0), 0);
-  return { n, sec, best };
+  const withCpm = (list || []).filter(x => x.cpm > 0);
+  const cpm = withCpm.length ? Math.round(withCpm.reduce((a, x) => a + x.cpm, 0) / withCpm.length) : 0;
+  const bestCpm = (list || []).reduce((a, x) => Math.max(a, x.cpm || 0), 0);
+  return { n, sec, best, cpm, bestCpm };
 }
 
 function openGateLog(uid) {
@@ -5921,7 +5949,7 @@ function renderGateLog(el) {
             <div class="flex items-center gap-2 px-4 py-2.5 border-b last:border-0">
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold text-gray-800 truncate">${_gEsc(gateLogTitle(x.song))}</p>
-                <p class="text-[11px] text-gray-400">${x.restored ? '이전 기록 · 날짜 모름' : gateLogWhen(x.at)}</p>
+                <p class="text-[11px] text-gray-400">${x.restored ? '이전 기록 · 날짜 모름' : gateLogWhen(x.at)}${x.cpm ? ` · ${x.cpm}타` : ''}</p>
               </div>
               <span class="text-[11px] text-gray-400 flex-shrink-0" style="font-variant-numeric:tabular-nums">${x.secs ? fmtClock(x.secs) : '—'}</span>
               <span class="text-xs font-bold flex-shrink-0 w-11 text-right ${x.pct >= GATE_PASS ? 'text-green-600' : x.pct >= 70 ? 'text-amber-600' : 'text-red-500'}">${x.pct}%</span>
@@ -5943,6 +5971,9 @@ function renderGateLog(el) {
         <div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
         <div><p class="text-2xl font-black leading-none ${sum.best >= GATE_PASS ? 'text-green-600' : 'text-amber-600'}">${sum.best}<span class="text-sm">%</span></p>
              <p class="text-[10px] text-gray-500 font-semibold mt-1">최고 점수</p></div>
+        ${sum.bestCpm ? `<div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
+        <div><p class="text-2xl font-black text-gray-800 leading-none" style="font-variant-numeric:tabular-nums">${sum.bestCpm}</p>
+             <p class="text-[10px] text-gray-500 font-semibold mt-1">⌨ 최고 타수</p></div>` : ''}
       </div>` : `<p class="text-xs text-gray-400 mt-1">아직 본 기록이 없습니다.</p>`}
     </div>
     ${body}
@@ -6140,10 +6171,11 @@ function gradeGate() {
   const pct = d.total ? Math.round(d.right / d.total * 100) : 0;
   const secs = gateT0 ? Math.max(1, Math.round((Date.now() - gateT0) / 1000)) : 0;
   const id = gateTargetId();
+  const cpm = gateCpm(typed, secs);
   if (gateMode !== GATE_ALL) { gateSaveBest(id, pct); gateSaveTime(id, secs, pct); }
-  gateLogPush(id, pct, secs);
+  gateLogPush(id, pct, secs, cpm);
   gateWord = pct >= GATE_PASS ? gatePick(GATE_PRAISE) : gatePick(GATE_PUSH);
-  gateResult = { typed, answer, d, pct, secs };
+  gateResult = { typed, answer, d, pct, secs, cpm };
   gateStep = 'result';
   renderGate();
 }
@@ -6304,6 +6336,11 @@ function renderGate() {
         <div>
           <p class="text-3xl font-black text-gray-700 leading-none" style="font-variant-numeric:tabular-nums">${fmtClock(gateResult.secs)}</p>
           <p class="text-[10px] text-gray-500 font-semibold mt-1">⏱ 걸린 시간</p>
+        </div>
+        <div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
+        <div>
+          <p class="text-3xl font-black text-gray-700 leading-none" style="font-variant-numeric:tabular-nums">${gateResult.cpm || 0}</p>
+          <p class="text-[10px] text-gray-500 font-semibold mt-1">⌨ 분당 타수</p>
         </div>
       </div>
       <p class="text-sm font-bold ${tone[0]} mt-2">${isAll && perfect ? '🎉 100% 가사 테스트 통과!' : isAll && passed ? '가사 테스트 통과!' : tone[2]}</p>
@@ -8944,7 +8981,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.12';
+const APP_BUILD = '2026-09-09.13';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
