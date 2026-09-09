@@ -2656,7 +2656,7 @@ function navigate(page, extra, isBack) {
   else if (page==='lineup') renderLineup();
   else if (page==='qt') renderQTSubmit();
   else if (page==='gallery') renderGallery();
-  else if (page==='gate') renderGate();
+  else if (page==='gate') { renderGate(); playLadiChime(); }
   if (page !== 'dashboard') stopHomeSlideshow();
   if (page !== 'gate' && typeof _gateStopTick === 'function') _gateStopTick();
   else if (page==='detail') renderDetail(state.currentStudentId);
@@ -5561,6 +5561,7 @@ let gateTimes = [];                      // 곡마다 걸린 시간(초)
 let gateT0 = 0;                          // 지금 곡을 쓰기 시작한 시각
 let _gateTick = null;                    // 시험 화면에서 도는 시계
 let gateWord = null;                     // 마지막에 건넬 한마디(한 번 뽑으면 고정)
+let gateRang = false;                    // 통과 소리를 이미 울렸는지
 
 // 잘 외웠을 때
 const GATE_PRAISE = [
@@ -5687,14 +5688,14 @@ function gateHomeCard() {
   </button>`;
 }
 
-function gateStart() { gateIdx = 0; gateRun = []; gateTimes = []; gateResult = null; gateWord = null; gateStep = 'study'; renderGate(); }
+function gateStart() { gateIdx = 0; gateRun = []; gateTimes = []; gateResult = null; gateWord = null; gateRang = false; gateStep = 'study'; renderGate(); }
 function gateGoStudy(i) { gateIdx = i; gateResult = null; gateStep = 'study'; renderGate(); }
 function gateGoTest() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); renderGate(); }
 function gateRetry() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); renderGate(); }
 function gateSeeAgain() { gateResult = null; gateStep = 'study'; renderGate(); }
 function gateNext() {
   if (gateIdx + 1 < GATE_SONGS.length) { gateIdx++; gateResult = null; gateStep = 'study'; }
-  else { gateWord = null; gateStep = 'done'; }
+  else { gateWord = null; gateRang = false; gateStep = 'done'; }
   renderGate();
 }
 function gateHome() { gateStep = 'intro'; gateResult = null; renderGate(); }
@@ -5783,6 +5784,8 @@ function renderGate() {
     const perfect = scores.every(x => x >= 100);
     const passed = scores.every(x => x >= GATE_PASS);
     if (!gateWord) gateWord = passed ? gatePick(GATE_PRAISE) : gatePick(GATE_PUSH);
+    // 네 곡을 다 100%로 넘겼을 때만 "라디!" 하고 한 번 울린다.
+    if (perfect && !gateRang) { gateRang = true; playLadiChime(); }
     el.innerHTML = `
       <div class="rounded-2xl p-5 text-center ${passed ? 'bg-green-50' : 'bg-amber-50'}">
         <p class="text-4xl mb-1">${perfect ? '🎉' : passed ? '👏' : '🌱'}</p>
@@ -8529,7 +8532,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.1';
+const APP_BUILD = '2026-09-09.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
