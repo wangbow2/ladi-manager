@@ -7198,28 +7198,63 @@ function openSrcFullscreen(imageKey) {
 // 그래서 빈 창(about:blank, 우리와 같은 출처)을 띄우고 그 안에 우리 뷰어를 직접 그린다.
 function _passageViewerHtml(srcs, idx, title) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${title}</title><style>
 html,body{margin:0;height:100%;background:#111;}
-body{display:flex;align-items:center;justify-content:center;overflow:auto;}
+body{display:flex;align-items:center;justify-content:center;overflow:auto;-webkit-text-size-adjust:100%;}
 img{max-width:100%;max-height:100vh;object-fit:contain;display:block;cursor:zoom-in;}
 img.zoom{max-width:none;max-height:none;width:auto;cursor:zoom-out;}
-.hint{position:fixed;left:0;right:0;bottom:0;margin:0;text-align:center;color:rgba(255,255,255,.6);
- font:12px/2.4 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
- background:linear-gradient(transparent,rgba(0,0,0,.7));pointer-events:none;}
+button{font:inherit;-webkit-tap-highlight-color:transparent;}
+.bar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
+ padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 8px;gap:8px;
+ background:linear-gradient(rgba(0,0,0,.72),transparent);z-index:5;}
+.x{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);color:#fff;border:none;
+ border-radius:999px;padding:0 18px;height:44px;font-size:15px;font-weight:800;cursor:pointer;}
+.x:active{background:rgba(255,255,255,.3);}
+.pg{color:rgba(255,255,255,.85);font:700 13px/1 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+ background:rgba(0,0,0,.35);border-radius:999px;padding:8px 12px;}
+.nav{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);left:0;right:0;z-index:5;
+ display:flex;justify-content:center;gap:10px;}
+.nav button{background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:999px;
+ width:56px;height:44px;font-size:20px;font-weight:800;cursor:pointer;}
+.nav button:disabled{opacity:.28;}
+.nav button:active:not(:disabled){background:rgba(255,255,255,.3);}
+.hint{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 66px);margin:0;
+ text-align:center;color:rgba(255,255,255,.5);
+ font:11px/1.8 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;pointer-events:none;}
 </style></head><body>
+<div class="bar"><button class="x" onclick="closeMe()">✕ 닫기</button><span class="pg" id="pg"></span></div>
 <img id="v" alt="${title}">
-<p class="hint">Esc 닫기 · ← → 장 넘기기 · 사진을 누르면 크게</p>
+<div class="nav"><button id="prev" onclick="show(i-1)">‹</button><button id="next" onclick="show(i+1)">›</button></div>
+<p class="hint">사진을 누르면 크게 · 좌우로 밀어 장 넘기기</p>
 <script>
 var S = ${JSON.stringify(srcs)}, i = ${idx}, v = document.getElementById('v');
-function show(n){ if (n < 0 || n >= S.length) return; i = n; v.className = ''; v.src = S[i]; }
+function closeMe(){ try { window.close(); } catch(e) {} setTimeout(function(){ history.back(); }, 120); }
+function show(n){
+  if (n < 0 || n >= S.length) return;
+  i = n; v.className = ''; v.src = S[i];
+  document.getElementById('pg').textContent = (i + 1) + ' / ' + S.length;
+  document.getElementById('prev').disabled = (i === 0);
+  document.getElementById('next').disabled = (i === S.length - 1);
+}
 show(i);
 document.addEventListener('keydown', function(e){
-  if (e.key === 'Escape') { e.preventDefault(); window.close(); }
+  if (e.key === 'Escape') { e.preventDefault(); closeMe(); }
   else if (e.key === 'ArrowRight') show(i + 1);
   else if (e.key === 'ArrowLeft') show(i - 1);
 });
 v.addEventListener('click', function(){ v.classList.toggle('zoom'); });
+var sx = 0, sy = 0;
+document.addEventListener('touchstart', function(e){
+  if (e.touches.length !== 1) { sx = 0; return; }
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener('touchend', function(e){
+  if (!sx || v.classList.contains('zoom')) return;   // 크게 본 상태에서는 밀어도 안 넘긴다
+  var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+  sx = 0;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) show(dx < 0 ? i + 1 : i - 1);
+}, { passive: true });
 window.focus();
 <\/script></body></html>`;
 }
@@ -9142,7 +9177,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.17';
+const APP_BUILD = '2026-09-10.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
