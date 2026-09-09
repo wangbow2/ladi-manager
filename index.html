@@ -2658,6 +2658,7 @@ function navigate(page, extra, isBack) {
   else if (page==='gallery') renderGallery();
   else if (page==='gate') renderGate();
   if (page !== 'dashboard') stopHomeSlideshow();
+  if (page !== 'gate' && typeof _gateStopTick === 'function') _gateStopTick();
   else if (page==='detail') renderDetail(state.currentStudentId);
   else if (page==='qr') renderQRScanPage();
   else if (page==='love') renderLoveMeeting();
@@ -5556,6 +5557,9 @@ let gateStep = 'intro';                  // intro | study | test | result | done
 let gateIdx = 0;                         // 지금 몇 번째 곡
 let gateResult = null;
 let gateRun = [];                        // 이번 바퀴에서 곡마다 받은 점수
+let gateTimes = [];                      // 곡마다 걸린 시간(초)
+let gateT0 = 0;                          // 지금 곡을 쓰기 시작한 시각
+let _gateTick = null;                    // 시험 화면에서 도는 시계
 let gateWord = null;                     // 마지막에 건넬 한마디(한 번 뽑으면 고정)
 
 // 잘 외웠을 때
@@ -5577,6 +5581,25 @@ const GATE_PUSH = [
   '가사 한 줄이 기도가 됩니다. 그 마음으로 다시 한 번!'
 ];
 function gatePick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// 45초 · 1분 23초
+function fmtGateTime(sec) {
+  sec = Math.max(0, Math.round(sec || 0));
+  const m = Math.floor(sec / 60), r = sec % 60;
+  return m ? `${m}분 ${r}초` : `${r}초`;
+}
+function gateTimeKey(songId) { return `radi_gatet_${state.currentUser || 'x'}_${songId}`; }
+function gateBestTime(songId) {
+  try { return Number(localStorage.getItem(gateTimeKey(songId)) || 0); } catch (_) { return 0; }
+}
+// 가장 빠른 기록은 '통과한 판'만 남긴다 — 대충 쓰고 빨리 낸 것이 기록이 되면 안 되니까.
+function gateSaveTime(songId, sec, pct) {
+  if (pct < GATE_PASS) return;
+  const cur = gateBestTime(songId);
+  if (cur && sec >= cur) return;
+  try { localStorage.setItem(gateTimeKey(songId), String(sec)); } catch (_) {}
+}
+function _gateStopTick() { if (_gateTick) { clearInterval(_gateTick); _gateTick = null; } }
 
 function gateSongAt(i) { return GATE_SONGS[i] || null; }
 function gateAllLines(song) { return song.sections.reduce((a, s) => a.concat(s.lines), []); }
@@ -5664,10 +5687,10 @@ function gateHomeCard() {
   </button>`;
 }
 
-function gateStart() { gateIdx = 0; gateRun = []; gateResult = null; gateWord = null; gateStep = 'study'; renderGate(); }
+function gateStart() { gateIdx = 0; gateRun = []; gateTimes = []; gateResult = null; gateWord = null; gateStep = 'study'; renderGate(); }
 function gateGoStudy(i) { gateIdx = i; gateResult = null; gateStep = 'study'; renderGate(); }
-function gateGoTest() { gateResult = null; gateStep = 'test'; renderGate(); }
-function gateRetry() { gateResult = null; gateStep = 'test'; renderGate(); }
+function gateGoTest() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); renderGate(); }
+function gateRetry() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); renderGate(); }
 function gateSeeAgain() { gateResult = null; gateStep = 'study'; renderGate(); }
 function gateNext() {
   if (gateIdx + 1 < GATE_SONGS.length) { gateIdx++; gateResult = null; gateStep = 'study'; }
@@ -5692,9 +5715,12 @@ function gradeGate() {
   const answer = gateAnswer(song);
   const d = gateDiff(answer, typed);
   const pct = d.total ? Math.round(d.right / d.total * 100) : 0;
+  const secs = gateT0 ? Math.max(1, Math.round((Date.now() - gateT0) / 1000)) : 0;
   gateSaveBest(song.id, pct);
+  gateSaveTime(song.id, secs, pct);
   gateRun[gateIdx] = pct;
-  gateResult = { typed, answer, d, pct };
+  gateTimes[gateIdx] = secs;
+  gateResult = { typed, answer, d, pct, secs };
   gateStep = 'result';
   renderGate();
 }
@@ -5708,6 +5734,7 @@ function _gateBar(pct) {
 function renderGate() {
   const el = document.getElementById('page-gate');
   if (!el) return;
+  _gateStopTick();
   const song = gateSongAt(gateIdx);
   const stepLabel = `${gateIdx + 1} / ${GATE_SONGS.length}`;
 
@@ -5750,6 +5777,8 @@ function renderGate() {
   // ⑤ 마지막 — 총평
   if (gateStep === 'done') {
     const scores = GATE_SONGS.map((s, i) => (gateRun[i] != null ? gateRun[i] : gateBest(s.id)));
+    const times = GATE_SONGS.map((s, i) => gateTimes[i] || 0);
+    const totalSec = times.reduce((a, b) => a + b, 0);
     const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     const perfect = scores.every(x => x >= 100);
     const passed = scores.every(x => x >= GATE_PASS);
@@ -5761,13 +5790,17 @@ function renderGate() {
           ${perfect ? '100% 가사 테스트 통과!' : passed ? '가사 테스트 통과!' : `평균 ${avg}%`}
         </p>
         <p class="text-sm text-gray-600 mt-2 leading-relaxed">${_gEsc(gateWord)}</p>
+        ${totalSec ? `<p class="text-[11px] text-gray-500 mt-2">⏱ 모두 ${fmtGateTime(totalSec)} 걸렸습니다</p>` : ''}
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm space-y-3">
         ${GATE_SONGS.map((s, i) => `
           <div>
             <div class="flex items-center justify-between gap-2 mb-1">
               <p class="text-xs font-semibold text-gray-700 truncate">${i + 1}. ${_gEsc(s.title)}</p>
-              <span class="text-xs font-bold flex-shrink-0 ${scores[i] >= GATE_PASS ? 'text-green-600' : 'text-amber-600'}">${scores[i]}%</span>
+              <span class="flex items-baseline gap-1.5 flex-shrink-0">
+                ${times[i] ? `<span class="text-[11px] text-gray-400" style="font-variant-numeric:tabular-nums">${fmtGateTime(times[i])}</span>` : ''}
+                <span class="text-xs font-bold ${scores[i] >= GATE_PASS ? 'text-green-600' : 'text-amber-600'}">${scores[i]}%</span>
+              </span>
             </div>
             ${_gateBar(scores[i])}
           </div>`).join('')}
@@ -5817,7 +5850,10 @@ function renderGate() {
             <p class="font-bold text-gray-900 text-sm truncate">${gateIdx + 1}. ${_gEsc(song.title)}</p>
             <p class="text-[11px] text-gray-400 mt-0.5">${song.sections.map(s => s.label).join(' · ')} · 모두 ${lines.length}줄</p>
           </div>
-          <span class="text-[11px] font-bold text-gray-300 flex-shrink-0">${stepLabel}</span>
+          <div class="text-right flex-shrink-0">
+            <p class="text-[11px] font-bold text-gray-300">${stepLabel}</p>
+            <p id="gate-clock" class="text-[11px] font-bold text-gray-400 mt-0.5" style="font-variant-numeric:tabular-nums">0초</p>
+          </div>
         </div>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
@@ -5829,6 +5865,13 @@ function renderGate() {
         <button onclick="gradeGate()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">결과 보기</button>
       </div>`;
     setTimeout(() => { const t = document.getElementById('gate-input'); if (t) t.focus(); }, 60);
+    // 지나는 시간을 보여준다. 화면이 바뀌면 스스로 멈춘다.
+    _gateTick = setInterval(() => {
+      const c = document.getElementById('gate-clock');
+      // 화면을 벗어났으면 스스로 멈춘다 (페이지가 숨겨져도 요소는 남아 있다).
+      if (!c || state.page !== 'gate' || gateStep !== 'test') { _gateStopTick(); return; }
+      c.textContent = fmtGateTime((Date.now() - gateT0) / 1000);
+    }, 1000);
     return;
   }
 
@@ -5849,6 +5892,8 @@ function renderGate() {
       <p class="text-3xl font-black ${tone[0]} mt-1">${pct}<span class="text-lg">%</span></p>
       <p class="text-sm font-bold ${tone[0]}">${tone[2]}</p>
       <p class="text-[11px] text-gray-500 mt-1">${d.right}자 맞음 / 전체 ${d.total}자${gateBest(song.id) > pct ? ` · 최고 ${gateBest(song.id)}%` : ''}</p>
+      <p class="text-[11px] text-gray-500 mt-0.5">⏱ ${fmtGateTime(gateResult.secs)} 걸렸어요${
+        gateBestTime(song.id) && gateBestTime(song.id) < gateResult.secs ? ` · 가장 빠른 기록 ${fmtGateTime(gateBestTime(song.id))}` : ''}</p>
     </div>
     <div class="bg-white rounded-2xl p-4 shadow-sm">
       <p class="text-xs font-semibold text-gray-500 mb-2">정답 — <span class="text-red-600">빨간 곳</span>을 못 썼어요</p>
@@ -8484,7 +8529,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-08.6';
+const APP_BUILD = '2026-09-09.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
