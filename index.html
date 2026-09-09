@@ -44,6 +44,8 @@
   .qt-X { background:#F3F4F6; color:#6B7280; }
   .qt-private-comment { background:#FFFBEB; border-left:3px solid #F59E0B; border-radius:0 8px 8px 0; padding:8px 10px; }
   /* 가테 — 새로 생긴 것이라 눈에 띄게. 리본 + 천천히 지나가는 빛 */
+  /* 가사를 긁어다 붙이지 못하게 — 외워서 쓰는 시험이니까 */
+  .gate-lyrics { -webkit-user-select:none; -moz-user-select:none; user-select:none; -webkit-touch-callout:none; }
   .gate-card { position:relative; overflow:hidden; border-radius:14px;
     background:linear-gradient(118deg,#4338CA 0%,#6D28D9 48%,#BE185D 100%);
     box-shadow:0 6px 18px rgba(76,29,149,.28); }
@@ -5606,6 +5608,18 @@ function gateSaveTime(songId, sec, pct) {
   if (cur && sec >= cur) return;
   try { localStorage.setItem(gateTimeKey(songId), String(sec)); } catch (_) {}
 }
+let gatePasteTries = 0;                  // 이번 판에 붙여넣기를 시도한 횟수
+function gateBlockPaste(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  gatePasteTries++;
+  showToast('붙여넣기는 막아뒀어요 — 외운 대로 적어주세요');
+  return false;
+}
+function gateBlockCopy(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  showToast('가사는 복사할 수 없어요');
+  return false;
+}
 function _gateStopTick() { if (_gateTick) { clearInterval(_gateTick); _gateTick = null; } }
 
 function gateSongAt(i) { return GATE_SONGS[i] || null; }
@@ -5670,6 +5684,142 @@ function gateSaveBest(songId, pct) {
   try { localStorage.setItem(gateBestKey(songId), String(pct)); } catch (_) {}
 }
 
+// ── 가테 기록 ──
+// 언제 봤는지 · 어느 곡 · 몇 점 · 얼마나 걸렸는지를 남긴다. 대충 넘기지 않았다는
+// 것을 스스로도, 팀장도 볼 수 있게 하는 보조 장치다.
+// 사람마다 문서 하나(radiGateLog/{id})에 한 줄씩 붙인다. 아주 작은 문서다.
+const GATE_LOG_KEEP = 150;
+let _gateLogs = {};            // uid → [{at, song, pct, secs}]  (최근이 앞)
+let _gateLogLoading = false;
+let gateLogWho = null;         // 지금 보고 있는 사람 (팀장이 다른 아이를 볼 때)
+
+function gateLogSort(a) { return (a || []).slice().sort((x, y) => String(y.at).localeCompare(String(x.at))); }
+
+function gateLogPush(songId, pct, secs) {
+  if (!state.currentUser) return;
+  const item = { at: new Date().toISOString(), song: songId, pct, secs };
+  _gateLogs[state.currentUser] = [item].concat(_gateLogs[state.currentUser] || []);
+  if (!_FS_OK) return;
+  const ref = _db.collection('radiGateLog').doc(state.currentUser);
+  ref.set({ items: firebase.firestore.FieldValue.arrayUnion(item) }, { merge: true })
+    .then(() => {
+      const mine = _gateLogs[state.currentUser] || [];
+      if (mine.length > GATE_LOG_KEEP) {
+        ref.set({ items: gateLogSort(mine).slice(0, GATE_LOG_KEEP) }, { merge: true }).catch(() => {});
+      }
+    })
+    .catch(e => console.warn('가테 기록 저장 실패:', e));
+}
+
+function loadGateLogs(ids) {
+  if (!_FS_OK || _gateLogLoading) return;
+  const want = ids.filter(id => _gateLogs[id] === undefined);
+  if (!want.length) return;
+  _gateLogLoading = true;
+  Promise.all(want.map(id => _db.collection('radiGateLog').doc(id).get()
+    .then(d => { _gateLogs[id] = (d.exists && Array.isArray(d.data().items)) ? gateLogSort(d.data().items) : []; })
+    .catch(() => { _gateLogs[id] = []; })))
+    .then(() => { _gateLogLoading = false; if (state.page === 'gate' && gateStep === 'log') renderGate(); });
+}
+
+function gateLogTitle(songId) {
+  const s = GATE_SONGS.find(x => x.id === songId);
+  return s ? s.title : songId;
+}
+function gateLogWhen(iso) {
+  const d = new Date(iso);
+  const dow = ['일','월','화','수','목','금','토'][d.getDay()];
+  const h = d.getHours();
+  const ap = h < 12 ? '오전' : '오후';
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${d.getMonth()+1}/${d.getDate()}(${dow}) ${ap} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function gateLogSum(list) {
+  const n = (list || []).length;
+  const sec = (list || []).reduce((a, x) => a + (x.secs || 0), 0);
+  const best = (list || []).reduce((a, x) => Math.max(a, x.pct || 0), 0);
+  return { n, sec, best };
+}
+
+function openGateLog(uid) {
+  gateLogWho = uid || state.currentUser;
+  gateStep = 'log';
+  renderGate();
+}
+function gateLogPeople() {
+  // 팀장은 모두, 아이는 자기 것만.
+  // 본 사람을 앞에 세운다 — 서른 명을 다 밀어보지 않아도 되게.
+  if (!isLeader()) return [state.currentUser];
+  const ids = activeStudents().map(s => s.id);
+  return ids.slice().sort((a, b) => {
+    const na = (_gateLogs[a] || []).length, nb = (_gateLogs[b] || []).length;
+    if (na !== nb) return nb - na;
+    return ids.indexOf(a) - ids.indexOf(b);
+  });
+}
+
+function renderGateLog(el) {
+  const iAmLeader = isLeader();
+  const who = gateLogWho || state.currentUser;
+  loadGateLogs(iAmLeader ? gateLogPeople() : [who]);
+  const list = _gateLogs[who];
+  const person = state.students.find(s => s.id === who);
+  const sum = gateLogSum(list);
+
+  const picker = iAmLeader ? `
+    <div class="bg-white rounded-2xl p-3 shadow-sm">
+      <p class="text-xs font-semibold text-gray-500 mb-2">누구 기록을 볼까요</p>
+      <div class="flex gap-1.5 overflow-x-auto pb-1" style="-webkit-overflow-scrolling:touch">
+        ${gateLogPeople().map(id => {
+          const s = state.students.find(x => x.id === id) || {};
+          const c = gateLogSum(_gateLogs[id]).n;
+          return `<button onclick="openGateLog('${id}')" style="min-height:unset"
+            class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-semibold ${id === who ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}">
+            ${_gEsc(s.name || id)}${c ? ` ${c}` : ''}</button>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  const body = list === undefined
+    ? `<div class="text-center py-10 text-gray-300 text-sm">불러오는 중...</div>`
+    : (!list.length
+      ? `<div class="bg-white rounded-2xl text-center py-10 shadow-sm">
+           <p class="text-3xl">📋</p>
+           <p class="text-sm text-gray-500 mt-2 font-semibold">아직 본 기록이 없어요</p>
+           <p class="text-xs text-gray-400 mt-1">가테를 한 번 보고 오면 여기에 쌓입니다</p>
+         </div>`
+      : `<div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+          ${list.slice(0, 100).map(x => `
+            <div class="flex items-center gap-2 px-4 py-2.5 border-b last:border-0">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold text-gray-800 truncate">${_gEsc(gateLogTitle(x.song))}</p>
+                <p class="text-[11px] text-gray-400">${gateLogWhen(x.at)}</p>
+              </div>
+              <span class="text-[11px] text-gray-400 flex-shrink-0" style="font-variant-numeric:tabular-nums">${fmtClock(x.secs)}</span>
+              <span class="text-xs font-bold flex-shrink-0 w-11 text-right ${x.pct >= GATE_PASS ? 'text-green-600' : x.pct >= 70 ? 'text-amber-600' : 'text-red-500'}">${x.pct}%</span>
+            </div>`).join('')}
+        </div>`);
+
+  el.innerHTML = `
+    <button onclick="gateStep='intro';renderGate()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 가테</button>
+    ${picker}
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+      <p class="font-bold text-gray-900 text-sm">${_gEsc(person ? person.name + ' 기록' : '내 기록')}</p>
+      ${sum.n ? `<div class="flex items-end gap-4 mt-2">
+        <div><p class="text-2xl font-black text-gray-800 leading-none">${sum.n}<span class="text-sm">번</span></p>
+             <p class="text-[10px] text-gray-500 font-semibold mt-1">본 횟수</p></div>
+        <div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
+        <div><p class="text-2xl font-black text-gray-800 leading-none" style="font-variant-numeric:tabular-nums">${fmtGateTime(sum.sec)}</p>
+             <p class="text-[10px] text-gray-500 font-semibold mt-1">⏱ 들인 시간</p></div>
+        <div style="width:1px;align-self:stretch;background:rgba(0,0,0,.08)"></div>
+        <div><p class="text-2xl font-black leading-none ${sum.best >= GATE_PASS ? 'text-green-600' : 'text-amber-600'}">${sum.best}<span class="text-sm">%</span></p>
+             <p class="text-[10px] text-gray-500 font-semibold mt-1">최고 점수</p></div>
+      </div>` : `<p class="text-xs text-gray-400 mt-1">아직 본 기록이 없습니다.</p>`}
+    </div>
+    ${body}
+    <p class="text-[11px] text-gray-400 text-center">본 날짜와 걸린 시간이 그대로 남습니다 · 최근 100번까지 보여줍니다</p>`;
+}
+
 // 홈에 거는 가테 칸 — 새로 생긴 것이라 리본을 둘러 눈에 띄게 한다.
 function gateHomeCard() {
   const bests = GATE_SONGS.map(s => gateBest(s.id));
@@ -5696,8 +5846,8 @@ function gateHomeCard() {
 
 function gateStart() { gateIdx = 0; gateRun = []; gateTimes = []; gateResult = null; gateWord = null; gateRang = false; gateStep = 'study'; renderGate(); }
 function gateGoStudy(i) { gateIdx = i; gateResult = null; gateStep = 'study'; renderGate(); }
-function gateGoTest() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); renderGate(); }
-function gateRetry() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); renderGate(); }
+function gateGoTest() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); gatePasteTries = 0; renderGate(); }
+function gateRetry() { gateResult = null; gateStep = 'test'; gateT0 = Date.now(); gatePasteTries = 0; renderGate(); }
 function gateSeeAgain() { gateResult = null; gateStep = 'study'; renderGate(); }
 function gateNext() {
   if (gateIdx + 1 < GATE_SONGS.length) { gateIdx++; gateResult = null; gateStep = 'study'; }
@@ -5727,6 +5877,7 @@ function gradeGate() {
   gateSaveTime(song.id, secs, pct);
   gateRun[gateIdx] = pct;
   gateTimes[gateIdx] = secs;
+  gateLogPush(song.id, pct, secs);
   gateResult = { typed, answer, d, pct, secs };
   gateStep = 'result';
   renderGate();
@@ -5745,6 +5896,8 @@ function renderGate() {
   const song = gateSongAt(gateIdx);
   const stepLabel = `${gateIdx + 1} / ${GATE_SONGS.length}`;
 
+  if (gateStep === 'log') { renderGateLog(el); return; }
+
   // ① 시작 화면
   if (gateStep === 'intro') {
     const bests = GATE_SONGS.map(s => gateBest(s.id));
@@ -5752,7 +5905,10 @@ function renderGate() {
     el.innerHTML = `
       <div class="flex items-center justify-between">
         <h2 class="font-bold text-gray-900">가테 — 가사 시험</h2>
-        <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
+        <div class="flex items-center gap-3">
+          <button onclick="openGateLog()" style="min-height:30px" class="text-xs text-gray-600 font-semibold">📋 지난 기록</button>
+          <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
+        </div>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm">
         <p class="text-sm text-gray-700 leading-relaxed">네 곡을 차례로 봅니다. 곡마다 <b>가사를 먼저 보여드리고</b>, 다 외우면 그대로 적으시면 됩니다.</p>
@@ -5817,7 +5973,8 @@ function renderGate() {
       <div class="flex gap-2">
         <button onclick="gateStart()" class="flex-1 bg-gray-900 text-white py-3 rounded-xl font-bold text-sm">처음부터 다시</button>
         <button onclick="gateHome()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm">목록으로</button>
-      </div>`;
+      </div>
+      <button onclick="openGateLog()" class="w-full text-xs text-gray-500 font-semibold py-2">📋 지난 기록 보기</button>`;
     return;
   }
 
@@ -5841,7 +5998,9 @@ function renderGate() {
         ${song.sections.map(sec => `
           <div class="mb-3 last:mb-0">
             <p class="text-[11px] font-bold text-blue-600 mb-1">${_gEsc(sec.label)}</p>
-            <p class="text-[15px] text-gray-800 leading-loose whitespace-pre-wrap">${_gEsc(sec.lines.join('\n'))}</p>
+            <p class="gate-lyrics text-[15px] text-gray-800 leading-loose whitespace-pre-wrap"
+               oncopy="return gateBlockCopy(event)" oncut="return gateBlockCopy(event)"
+               oncontextmenu="return false">${_gEsc(sec.lines.join('\n'))}</p>
           </div>`).join('')}
       </div>
       <button onclick="gateGoTest()" class="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm active:bg-black">다 외웠어요 — 시험 보기</button>`;
@@ -5871,8 +6030,10 @@ function renderGate() {
         <p class="text-xs font-semibold text-gray-500">외운 대로 처음부터 끝까지 적어보세요</p>
         <textarea id="gate-input" rows="${Math.min(14, Math.max(6, lines.length + 1))}"
           placeholder="여기에 가사를 적어주세요&#10;줄은 나눠 써도 되고 이어 써도 됩니다"
+          onpaste="return gateBlockPaste(event)" ondrop="return gateBlockPaste(event)"
+          autocomplete="off" autocorrect="off" spellcheck="false"
           class="w-full border rounded-xl p-3 text-sm resize-none leading-relaxed"></textarea>
-        <p class="text-[11px] text-gray-400">띄어쓰기와 쉼표·마침표는 안 봅니다. 글자만 맞으면 맞은 것으로 셉니다.</p>
+        <p class="text-[11px] text-gray-400">띄어쓰기와 쉼표·마침표는 안 봅니다. 글자만 맞으면 맞은 것으로 셉니다.<br>붙여넣기는 막아두었어요 — 외운 대로 손으로 적어주세요.</p>
         <button onclick="gradeGate()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm active:bg-black">결과 보기</button>
       </div>`;
     setTimeout(() => { const t = document.getElementById('gate-input'); if (t) t.focus(); }, 60);
@@ -8549,7 +8710,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.4';
+const APP_BUILD = '2026-09-09.5';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;

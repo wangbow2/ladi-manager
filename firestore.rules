@@ -121,5 +121,10 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+    // 가테 기록 — 언제 봤는지·몇 점·얼마나 걸렸는지. 사람마다 문서 하나.
+    match /radiGateLog/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
   }
 }
