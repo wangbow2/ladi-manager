@@ -5711,6 +5711,33 @@ function gateLogPush(songId, pct, secs) {
     .catch(e => console.warn('가테 기록 저장 실패:', e));
 }
 
+// 기록을 남기기 시작한 건 2026-09-09부터다. 그 전에 본 것은 서버에 없고,
+// 이 폰에 '곡별 최고 점수·가장 빠른 기록'만 남아 있다. 그것만이라도 옮겨 온다.
+// 언제 봤는지는 알 수 없으므로 날짜 자리에 '이전 기록'이라고 적는다.
+const GATE_RESTORED_AT = '1970-01-01T00:00:00.000Z';   // 목록 맨 아래로 가도록
+function gateLocalLeftovers() {
+  if (!state.currentUser) return [];
+  return GATE_SONGS.map(s => ({ song: s.id, pct: gateBest(s.id), secs: gateBestTime(s.id) }))
+    .filter(x => x.pct > 0);
+}
+function gateHasRestored() {
+  return (_gateLogs[state.currentUser] || []).some(x => x.restored);
+}
+function gateRestoreLocal() {
+  const left = gateLocalLeftovers();
+  if (!left.length) { showToast('이 폰에 남아 있는 예전 점수가 없어요'); return; }
+  if (gateHasRestored()) { showToast('이미 가져왔어요'); return; }
+  const items = left.map(x => ({ at: GATE_RESTORED_AT, song: x.song, pct: x.pct,
+                                 secs: x.secs || 0, restored: true }));
+  _gateLogs[state.currentUser] = gateLogSort((_gateLogs[state.currentUser] || []).concat(items));
+  renderGate();
+  if (!_FS_OK) { showToast(`${items.length}개를 가져왔어요 (이 기기에만)`); return; }
+  _db.collection('radiGateLog').doc(state.currentUser)
+    .set({ items: firebase.firestore.FieldValue.arrayUnion.apply(null, items) }, { merge: true })
+    .then(() => showToast(`예전 기록 ${items.length}개를 가져왔어요`))
+    .catch(e => { console.warn('예전 기록 가져오기 실패:', e); showToast('가져오지 못했어요'); });
+}
+
 function loadGateLogs(ids) {
   if (!_FS_OK || _gateLogLoading) return;
   const want = ids.filter(id => _gateLogs[id] === undefined);
@@ -5793,16 +5820,35 @@ function renderGateLog(el) {
             <div class="flex items-center gap-2 px-4 py-2.5 border-b last:border-0">
               <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold text-gray-800 truncate">${_gEsc(gateLogTitle(x.song))}</p>
-                <p class="text-[11px] text-gray-400">${gateLogWhen(x.at)}</p>
+                <p class="text-[11px] text-gray-400">${x.restored ? '이전 기록 · 날짜 모름' : gateLogWhen(x.at)}</p>
               </div>
-              <span class="text-[11px] text-gray-400 flex-shrink-0" style="font-variant-numeric:tabular-nums">${fmtClock(x.secs)}</span>
+              <span class="text-[11px] text-gray-400 flex-shrink-0" style="font-variant-numeric:tabular-nums">${x.secs ? fmtClock(x.secs) : '—'}</span>
               <span class="text-xs font-bold flex-shrink-0 w-11 text-right ${x.pct >= GATE_PASS ? 'text-green-600' : x.pct >= 70 ? 'text-amber-600' : 'text-red-500'}">${x.pct}%</span>
             </div>`).join('')}
         </div>`);
 
+  // 내 기록을 보는 중이고, 이 폰에 옮겨 올 예전 점수가 남아 있으면 알려 준다.
+  const leftover = (who === state.currentUser && list !== undefined && !gateHasRestored())
+    ? gateLocalLeftovers() : [];
+  const restoreCard = leftover.length ? `
+    <div class="rounded-2xl p-4 border border-dashed border-indigo-200" style="background:#F8F7FF">
+      <p class="text-xs font-bold text-indigo-700">이 폰에 예전 점수가 남아 있어요</p>
+      <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">
+        기록을 남기기 시작한 건 얼마 안 됐습니다. 그 전에 본 ${leftover.length}곡의
+        <b>최고 점수와 가장 빠른 기록</b>이 이 폰에 남아 있어요. 언제 봤는지는 알 수 없어
+        날짜 자리에 '이전 기록'이라고 적힙니다.
+      </p>
+      <div class="flex flex-wrap gap-1.5 mt-2">
+        ${leftover.map(x => `<span class="text-[11px] px-2 py-1 rounded-full bg-white border text-gray-600">
+          ${_gEsc(gateLogTitle(x.song))} ${x.pct}%${x.secs ? ' · ' + fmtClock(x.secs) : ''}</span>`).join('')}
+      </div>
+      <button onclick="gateRestoreLocal()" class="w-full mt-3 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm">기록으로 가져오기</button>
+    </div>` : '';
+
   el.innerHTML = `
     <button onclick="gateStep='intro';renderGate()" style="min-height:32px" class="flex items-center gap-1 text-gray-900 font-semibold text-sm">← 가테</button>
     ${picker}
+    ${restoreCard}
     <div class="bg-white rounded-2xl p-4 shadow-sm">
       <p class="font-bold text-gray-900 text-sm">${_gEsc(person ? person.name + ' 기록' : '내 기록')}</p>
       ${sum.n ? `<div class="flex items-end gap-4 mt-2">
@@ -8710,7 +8756,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-09.5';
+const APP_BUILD = '2026-09-09.6';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
