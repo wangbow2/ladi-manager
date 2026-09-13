@@ -328,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-12.1';
+const APP_BUILD = '2026-09-13.1';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -719,7 +719,16 @@ function currentWeek() {
 // 집계 · 수료 판정
 // ==========================================
 function attOf(id, n, day) { return state.att[`${id}_w${n}_${day}`] || ''; }
-function qtOf(id, n) { const v = state.qt[weekKey(id, n)]; return Array.isArray(v) ? v : [false,false,false,false,false]; }
+// 아직 오지 않은 날의 체크는 없는 것으로 본다.
+// 2026-09-13: 시작도 안 한 2주차에 1주차와 똑같은 체크가 통째로 들어와 있었다.
+// 어떤 경로로 들어왔든 앞당겨진 표시가 화면과 수료 판정에 섞이지 않게 여기서 막는다.
+function qtOf(id, n) {
+  const v = state.qt[weekKey(id, n)];
+  const arr = Array.isArray(v) ? v.slice() : [false, false, false, false, false];
+  const today = iso(today0());
+  for (let i = 0; i < arr.length; i++) if (arr[i] && qtDateOf(n, i) > today) arr[i] = false;
+  return arr;
+}
 function qtCount(id, n) { return qtOf(id, n).filter(Boolean).length; }
 function qtHasEntry(id, n) { return state.qt[weekKey(id, n)] !== undefined; }
 function gateOf(id, n) { return state.gate[`${id}_w${n}`] || ''; }
@@ -865,6 +874,7 @@ function cycleAtt(id, n, day) {
 }
 function toggleQT(id, n, i) {
   if (!canEditQT(id)) return;
+  if (qtDateOf(n, i) > iso(today0())) { toast('아직 오지 않은 날이에요'); return; }
   const key = weekKey(id, n);
   const arr = qtOf(id, n).slice();
   arr[i] = !arr[i];
