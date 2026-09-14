@@ -5536,17 +5536,7 @@ function renderQTDayView() {
 //    물러난 곡 이름은 GATE_PAST_TITLES에 남겨 기록실에서 계속 제목으로 보이게 한다.
 // ==========================================
 const GATE_SONGS = [
-  { id:'bef-260920', title:'나는 보기 원하네', sub:'BEF · 이성균 · GIFTED', sections:[
-    { id:'v1', label:'1절', lines:[
-      '나는 보기 원하네 하나님의 어린 양',
-      '나를 대신하여 죽으신 하나님의 어린 양',
-      '나를 구원하신 분 영원한 목자 되신 분',
-      '시온산 위에 있는 어린 양 그분을 보기 원하네' ] },
-    { id:'v2', label:'2절', lines:[
-      '나는 보기 원하네 흰옷 입은 사람들',
-      '어린 양이 어디로 가든지 따라가는 사람들',
-      '나의 영원한 소원 있네 그분을 따라가는 것',
-      '흰옷 입은 사람들 그들과 나도 있기 원하네' ] },
+  { id:'bef-260920', title:'나는 보기 원하네', sub:'BEF · 이성균 · GIFTED · 3절', sections:[
     { id:'v3', label:'3절', lines:[
       '나는 보기 원하네 주의 능력의 날을',
       '거룩한 옷을 입고 기쁨으로 주께 달려나가는',
@@ -9183,7 +9173,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-14.1';
+const APP_BUILD = '2026-09-15.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
