@@ -385,6 +385,7 @@
   <!-- ==================== QT 제출 ==================== -->
   <div id="page-gallery" class="page p-4 space-y-3"></div>
   <div id="page-gate" class="page p-4 space-y-3"></div>
+  <div id="page-exam" class="page p-4 space-y-3"></div>
   <div id="page-qt" class="page p-4">
     <div id="qt-submit-content"></div>
   </div>
@@ -669,6 +670,14 @@
     <div id="qtcmt-head" class="p-4 border-b"></div>
     <div id="qtcmt-body" class="p-3 overflow-y-auto flex-1 space-y-2" style="background:#F8F7FF"></div>
     <div id="qtcmt-foot" class="p-4 pt-3 border-t"></div>
+  </div>
+</div>
+
+<div id="modal-exam-cheer" class="modal">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-[82vh] flex flex-col overflow-hidden">
+    <div id="exam-cheer-head" class="p-4 border-b"></div>
+    <div id="exam-cheer-body" class="p-3 overflow-y-auto flex-1 space-y-2" style="background:#FFFBEB"></div>
+    <div id="exam-cheer-foot" class="p-4 pt-3 border-t"></div>
   </div>
 </div>
 
@@ -1184,6 +1193,7 @@ let state = {
   loveMeetingRecords: {},
   qrUsage: {},
   weeklyFiles: {},
+  exams: {},
   feedbacks: [],
 };
 
@@ -1410,7 +1420,7 @@ let _fsHasPendingChanges = false;
 const _FS_MAP_FIELDS = new Set([
   'checks', 'lineups', 'memos', 'pins', 'qtComments', 'qtCommentsReadAt',
   'qtDayChecks', 'pastoralApprovals', 'adminRestrictions', 'loveMeetingRecords',
-  'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles', 'worshipClips'
+  'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles', 'worshipClips', 'exams'
 ]);
 const _FS_ARRAY_FIELDS = new Set(['students', 'qtPosts', 'editLogs', 'loveMeetings', 'feedbacks']);
 
@@ -1594,6 +1604,7 @@ function _getFsData() {
     _r11BirthFixed2: state._r11BirthFixed2,
     _sat5w4Fixed: state._sat5w4Fixed,
     weeklyFiles: state.weeklyFiles,
+    exams: state.exams,
     feedbacks: state.feedbacks,
     migrationTrigger: state.migrationTrigger || 0,
   };
@@ -2650,6 +2661,8 @@ function closeAllOverlays() {
   document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
   try { document.removeEventListener('keydown', _qtCmtKey); } catch (_) {}
   _qtCmtTarget = null;
+  try { document.removeEventListener('keydown', _examCheerKey); } catch (_) {}
+  _examCheerFor = null;
   try { if (typeof closeGalleryViewer === 'function' && document.getElementById('gallery-viewer')) closeGalleryViewer(); } catch (_) {}
 }
 
@@ -2701,6 +2714,7 @@ function navigate(page, extra, isBack) {
   else if (page==='qt') renderQTSubmit();
   else if (page==='gallery') renderGallery();
   else if (page==='gate') { renderGate(); playLadiChime(); }
+  else if (page==='exam') renderExam();
   if (page !== 'dashboard') stopHomeSlideshow();
   if (page !== 'gate' && typeof _gateStopTick === 'function') _gateStopTick();
   else if (page==='detail') renderDetail(state.currentStudentId);
@@ -3940,6 +3954,7 @@ function renderDashboard() {
         </div>
       </div>
       ${gateHomeCard()}
+      ${examHomeCard()}
 
       ${qtCommentInboxCard()}
       ${homeSlideCard()}
@@ -4293,6 +4308,7 @@ function renderMemberDashboard() {
           <button onclick="navigate('mypage')" class="bg-blue-50 text-blue-700 rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2" style="min-height:52px">👤 마이페이지</button>
         </div>
         <div class="mt-2">${gateHomeCard()}</div>
+        <div class="mt-2">${examHomeCard()}</div>
       </div>
     </div>
   `;
@@ -6239,6 +6255,342 @@ function gateRankBlock() {
 }
 
 // 홈에 거는 가테 칸 — 새로 생긴 것이라 리본을 둘러 눈에 띄게 한다.
+// ==========================================
+// 시험기간 — 아이들이 홈 화면 달력에서 자기 시험 보는 날을 눌러 표시하고,
+// 친구들이 응원 한마디를 남긴다. 학교 이름은 각자 적는다(프로필 학교 칸과 같다).
+// ==========================================
+let examMonth = null;       // 보고 있는 달 'YYYY-MM' (null이면 이번 달)
+let _examCheerFor = null;   // 응원 댓글을 열어 둔 대상
+let _examCheers = {};       // 학생 id → [{id,by,name,text,at}]
+let _examCheersLoaded = false;
+
+function examMonthStr() { return examMonth || TODAY_STR.slice(0, 7); }
+function examDaysOf(id) {
+  const v = (state.exams || {})[id];
+  return Array.isArray(v) ? v.slice().sort() : [];
+}
+function myExamDays() { return state.currentUser ? examDaysOf(state.currentUser) : []; }
+function examSchoolOf(id) { return ((profiles[id] || {}).school || '').trim(); }
+function examPeopleOn(dateStr) {
+  return activeStudents().filter(s => examDaysOf(s.id).indexOf(dateStr) >= 0);
+}
+function _examIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _examShift(ds, n) { const d = new Date(ds + 'T00:00:00'); d.setDate(d.getDate() + n); return _examIso(d); }
+
+// 앞으로 시험이 남은 사람 (오늘부터 days일 안)
+function examUpcoming(days) {
+  const until = _examShift(TODAY_STR, days == null ? 21 : days);
+  return activeStudents().map(s => {
+    const ds = examDaysOf(s.id).filter(d => d >= TODAY_STR && d <= until);
+    return ds.length ? { s, days: ds } : null;
+  }).filter(Boolean).sort((a, b) => a.days[0].localeCompare(b.days[0]));
+}
+function examRangeLabel(ds) {
+  if (!ds.length) return '';
+  const f = d => `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
+  return ds.length === 1 ? f(ds[0]) : `${f(ds[0])}~${f(ds[ds.length-1])}`;
+}
+function examDdayLabel(first) {
+  const diff = Math.round((new Date(first+'T00:00:00') - new Date(TODAY_STR+'T00:00:00')) / 86400000);
+  return diff === 0 ? '오늘' : diff === 1 ? '내일' : diff > 0 ? `D-${diff}` : `${-diff}일 전`;
+}
+function _examRerender() {
+  if (state.page === 'exam') renderExam();
+  else if (state.page === 'dashboard') renderDashboard();
+}
+
+// ── 내 시험날 켜고 끄기 ──
+function toggleExamDay(dateStr) {
+  if (!state.currentUser) { showToast('로그인하면 내 시험날을 표시할 수 있어요'); return; }
+  if (!state.exams) state.exams = {};
+  const cur = examDaysOf(state.currentUser);
+  const i = cur.indexOf(dateStr);
+  if (i >= 0) cur.splice(i, 1); else cur.push(dateStr);
+  cur.sort();
+  state.exams[state.currentUser] = cur;
+  saveState();
+  _examRerender();
+}
+function clearMyExam() {
+  if (!state.currentUser) return;
+  if (!state.exams) state.exams = {};
+  state.exams[state.currentUser] = [];
+  saveState();
+  _examRerender();
+  showToast('내 시험날을 모두 지웠어요');
+}
+function saveExamSchool(inputId) {
+  const el = document.getElementById(inputId || 'exam-school');
+  const uid = state.currentUser;
+  if (!el || !uid) return;
+  const v = el.value.trim().slice(0, 30);
+  profiles[uid] = profiles[uid] || {};
+  profiles[uid].school = v;
+  saveProfiles();
+  _examRerender();
+  showToast(v ? `학교를 ${v}(으)로 저장했어요` : '학교 이름을 지웠어요');
+}
+function examMonthMove(step) {
+  const [y, m] = examMonthStr().split('-').map(Number);
+  const d = new Date(y, m - 1 + step, 1);
+  examMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  _examRerender();
+}
+
+// ── 응원 댓글 ──
+function loadExamCheers() {
+  if (!_FS_OK || _examCheersLoaded) return;
+  _examCheersLoaded = true;
+  _db.collection('radiExamCheers').get()
+    .then(snap => {
+      snap.docs.forEach(d => { _examCheers[d.id] = Array.isArray(d.data().items) ? d.data().items : []; });
+      _examRerender();
+    })
+    .catch(e => { console.warn('응원 댓글 불러오기 실패:', e); _examCheersLoaded = false; });
+}
+function examCheersOf(id) {
+  return (_examCheers[id] || []).slice().sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
+function openExamCheer(id) {
+  _examCheerFor = id;
+  renderExamCheerModal();
+  openModal('modal-exam-cheer');
+  document.addEventListener('keydown', _examCheerKey);
+  setTimeout(() => { const b = document.getElementById('exam-cheer-body'); if (b) b.scrollTop = b.scrollHeight; }, 60);
+}
+function closeExamCheer() {
+  closeModal('modal-exam-cheer');
+  document.removeEventListener('keydown', _examCheerKey);
+  _examCheerFor = null;
+  _examRerender();
+}
+function _examCheerKey(e) { if (e.key === 'Escape') closeExamCheer(); }
+
+function renderExamCheerModal() {
+  if (!_examCheerFor) return;
+  const id = _examCheerFor;
+  const s = state.students.find(x => x.id === id) || {};
+  const ds = examDaysOf(id);
+  const list = examCheersOf(id);
+  const head = document.getElementById('exam-cheer-head');
+  if (head) head.innerHTML = `
+    <p class="font-bold text-gray-900 text-sm">📣 ${_gEsc(s.name || '')} 응원하기</p>
+    <p class="text-[11px] text-gray-500 mt-0.5">${_gEsc(examSchoolOf(id) || '학교 미입력')}${ds.length ? ` · 시험 ${examRangeLabel(ds)} (${ds.length}일)` : ''}</p>`;
+  const body = document.getElementById('exam-cheer-body');
+  if (body) body.innerHTML = list.length
+    ? list.map(c => `
+      <div class="rounded-xl px-3 py-2 ${c.by === state.currentUser ? 'bg-amber-50 border border-amber-200' : 'bg-white border'}">
+        <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${_gEsc(c.text)}</p>
+        <div class="flex items-center justify-between mt-1 gap-2">
+          <p class="text-[11px] text-gray-400 truncate">${_gEsc(c.name)} · ${_gCmtWhen(c.at)}</p>
+          ${(isLeader() || c.by === state.currentUser) ? `<button onclick="deleteExamCheer('${_gEsc(c.id)}')" style="min-height:24px"
+            class="text-[11px] px-1 text-red-400 flex-shrink-0">지우기</button>` : ''}
+        </div>
+      </div>`).join('')
+    : `<p class="text-xs text-gray-400 text-center py-6">첫 응원을 남겨보세요</p>`;
+  const foot = document.getElementById('exam-cheer-foot');
+  if (foot) foot.innerHTML = state.currentUser ? `
+    <textarea id="exam-cheer-input" rows="2" maxlength="120" placeholder="시험 잘 보라고 한마디 남겨주세요"
+      class="w-full border rounded-xl p-2.5 text-sm resize-none"></textarea>
+    <div class="flex gap-2 mt-2">
+      <button onclick="closeExamCheer()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">닫기</button>
+      <button onclick="submitExamCheer()" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gray-900 text-white">응원 남기기</button>
+    </div>`
+    : `<button onclick="closeExamCheer()" class="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">닫기</button>`;
+}
+
+async function submitExamCheer() {
+  if (!_examCheerFor || !state.currentUser) return;
+  const id = _examCheerFor;
+  const el = document.getElementById('exam-cheer-input');
+  const text = el ? el.value.trim().slice(0, 120) : '';
+  if (!text) { showToast('한마디 적어주세요'); return; }
+  const me = getCurrentUser();
+  const c = { id: `e${Date.now()}${Math.random().toString(36).slice(2,6)}`,
+              by: state.currentUser, name: (me && me.name) || '', text, at: new Date().toISOString() };
+  if (el) el.value = '';
+  _examCheers[id] = (_examCheers[id] || []).concat(c);
+  renderExamCheerModal();
+  if (!_FS_OK) return;
+  try {
+    await _db.collection('radiExamCheers').doc(id)
+      .set({ items: firebase.firestore.FieldValue.arrayUnion(c) }, { merge: true });
+  } catch (e) {
+    console.warn('응원 댓글 저장 실패:', e);
+    _examCheers[id] = (_examCheers[id] || []).filter(x => x.id !== c.id);
+    renderExamCheerModal();
+    showToast('올리지 못했어요');
+  }
+}
+async function deleteExamCheer(cid) {
+  if (!_examCheerFor) return;
+  const id = _examCheerFor;
+  const c = (_examCheers[id] || []).find(x => x.id === cid);
+  if (!c || !(isLeader() || c.by === state.currentUser)) return;
+  _examCheers[id] = (_examCheers[id] || []).filter(x => x.id !== cid);
+  renderExamCheerModal();
+  if (!_FS_OK) return;
+  try {
+    await _db.collection('radiExamCheers').doc(id)
+      .set({ items: firebase.firestore.FieldValue.arrayRemove(c) }, { merge: true });
+  } catch (e) {
+    console.warn('응원 댓글 지우기 실패:', e);
+    _examCheers[id] = (_examCheers[id] || []).concat(c);
+    renderExamCheerModal();
+  }
+}
+
+// ── 달력 ──
+// 날짜를 누르면 곧바로 내 시험날이 켜지고 꺼진다. 다른 화면으로 갈 필요 없다.
+function examCalHtml() {
+  const ym = examMonthStr();
+  const [y, m] = ym.split('-').map(Number);
+  const uid = state.currentUser;
+  const mine = myExamDays();
+  const first = new Date(y, m - 1, 1), last = new Date(y, m, 0);
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push(null);
+  for (let d = 1; d <= last.getDate(); d++) cells.push(`${ym}-${String(d).padStart(2,'0')}`);
+  while (cells.length % 7) cells.push(null);
+
+  let grid = '';
+  for (let i = 0; i < cells.length; i += 7) {
+    grid += `<div class="flex gap-0.5 mb-0.5">` + cells.slice(i, i + 7).map(ds => {
+      if (!ds) return `<div class="flex-1 min-w-0"></div>`;
+      const isMine = mine.indexOf(ds) >= 0;
+      const others = examPeopleOn(ds).filter(s => s.id !== uid);
+      const dow = new Date(ds + 'T00:00:00').getDay();
+      const style = isMine ? 'background:#111827;color:#fff'
+        : ds === TODAY_STR ? 'background:#EFF6FF;box-shadow:inset 0 0 0 2px #93C5FD'
+        : others.length ? 'background:#FEF3C7' : '';
+      const numCls = isMine ? '' : dow === 0 ? 'text-red-400' : dow === 6 ? 'text-blue-400' : 'text-gray-700';
+      return `<button onclick="toggleExamDay('${ds}')" style="min-height:unset;${style}"
+        title="${others.length ? _gEsc(others.map(s => s.name).join(', ')) : ''}"
+        class="flex-1 min-w-0 rounded-lg py-1.5 px-0.5 text-center active:scale-95 transition-transform">
+        <span class="block text-[11px] font-bold ${numCls}">${Number(ds.slice(8,10))}</span>
+        <span class="block text-[8px] leading-none ${isMine ? 'text-white/70' : 'text-amber-500'}">${others.length ? '●'.repeat(Math.min(others.length, 4)) : '&nbsp;'}</span>
+      </button>`;
+    }).join('') + `</div>`;
+  }
+
+  return `
+    <div class="flex items-center justify-between mb-1.5">
+      <button onclick="examMonthMove(-1)" style="min-height:30px" class="px-3 text-gray-400 font-bold">‹</button>
+      <p class="text-sm font-bold text-gray-900">${y}년 ${m}월</p>
+      <button onclick="examMonthMove(1)" style="min-height:30px" class="px-3 text-gray-400 font-bold">›</button>
+    </div>
+    <div class="flex gap-0.5 mb-1">
+      ${['일','월','화','수','목','금','토'].map((w, i) => `<div class="flex-1 text-center text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}">${w}</div>`).join('')}
+    </div>
+    ${grid}`;
+}
+
+function examSchoolBox(inputId) {
+  const uid = state.currentUser;
+  if (!uid) return '';
+  const school = examSchoolOf(uid);
+  const mine = myExamDays();
+  return `
+    <div class="flex gap-1.5">
+      <input type="text" id="${inputId}" maxlength="30" placeholder="고등학교 이름 (예: 수영고등학교)"
+        value="${_gEsc(school).replace(/"/g, '&quot;')}"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();saveExamSchool('${inputId}')}"
+        class="flex-1 min-w-0 border rounded-xl px-3 py-2 text-sm">
+      <button onclick="saveExamSchool('${inputId}')" style="min-height:unset"
+        class="px-3.5 rounded-xl bg-gray-900 text-white text-xs font-bold flex-shrink-0">저장</button>
+    </div>
+    <div class="flex items-center justify-between mt-1.5">
+      <p class="text-[11px] ${mine.length ? 'text-gray-700 font-bold' : 'text-gray-400'}">
+        ${mine.length ? `내 시험 ${examRangeLabel(mine)} · ${mine.length}일${school ? ' · ' + _gEsc(school) : ''}` : '달력에서 시험 보는 날을 눌러주세요'}</p>
+      ${mine.length ? `<button onclick="clearMyExam()" style="min-height:unset" class="text-[11px] text-red-400 font-semibold">모두 지우기</button>` : ''}
+    </div>`;
+}
+
+// ── 홈 화면 칸 ──
+function examHomeCard() {
+  loadExamCheers();
+  const soon = examUpcoming(21);
+  return `
+    <div class="surface px-3 py-3">
+      <div class="flex items-center justify-between mb-2">
+        <p class="sec">📚 시험기간</p>
+        <button onclick="navigate('exam')" style="min-height:unset" class="text-xs text-gray-500 font-semibold">전체보기 ›</button>
+      </div>
+      ${examCalHtml()}
+      <div class="mt-2">${examSchoolBox('exam-school-home')}</div>
+      ${soon.length ? `<div class="mt-2 pt-2 border-t">
+        ${soon.slice(0, 4).map(({ s, days }) => examRowHtml(s, days)).join('')}
+        ${soon.length > 4 ? `<button onclick="navigate('exam')" style="min-height:unset" class="w-full text-[11px] text-gray-400 pt-1.5">그 밖에 ${soon.length - 4}명 더 ›</button>` : ''}
+      </div>` : ''}
+    </div>`;
+}
+
+function examRowHtml(s, days) {
+  const n = examCheersOf(s.id).length;
+  const sch = examSchoolOf(s.id);
+  const dday = examDdayLabel(days[0]);
+  return `<div class="flex items-center gap-1.5 py-1.5 border-b border-gray-50 last:border-0">
+    <span class="text-[11px] font-black w-9 flex-shrink-0 ${days[0] === TODAY_STR ? 'text-red-600' : 'text-gray-400'}">${dday}</span>
+    <span class="text-xs font-bold text-gray-800 flex-shrink-0">${_gEsc(s.name)}</span>
+    <span class="text-[11px] text-gray-400 flex-1 min-w-0 truncate">${_gEsc(sch)}</span>
+    <span class="text-[11px] text-gray-500 flex-shrink-0">${examRangeLabel(days)}</span>
+    <button onclick="openExamCheer('${s.id}')" style="min-height:26px"
+      class="text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${n ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}">📣${n ? ' ' + n : ''}</button>
+  </div>`;
+}
+
+// ── 시험기간 전체 화면 ──
+function renderExam() {
+  const el = document.getElementById('page-exam');
+  if (!el) return;
+  loadExamCheers();
+  const ym = examMonthStr();
+
+  // 이 달에 시험이 잡힌 친구들을 학교별로 묶는다
+  const monthPeople = activeStudents().map(s => {
+    const ds = examDaysOf(s.id).filter(d => d.slice(0, 7) === ym);
+    return ds.length ? { s, days: ds } : null;
+  }).filter(Boolean).sort((a, b) => a.days[0].localeCompare(b.days[0]));
+  const bySchool = {};
+  monthPeople.forEach(x => {
+    const k = examSchoolOf(x.s.id) || '학교 미입력';
+    (bySchool[k] = bySchool[k] || []).push(x);
+  });
+
+  el.innerHTML = `
+    <div class="flex items-center justify-between">
+      <h2 class="font-bold text-gray-900">📚 시험기간</h2>
+      <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
+    </div>
+
+    <div class="bg-white rounded-2xl p-3 shadow-sm">
+      ${examCalHtml()}
+      <p class="text-[10px] text-gray-400 text-center mt-1.5">■ 내 시험날 · <span class="text-amber-500">●</span> 친구 시험날 · 날짜를 누르면 켜지고 꺼집니다</p>
+    </div>
+
+    ${state.currentUser ? `<div class="bg-white rounded-2xl p-3 shadow-sm">
+      <p class="text-xs font-semibold text-gray-500 mb-1.5">내 고등학교</p>
+      ${examSchoolBox('exam-school')}
+    </div>` : ''}
+
+    ${Object.keys(bySchool).length ? Object.keys(bySchool).sort().map(sch => `
+      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div class="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <p class="text-xs font-bold text-gray-800 truncate">🏫 ${_gEsc(sch)}</p>
+          <span class="text-[10px] text-gray-400 flex-shrink-0">${bySchool[sch].length}명</span>
+        </div>
+        <div class="px-3">${bySchool[sch].map(({ s, days }) => examRowHtml(s, days)).join('')}</div>
+      </div>`).join('')
+      : `<div class="bg-white rounded-2xl text-center py-8 shadow-sm">
+          <p class="text-2xl">📚</p>
+          <p class="text-sm text-gray-500 mt-2 font-semibold">이 달에 표시된 시험이 없어요</p>
+          <p class="text-xs text-gray-400 mt-1">달력에서 시험 보는 날을 눌러보세요</p>
+        </div>`}
+    <p class="text-[11px] text-gray-400 text-center pb-2">시험날은 본인이 직접 표시합니다 · 응원은 누구나 남길 수 있어요</p>`;
+}
+
 function gateHomeCard() {
   const bests = GATE_SONGS.map(s => gateBest(s.id));
   const done = bests.filter(b => b >= GATE_PASS).length;
@@ -9173,7 +9525,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-15.1';
+const APP_BUILD = '2026-09-16.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;

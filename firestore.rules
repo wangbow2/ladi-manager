@@ -131,5 +131,11 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+
+    // 시험기간 응원 댓글 — 학생 id당 문서 하나, arrayUnion/arrayRemove로만 늘고 준다
+    match /radiExamCheers/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
   }
 }
