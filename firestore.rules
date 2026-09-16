@@ -137,5 +137,11 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+
+    // 기도제목 — 학생 id당 문서 하나. 화면에서 목사·담당 팀장에게만 보이게 가린다.
+    match /radiPrayers/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
   }
 }
