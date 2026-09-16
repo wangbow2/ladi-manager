@@ -60,14 +60,8 @@
   .exam-head::after { content:''; position:absolute; top:-60%; left:-40%; width:38%; height:220%;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);
     transform:rotate(18deg); animation:gateShine 3.6s ease-in-out infinite; pointer-events:none; }
-  .pray-card { position:relative; overflow:hidden; border-radius:14px;
-    background:linear-gradient(118deg,#0F766E 0%,#0369A1 55%,#1E3A8A 100%);
-    box-shadow:0 6px 18px rgba(3,105,161,.26); }
-  .pray-card::after { content:''; position:absolute; top:-60%; left:-40%; width:38%; height:220%;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);
-    transform:rotate(18deg); animation:gateShine 3.6s ease-in-out infinite; pointer-events:none; }
   @media (prefers-reduced-motion: reduce) {
-    .gate-card::after, .exam-head::after, .pray-card::after { animation:none; display:none; } }
+    .gate-card::after, .exam-head::after { animation:none; display:none; } }
   .notif-badge { position:absolute; top:1px; right:1px; background:#EF4444; color:#fff; border-radius:9999px; font-size:9px; font-weight:700; min-width:14px; height:14px; display:flex; align-items:center; justify-content:center; padding:0 2px; pointer-events:none; }
   .lineup-가능 { background:#DCFCE7; color:#166534; font-weight:700; }
   .lineup-조건부 { background:#FEF9C3; color:#B45309; font-weight:700; }
@@ -399,7 +393,6 @@
   <div id="page-gallery" class="page p-4 space-y-3"></div>
   <div id="page-gate" class="page p-4 space-y-3"></div>
   <div id="page-exam" class="page p-4 space-y-3"></div>
-  <div id="page-prayer" class="page p-4 space-y-3"></div>
   <div id="page-qt" class="page p-4">
     <div id="qt-submit-content"></div>
   </div>
@@ -2729,7 +2722,6 @@ function navigate(page, extra, isBack) {
   else if (page==='gallery') renderGallery();
   else if (page==='gate') { renderGate(); playLadiChime(); }
   else if (page==='exam') renderExam();
-  else if (page==='prayer') renderPrayer();
   if (page !== 'dashboard') stopHomeSlideshow();
   if (page !== 'gate' && typeof _gateStopTick === 'function') _gateStopTick();
   else if (page==='detail') renderDetail(state.currentStudentId);
@@ -3970,7 +3962,6 @@ function renderDashboard() {
       </div>
       ${gateHomeCard()}
       ${examHomeCard()}
-      ${prayerHomeCard()}
 
       ${qtCommentInboxCard()}
       ${homeSlideCard()}
@@ -4325,7 +4316,6 @@ function renderMemberDashboard() {
         </div>
         <div class="mt-2">${gateHomeCard()}</div>
         <div class="mt-2">${examHomeCard()}</div>
-        <div class="mt-2">${prayerHomeCard()}</div>
       </div>
     </div>
   `;
@@ -6545,6 +6535,7 @@ function examHomeCard() {
       </div>
       ${examCalHtml()}
       <div class="mt-2">${examSchoolBox('exam-school-home')}</div>
+      ${examPrayerBox()}
       ${soon.length ? `<div class="mt-2 pt-2 border-t">
         ${soon.slice(0, 4).map(({ s, days }) => examRowHtml(s, days)).join('')}
         ${soon.length > 4 ? `<button onclick="navigate('exam')" style="min-height:unset" class="w-full text-[11px] text-gray-400 pt-1.5">그 밖에 ${soon.length - 4}명 더 ›</button>` : ''}
@@ -6599,6 +6590,7 @@ function renderExam() {
     ${state.currentUser ? `<div class="bg-white rounded-2xl p-3 shadow-sm">
       <p class="text-xs font-semibold text-gray-500 mb-1.5">내 고등학교</p>
       ${examSchoolBox('exam-school')}
+      ${examPrayerBox()}
     </div>` : ''}
 
     ${Object.keys(bySchool).length ? Object.keys(bySchool).sort().map(sch => `
@@ -6618,7 +6610,8 @@ function renderExam() {
 }
 
 // ==========================================
-// 기도제목 — 아이가 올리면 목사님과 그 아이가 속한 분과 팀장님만 보신다.
+// 시험 기도제목 — 시험기간 달력에 붙어 있다. 아이가 자기 시험을 두고 적으면
+// 목사님과 그 아이가 속한 분과 팀장님만 보신다.
 // (앱 화면에서 가리는 방식이다. 이 앱은 PIN 로그인이라 서버에서 막지는 못한다 —
 //  비밀 댓글과 같은 수준의 가림막이다.)
 // ==========================================
@@ -6660,7 +6653,8 @@ function prayerViewerNames() {
 function prayersOf(id) {
   return (_prayers[id] || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }
-// 내가 볼 수 있는 기도제목 전부, 최신순
+function myPrayers() { return state.currentUser ? prayersOf(state.currentUser) : []; }
+// 내가 볼 수 있는 남의 기도제목, 최신순
 function prayersVisible() {
   const out = [];
   Object.keys(_prayers).forEach(id => {
@@ -6669,7 +6663,6 @@ function prayersVisible() {
   });
   return out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }
-function myPrayers() { return state.currentUser ? prayersOf(state.currentUser) : []; }
 
 function loadPrayers() {
   if (!_FS_OK || _prayersLoaded) return;
@@ -6677,8 +6670,7 @@ function loadPrayers() {
   _db.collection('radiPrayers').get()
     .then(snap => {
       snap.docs.forEach(d => { _prayers[d.id] = Array.isArray(d.data().items) ? d.data().items : []; });
-      if (state.page === 'prayer') renderPrayer();
-      else if (state.page === 'dashboard') renderDashboard();
+      _examRerender();
     })
     .catch(e => { console.warn('기도제목 불러오기 실패:', e); _prayersLoaded = false; });
 }
@@ -6686,10 +6678,10 @@ function loadPrayers() {
 function openPrayerWrite() {
   if (!state.currentUser) { showToast('로그인하면 기도제목을 올릴 수 있어요'); return; }
   _prayerWriting = true;
-  renderPrayer();
-  setTimeout(() => { const t = document.getElementById('prayer-input'); if (t) t.focus(); }, 80);
+  _examRerender();
+  setTimeout(() => { const t = document.getElementById('prayer-input'); if (t) { t.focus(); t.scrollIntoView({block:'center'}); } }, 80);
 }
-function cancelPrayerWrite() { _prayerWriting = false; renderPrayer(); }
+function cancelPrayerWrite() { _prayerWriting = false; _examRerender(); }
 
 async function submitPrayer() {
   if (!state.currentUser) return;
@@ -6703,7 +6695,7 @@ async function submitPrayer() {
               text, at: new Date().toISOString() };
   _prayers[uid] = (_prayers[uid] || []).concat(p);
   _prayerWriting = false;
-  renderPrayer();
+  _examRerender();
   showToast('기도제목을 올렸어요');
   if (!_FS_OK) return;
   try {
@@ -6712,7 +6704,7 @@ async function submitPrayer() {
   } catch (e) {
     console.warn('기도제목 저장 실패:', e);
     _prayers[uid] = (_prayers[uid] || []).filter(x => x.id !== p.id);
-    renderPrayer();
+    _examRerender();
     showToast('올리지 못했어요');
   }
 }
@@ -6722,7 +6714,7 @@ async function deletePrayer(pid) {
   const p = _prayers[owner].find(x => x.id === pid);
   if (!p || !(isAdmin() || p.by === state.currentUser)) return;
   _prayers[owner] = _prayers[owner].filter(x => x.id !== pid);
-  renderPrayer();
+  _examRerender();
   if (!_FS_OK) return;
   try {
     await _db.collection('radiPrayers').doc(owner)
@@ -6730,125 +6722,71 @@ async function deletePrayer(pid) {
   } catch (e) {
     console.warn('기도제목 지우기 실패:', e);
     _prayers[owner] = (_prayers[owner] || []).concat(p);
-    renderPrayer();
+    _examRerender();
   }
 }
 
 function prayerWhen(at) {
   if (!at) return '';
   const d = new Date(at);
-  return `${d.getMonth()+1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${d.getMonth()+1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`;
 }
 function prayerItemHtml(p, showName) {
   const canDel = isAdmin() || p.by === state.currentUser;
-  return `<div class="rounded-xl border px-3 py-2.5 ${p.by === state.currentUser ? 'bg-sky-50 border-sky-200' : 'bg-white'}">
+  return `<div class="rounded-xl border px-3 py-2 ${p.by === state.currentUser ? 'bg-sky-50 border-sky-200' : 'bg-white'}">
     ${showName ? `<div class="flex items-center gap-1.5 mb-1">
       <span class="text-xs font-bold text-gray-800">${_gEsc(p.name)}</span>
       ${p.group ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">${_gEsc(p.group)}</span>` : ''}
     </div>` : ''}
     <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">${_gEsc(p.text)}</p>
-    <div class="flex items-center justify-between mt-1.5 gap-2">
+    <div class="flex items-center justify-between mt-1 gap-2">
       <span class="text-[11px] text-gray-400">${prayerWhen(p.at)}</span>
       ${canDel ? `<button onclick="deletePrayer('${_gEsc(p.id)}')" style="min-height:24px" class="text-[11px] px-1 text-red-400 flex-shrink-0">지우기</button>` : ''}
     </div>
   </div>`;
 }
 
-// ── 홈 화면 칸 ──
-function prayerHomeCard() {
+// ── 시험기간 칸 안에 붙는 기도제목 ──
+// 내가 적는 칸 + (목사·팀장이면) 맡은 아이들 기도제목
+function examPrayerBox() {
   loadPrayers();
-  const mine = myPrayers();
-  const others = prayersVisible().filter(p => p.by !== state.currentUser);
-  const sub = isLeader()
-    ? (others.length ? `맡은 아이들 기도제목 ${others.length}개` : '아직 올라온 기도제목이 없어요')
-    : (mine.length ? `내가 올린 기도제목 ${mine.length}개` : '목사님과 우리 파트 팀장님만 보십니다');
-  return `<button onclick="navigate('prayer')" style="min-height:unset;padding-right:56px"
-    class="pray-card w-full text-left pl-4 py-3.5 active:opacity-90">
-    <span class="gate-ribbon">NEW</span>
-    <span class="flex items-center gap-3">
-      <span class="text-2xl flex-shrink-0">🙏</span>
-      <span class="min-w-0 flex-1">
-        <span class="block text-white font-black text-[15px] tracking-tight">기도제목 나누기</span>
-        <span class="block text-[11px] text-white/75 mt-0.5 truncate">${_gEsc(sub)}</span>
-      </span>
-      <span class="flex-shrink-0 text-[11px] font-bold text-white/90 bg-white/20 rounded-full px-2.5 py-1">
-        ${isLeader() ? (others.length || '0') : (mine.length ? `${mine.length}개` : '올리기')}
-      </span>
-    </span>
-  </button>`;
-}
-
-// ── 기도제목 화면 ──
-function renderPrayer() {
-  const el = document.getElementById('page-prayer');
-  if (!el) return;
-  loadPrayers();
+  if (!state.currentUser) return '';
   const mine = myPrayers();
   const viewers = prayerViewerNames();
+  const lock = `🔒 ${viewers.length ? _gEsc(viewers.join(' · ')) + ' 팀장님만 보십니다' : '목사님만 보십니다'}`;
+  const others = prayersVisible().filter(p => p.by !== state.currentUser);
   const gs = prayerGroupsIOversee();
 
-  // 팀장·목사가 보는 칸 — 맡은 분과 아이들 것만
-  let leaderBox = '';
-  if (gs.length) {
-    const others = prayersVisible().filter(p => p.by !== state.currentUser);
-    const byPerson = {};
-    others.forEach(p => { (byPerson[p.by] = byPerson[p.by] || []).push(p); });
-    const ids = Object.keys(byPerson).sort((a, b) =>
-      String(byPerson[b][0].at).localeCompare(String(byPerson[a][0].at)));
-    leaderBox = `
-      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-3 py-2.5 bg-gray-50 border-b">
-          <p class="text-xs font-bold text-gray-800">🤲 맡은 아이들 기도제목</p>
-          <p class="text-[11px] text-gray-400 mt-0.5">${isAdmin() ? '전체' : _gEsc(gs.join(' · '))} · ${others.length}개</p>
-        </div>
-        ${ids.length ? `<div class="p-3 space-y-3">
-          ${ids.map(id => `<div class="space-y-1.5">
-            ${byPerson[id].map(p => prayerItemHtml(p, true)).join('')}
-          </div>`).join('')}
-        </div>` : `<p class="text-xs text-gray-400 text-center py-6">아직 올라온 기도제목이 없어요</p>`}
-      </div>`;
-  }
-
-  el.innerHTML = `
-    <div class="flex items-center justify-between">
-      <h2 class="font-bold text-gray-900">🙏 기도제목</h2>
-      <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
-    </div>
-
-    ${state.currentUser ? `
-    <div class="bg-white rounded-2xl p-3 shadow-sm">
-      ${_prayerWriting ? `
-        <textarea id="prayer-input" rows="5" maxlength="600"
-          placeholder="기도제목을 적어주세요"
-          class="w-full border rounded-xl p-3 text-sm resize-none"></textarea>
-        <p class="text-[11px] text-gray-400 mt-1.5">
-          🔒 ${viewers.length ? _gEsc(viewers.join(' · ')) + ' 팀장님만 보십니다' : '목사님만 보십니다'}
-        </p>
-        <div class="flex gap-2 mt-2">
-          <button onclick="cancelPrayerWrite()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">취소</button>
-          <button onclick="submitPrayer()" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gray-900 text-white">올리기</button>
-        </div>`
-      : `<button onclick="openPrayerWrite()" style="min-height:unset"
-          class="w-full py-3 rounded-xl text-sm font-bold bg-gray-900 text-white">✏️ 기도제목 올리기</button>
-        <p class="text-[11px] text-gray-400 mt-2 text-center">
-          🔒 ${viewers.length ? _gEsc(viewers.join(' · ')) + ' 팀장님만 보십니다' : '목사님만 보십니다'} · 친구들에게는 보이지 않아요
-        </p>`}
-    </div>
-
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div class="px-3 py-2.5 bg-gray-50 border-b flex items-center justify-between">
-        <p class="text-xs font-bold text-gray-800">내가 올린 기도제목</p>
-        <span class="text-[10px] text-gray-400">${mine.length}개</span>
+  return `
+    <div class="mt-2 pt-2.5 border-t">
+      <div class="flex items-center justify-between mb-1.5">
+        <p class="text-xs font-bold text-gray-800">🙏 시험 기도제목</p>
+        ${!_prayerWriting ? `<button onclick="openPrayerWrite()" style="min-height:unset"
+          class="text-[11px] px-2.5 py-1 rounded-full bg-gray-900 text-white font-bold">✏️ 쓰기</button>` : ''}
       </div>
-      ${mine.length ? `<div class="p-3 space-y-2">${mine.map(p => prayerItemHtml(p, false)).join('')}</div>`
-        : `<p class="text-xs text-gray-400 text-center py-6">아직 올린 기도제목이 없어요</p>`}
-    </div>` : `
-    <div class="bg-white rounded-2xl text-center py-8 shadow-sm">
-      <p class="text-sm text-gray-500">로그인하면 기도제목을 올릴 수 있어요</p>
-    </div>`}
+      ${_prayerWriting ? `
+        <textarea id="prayer-input" rows="4" maxlength="600"
+          placeholder="이번 시험을 두고 어떻게 기도해 드릴까요?"
+          class="w-full border rounded-xl p-2.5 text-sm resize-none"></textarea>
+        <p class="text-[11px] text-gray-400 mt-1">${lock}</p>
+        <div class="flex gap-2 mt-1.5">
+          <button onclick="cancelPrayerWrite()" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600">취소</button>
+          <button onclick="submitPrayer()" class="flex-1 py-2 rounded-xl text-sm font-bold bg-gray-900 text-white">올리기</button>
+        </div>`
+      : mine.length ? `<div class="space-y-1.5">${mine.map(p => prayerItemHtml(p, false)).join('')}</div>
+        <p class="text-[11px] text-gray-400 mt-1.5">${lock} · 친구들에게는 보이지 않아요</p>`
+      : `<p class="text-[11px] text-gray-400 py-1">${lock} · 친구들에게는 보이지 않아요</p>`}
 
-    ${leaderBox}
-    <p class="text-[11px] text-gray-400 text-center pb-2">기도제목은 목사님과 맡은 분과 팀장님께만 보입니다</p>`;
+      ${gs.length ? `
+        <div class="mt-3 pt-2.5 border-t">
+          <div class="flex items-center justify-between mb-1.5">
+            <p class="text-xs font-bold text-gray-800">🤲 맡은 아이들 기도제목</p>
+            <span class="text-[10px] text-gray-400">${isAdmin() ? '전체' : _gEsc(gs.join(' · '))} · ${others.length}개</span>
+          </div>
+          ${others.length ? `<div class="space-y-1.5">${others.map(p => prayerItemHtml(p, true)).join('')}</div>`
+            : `<p class="text-[11px] text-gray-400 py-1">아직 올라온 기도제목이 없어요</p>`}
+        </div>` : ''}
+    </div>`;
 }
 
 function gateHomeCard() {
@@ -9785,7 +9723,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-16.3';
+const APP_BUILD = '2026-09-16.4';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
