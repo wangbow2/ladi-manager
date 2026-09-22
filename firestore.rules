@@ -143,5 +143,23 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
+    // 마가복음 공부반 — 반 공용 설정. auth 문서에 비밀번호 해시가 들어간다.
+    match /markStudy/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+    // 마가복음 공부반 — 주간 과제(요약·적용). 문서 id = {이름}_{주차}
+    match /markSubmit/{document} {
+      allow read, create, update: if true;
+      // 잘못 올린 과제를 본인이 지울 수 있어야 한다.
+      allow delete: if true;
+    }
+    // 마가복음 공부반 — 매일 성경 녹음. {이름}_{yyyymmdd}가 메타,
+    // 같은 id에 _c{n}을 붙인 문서가 오디오 base64 조각이다(문서 1MB 한도).
+    match /markRec/{document} {
+      allow read, create, update: if true;
+      // 녹음은 용량을 차지하므로 지우면 조각까지 실제로 지운다.
+      allow delete: if true;
+    }
   }
 }

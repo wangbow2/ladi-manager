@@ -5621,7 +5621,16 @@ const GATE_PASS = 95;                    // 이 점수부터 '통과'로 친다
 //  'one' 각개 시험 — 곡 하나만 본다. 곡별 랭킹에 오른다.
 //  'all' 전체 시험 — 네 곡을 한 번에, 한 자리에서 통으로 쓴다. 전체 랭킹은 이것만 센다.
 //        각개 점수를 합쳐서 전체로 치지 않는다.
-const GATE_ALL = 'all-260920';   // 콘티가 바뀌면 이것도 함께 바꾼다 — 전체 랭킹도 새 콘티로 다시 센다
+// 콘티 한 벌의 이름. 곡 id 뒤에 붙는 날짜와 같다(bef-260920 → '260920').
+// ⚠️ 콘티를 갈 때 여기 한 줄만 새 날짜로 바꾸면 랭킹이 통째로 새로 시작된다.
+//    (전체 랭킹 · 곡별 랭킹 · 타수 랭킹 · 1위 한마디가 모두 이 이름으로 갈린다.
+//     지난 기록은 지워지지 않고 기록실에 그대로 남는다.)
+const GATE_SET = '260920';
+const GATE_ALL = 'all-' + GATE_SET;
+// 이번 콘티의 기록인가 — 랭킹은 이번 콘티 것만 센다
+function gateIsCurrentSet(songId) {
+  return typeof songId === 'string' && songId.endsWith('-' + GATE_SET);
+}
 let gateMode = GATE_ALL;
 let gateStep = 'intro';                  // intro | study | test | result | log
 let gateIdx = 0;                         // 각개 시험에서 고른 곡
@@ -6083,6 +6092,7 @@ function gateRankCpm() {
   return gateRankPeople().map(id => {
     let best = null;
     (_gateLogs[id] || []).forEach(x => {
+      if (!gateIsCurrentSet(x.song)) return;
       if (x.cpm > 0 && (!best || x.cpm > best.cpm)) best = x;
     });
     return best ? { id, cpm: best.cpm, song: best.song, pct: best.pct } : null;
@@ -6108,7 +6118,7 @@ function canWriteCrown() { return !!state.currentUser && state.currentUser === g
 function loadGateCrown() {
   if (!_FS_OK || _gateCrown !== undefined) return;
   _gateCrown = null;
-  _db.collection('radiGateCrown').doc('current').get()
+  _db.collection('radiGateCrown').doc(GATE_SET).get()
     .then(d => {
       _gateCrown = (d.exists && d.data().text) ? d.data() : null;
       if (state.page === 'gate' && gateStep === 'intro') renderGate();
@@ -6126,7 +6136,7 @@ function saveGateCrown() {
   _gateCrown = doc; _gateCrownEdit = false;
   renderGate();
   if (!_FS_OK) return;
-  _db.collection('radiGateCrown').doc('current').set(doc)
+  _db.collection('radiGateCrown').doc(GATE_SET).set(doc)
     .then(() => showToast('한마디를 걸었어요'))
     .catch(e => { console.warn('1위 한마디 저장 실패:', e); showToast('올리지 못했어요'); });
 }
@@ -9772,7 +9782,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-16.5';
+const APP_BUILD = '2026-09-23.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
