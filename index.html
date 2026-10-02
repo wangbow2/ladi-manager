@@ -5553,61 +5553,90 @@ function renderQTDayView() {
 // ==========================================
 // 가테 — 가사 시험. 곡을 고르고, 파트를 고르고, 외운 대로 적은 뒤 맞춰 본다.
 // 띄어쓰기와 문장부호는 보지 않는다. 글자만 맞으면 맞은 것으로 친다.
-// 콘티: 260920(주일) 고등부 예배 — 악보에서 그대로 옮겨 적었다.
+// 콘티: 261004(주일) 고등부 예배 — 악보에서 그대로 옮겨 적었다.
 // ⚠️ 콘티를 갈 때는 곡 id도 새로 준다. 기록이 id로만 묶여 있어서(radi_gate_{사람}_{곡id},
 //    radiGateLog의 song), id를 재사용하면 지난 콘티에 통과한 아이가 새 곡도 통과한 것으로 뜬다.
 //    물러난 곡 이름은 GATE_PAST_TITLES에 남겨 기록실에서 계속 제목으로 보이게 한다.
 // ==========================================
 const GATE_SONGS = [
-  { id:'bef-260920', title:'나는 보기 원하네', sub:'BEF · 이성균 · GIFTED · 3절', sections:[
-    { id:'v3', label:'3절', lines:[
-      '나는 보기 원하네 주의 능력의 날을',
-      '거룩한 옷을 입고 기쁨으로 주께 달려나가는',
-      '새벽 이슬 같은 청년들 그들을 보기 원하네',
-      '시온산 위에 있는 사람들 나는 보기 원하네' ] }
-  ]},
-  { id:'song1-260920', title:'높이 계신 주님께', sub:'1번곡 · 우리 주 안에서 노래하며 · 잔치공동체', sections:[
+  { id:'bef-261004', title:'나는 보기 원하네', sub:'BEF · 이성균 · GIFTED · 1절', sections:[
     { id:'v1', label:'1절', lines:[
-      '우리 주 안에서 노래하며 주의 이름 찬양해',
-      '감사로 그 문에 들어가 주 이름 송축하네',
-      '진실한 찬양 안에 권능 임하니',
-      '외치세 할렐루야 손뼉 치며 전능하신 주께' ] },
+      '나는 보기 원하네 하나님의 어린 양',
+      '나를 대신하여 죽으신 하나님의 어린 양',
+      '나를 구원하신 분 영원한 목자 되신 분',
+      '시온산 위에 있는 어린 양 그분을 보기 원하네' ] }
+  ]},
+  { id:'song1-261004', title:'All In', sub:'1번곡 · 수영로 고등부', sections:[
+    { id:'v1', label:'1절', lines:[
+      '오늘도 주 앞에 서서 내 맘의 뜻을 정한다',
+      '끌려가는 것 아니요 부르신 길을 걷는다' ] },
+    { id:'v2', label:'2절', lines:[
+      '세상의 소리 앞에서 주님의 음성 붙든다',
+      '무너지는 것 아니요 말씀을 따라 걷는다' ] },
+    { id:'pc', label:'프리코러스', lines:[
+      '은혜로 날 불러 주시고 믿음으로 보내신',
+      '신실하신 나의 주 예수',
+      '영원부터 영원 인도하시네',
+      '이 세대를 본받지 말고 주를 향해 나 달려가' ] },
     { id:'ch', label:'후렴', lines:[
-      '높이 계신 주님께 우리 여기 모인 이유',
-      '우리 마음 모아 주님을 높이는 것' ] },
+      '시간의 주인 되신 분 내 것의 주인 되신 분',
+      '영원히 날 인도해 주를 찬양',
+      '모든 것 주께 드려요 내 꿈도 주께 드려요',
+      '주님 말씀 나 신뢰해' ] }
+  ]},
+  { id:'song2-261004', title:'빛으로 비추시네', sub:'2번곡 · Isaiah 6tyOne', sections:[
+    { id:'v1', label:'벌스', lines:[
+      '주의 선하심과 진실함을 닮기 원해',
+      '그의 빛으로 나갈 때 그 성품 닮아가네',
+      '빛을 닮아 갈 때 주가 주신 자유함으로',
+      '옳은 데로 돌아와서 별같이 비추네',
+      '빛으로 비추시네' ] },
+    { id:'ch', label:'후렴', lines:[
+      '어둠이 드러나고 나를 숨은 허물에서 벗어나게 하시네',
+      '빛으로 일어서네 어둠이 밝혀지고',
+      '빛 되신 우리 주와 그 생명길 가네',
+      '빛으로 비추시네' ] },
     { id:'br', label:'브릿지', lines:[
-      '내 안에 모든 것 주를 바랄 때',
-      '주의 능력 또 영광 은혜와 자비도',
-      '찬양하며 춤추세 마음 문 열어',
-      '주가 자유케 하리 주의 이름 찬양해' ] }
+      '내 영혼아 일어나 주의 빛 발하라',
+      '주의 영광이 우리 위에 임하였네' ] }
   ]},
-  { id:'song2-260920', title:'주를 찾는 모든 자들이', sub:'2번곡 · 시편 70편 · 이준행 · 팀룩워십', sections:[
+  { id:'song3-261004', title:'나의 가는 길', sub:'3번곡 · God Will Make A Way · Don Moen', sections:[
     { id:'v1', label:'1절', lines:[
-      '주를 찾는 모든 자들이 주로 말미암아',
-      '기뻐하고 즐거워하게 하시며',
-      '주의 구원을 사랑하는 자들이 항상 말하기를',
-      '하나님은 위대하시다 하게 하소서' ] },
+      '나의 가는 길 주님 인도하시네',
+      '그는 보이지 않아도 날 위해 일하시네',
+      '주 나의 인도자 항상 함께하시네',
+      '사랑과 힘 베푸시며 인도하시네 인도하시네' ] },
     { id:'v2', label:'2절', lines:[
-      '주는 나의 도움 나를 건지시는 이',
-      '여호와여 지체 말고 내게 임하소서',
-      '가난하고 궁핍한 내 마음 가운데',
-      '여호와여 속히 임하소서' ] }
+      '광야에 길을 만드시고 날 인도해',
+      '사막에 강 만드신 것 보라',
+      '하늘과 땅 변해도 주의 말씀 영원히',
+      '내 삶 속에 새일을 행하리' ] }
   ]},
-  { id:'song3-260920', title:'나의 만족과 유익을 위해', sub:'3번곡 · Knowing You · Graham Kendrick', sections:[
+  { id:'song4-261004', title:'부르신 곳에서', sub:'4번곡 · 김준영 작사 · 송정은 작곡 · 마커스워십', sections:[
     { id:'v1', label:'1절', lines:[
-      '나의 만족과 유익을 위해 가지려 했던 세상 일들',
-      '이젠 모두 다 해로 여기고 주님을 위해 다 버리네' ] },
+      '따스한 성령님 마음으로 보네',
+      '내 몸을 감싸며 주어지는 평안함',
+      '만족함을 느끼네' ] },
+    { id:'v2', label:'2절', lines:[
+      '사랑과 진리의 한줄기 빛 보네',
+      '내 몸을 감싸며 주어지는 평안함',
+      '그 사랑을 느끼네' ] },
     { id:'ch', label:'후렴', lines:[
-      '내 안에 가장 귀한 것 주님을 앎이라',
-      '모든 것 되시며 의와 기쁨 되신 주 사랑합니다' ] },
-    { id:'v2', label:'2절', lines:[
-      '부활의 능력 체험하면서 주의 고난에 동참하고',
-      '주의 죽으심 본을 받아서 그의 생명에 참예하네' ] }
+      '부르신 곳에서 나는 예배하네',
+      '어떤 상황에도 나는 예배하네' ] },
+    { id:'br', label:'브릿지', lines:[
+      '내가 걸어갈 때 길이 되고 살아갈 때 삶이 되는',
+      '그곳에서 예배하네' ] }
   ]}
 ];
 
 // 물러난 콘티의 곡들 — 기록실이 옛 기록을 id 대신 제목으로 보여주도록.
 const GATE_PAST_TITLES = {
+  'bef-260920':   '나는 보기 원하네 (3절)',
+  'song1-260920': '높이 계신 주님께',
+  'song2-260920': '주를 찾는 모든 자들이',
+  'song3-260920': '나의 만족과 유익을 위해',
+  'all-260920':   '전체 시험 (9/20 콘티)',
   'bef':   '나는 보기 원하네',
   'song1': '찬양의 제사 드리며',
   'song2': '왕 되신 주께 감사하세',
@@ -5619,14 +5648,16 @@ const GATE_PAST_TITLES = {
 const GATE_PASS = 95;                    // 이 점수부터 '통과'로 친다
 // 시험은 두 가지다.
 //  'one' 각개 시험 — 곡 하나만 본다. 곡별 랭킹에 오른다.
-//  'all' 전체 시험 — 네 곡을 한 번에, 한 자리에서 통으로 쓴다. 전체 랭킹은 이것만 센다.
+//  'all' 전체 시험 — 이번 콘티의 모든 곡을 한 번에, 한 자리에서 통으로 쓴다. 전체 랭킹은 이것만 센다.
 //        각개 점수를 합쳐서 전체로 치지 않는다.
 // 콘티 한 벌의 이름. 곡 id 뒤에 붙는 날짜와 같다(bef-260920 → '260920').
 // ⚠️ 콘티를 갈 때 여기 한 줄만 새 날짜로 바꾸면 랭킹이 통째로 새로 시작된다.
 //    (전체 랭킹 · 곡별 랭킹 · 타수 랭킹 · 1위 한마디가 모두 이 이름으로 갈린다.
 //     지난 기록은 지워지지 않고 기록실에 그대로 남는다.)
-const GATE_SET = '260920';
+const GATE_SET = '261004';
 const GATE_ALL = 'all-' + GATE_SET;
+// 곡 수를 우리말로 — '네 곡' '다섯 곡'. 콘티마다 곡 수가 달라서 화면 문구를 여기서 만든다.
+function gateCountKo() { return (['','한','두','세','네','다섯','여섯','일곱','여덟'][GATE_SONGS.length] || GATE_SONGS.length) + ' 곡'; }
 // 이번 콘티의 기록인가 — 랭킹은 이번 콘티 것만 센다
 function gateIsCurrentSet(songId) {
   return typeof songId === 'string' && songId.endsWith('-' + GATE_SET);
@@ -5945,7 +5976,7 @@ function loadGateLogs(ids) {
 }
 
 function gateLogTitle(songId) {
-  if (songId === GATE_ALL) return '전체 시험 (네 곡)';
+  if (songId === GATE_ALL) return `전체 시험 (${gateCountKo()})`;
   const s = GATE_SONGS.find(x => x.id === songId);
   if (s) return s.title;
   return GATE_PAST_TITLES[songId] || songId;   // 지난 콘티 곡
@@ -6053,7 +6084,7 @@ function renderGateLog(el) {
 
 // ── 기록실 ──
 // 곡마다 95% 넘긴 사람들을 '가장 빠른 판'으로 줄 세운다.
-// 전체 랭킹은 네 곡을 다 넘긴 사람만, 네 판을 더한 시간이 빠른 순으로 5위까지.
+// 전체 랭킹은 모든 곡을 다 넘긴 사람만, 판을 더한 시간이 빠른 순으로 5위까지.
 // 점수가 같아도 시간이 다르니 대충 넘긴 사람과 제대로 외운 사람이 갈린다.
 function gateRankPeople() { return activeStudents().map(s => s.id); }
 
@@ -6208,7 +6239,7 @@ function gateRankBlock() {
     </div>`
     : `<div class="bg-white rounded-2xl px-4 py-3 shadow-sm text-center">
         <p class="text-xs font-bold text-gray-600">🏆 아직 전체 시험을 통과한 사람이 없어요</p>
-        <p class="text-[11px] text-gray-400 mt-0.5">네 곡을 한 번에 통으로 써서 ${GATE_PASS}% 이상이면 오릅니다</p>
+        <p class="text-[11px] text-gray-400 mt-0.5">${gateCountKo()}을 한 번에 통으로 써서 ${GATE_PASS}% 이상이면 오릅니다</p>
       </div>`;
 
   const partialCard = partial.length ? `
@@ -6874,7 +6905,7 @@ function gateHomeCard() {
 // 지금 보는 시험이 무엇인가 — 제목·가사·기록에 쓸 이름
 function gateTargetId() { return gateMode === GATE_ALL ? GATE_ALL : GATE_SONGS[gateIdx].id; }
 function gateTargetTitle() {
-  return gateMode === GATE_ALL ? '전체 시험 — 네 곡'
+  return gateMode === GATE_ALL ? `전체 시험 — ${gateCountKo()}`
                                : `${gateIdx + 1}. ${GATE_SONGS[gateIdx].title}`;
 }
 function gateTargetSongs() { return gateMode === GATE_ALL ? GATE_SONGS : [GATE_SONGS[gateIdx]]; }
@@ -6928,7 +6959,7 @@ function renderGate() {
   if (!el) return;
   _gateStopTick();
   const isAll = gateMode === GATE_ALL;
-  const stepLabel = isAll ? '네 곡' : `${gateIdx + 1} / ${GATE_SONGS.length}`;
+  const stepLabel = isAll ? gateCountKo() : `${gateIdx + 1} / ${GATE_SONGS.length}`;
 
   if (gateStep === 'log') { renderGateLog(el); return; }
 
@@ -6951,7 +6982,7 @@ function renderGate() {
           <span class="text-2xl flex-shrink-0">🏆</span>
           <span class="min-w-0 flex-1">
             <span class="block text-white font-black text-[15px]">전체 시험</span>
-            <span class="block text-[11px] text-white/70 mt-0.5">네 곡을 한 번에 통으로 · 전체 랭킹은 이것만 셉니다</span>
+            <span class="block text-[11px] text-white/70 mt-0.5">${gateCountKo()}을 한 번에 통으로 · 전체 랭킹은 이것만 셉니다</span>
           </span>
           <span class="text-white/50 text-lg">›</span>
         </span>
@@ -6986,7 +7017,7 @@ function renderGate() {
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0">
             <p class="font-bold text-gray-900 truncate">${_gEsc(gateTargetTitle())}</p>
-            <p class="text-[11px] text-gray-400 mt-0.5 truncate">${isAll ? '한 자리에서 네 곡을 통으로 씁니다' : _gEsc(GATE_SONGS[gateIdx].sub)}</p>
+            <p class="text-[11px] text-gray-400 mt-0.5 truncate">${isAll ? `한 자리에서 ${gateCountKo()}을 통으로 씁니다` : _gEsc(GATE_SONGS[gateIdx].sub)}</p>
           </div>
           <span class="text-[11px] font-bold text-gray-300 flex-shrink-0">${stepLabel}</span>
         </div>
@@ -9782,7 +9813,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-09-23.1';
+const APP_BUILD = '2026-10-02.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
