@@ -3940,6 +3940,7 @@ function renderWorshipCard() {
 }
 
 function renderDashboard() {
+  loadQTSchedule();       // 내년 본문 일정을 미리 받아 둔다(한 번만 돈다)
   _initTodayBirthdayBanner();
   if (isMember()) { renderMemberDashboard(); return; }
   const allStudents = activeStudents();
@@ -4997,6 +4998,29 @@ function loadQTDownloads() {
     .catch(() => {});   // 아직 파일이 없거나 인터넷이 없으면 그냥 둔다
 }
 function toggleQTPast() { _qtPastOpen = !_qtPastOpen; renderQTSubmit(); }
+
+// 큐티 본문 일정 — files/qt-schedule.json.
+// 위의 QT_SCHEDULE은 2026-12-31에서 끝난다. 그대로 두면 1월 1일에 큐티 화면이
+// '큐티 일정이 없습니다'가 된다. 깃허브 액션이 매일성경에서 내년치까지 받아 이 파일에
+// 적어 두고, 앱이 켜질 때 그 위에 덧씌운다 — 해가 바뀌어도 사람이 채워 넣을 일이 없다.
+// (못 읽으면 박아 둔 2026년치로 그대로 돈다. const라도 안을 채우는 건 막지 않는다.)
+let _qtScheduleTried = false;
+function loadQTSchedule() {
+  if (_qtScheduleTried) return;
+  _qtScheduleTried = true;
+  fetch('files/qt-schedule.json?d=' + TODAY_STR)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !j.days) return;
+      let added = 0;
+      Object.keys(j.days).forEach(k => {
+        if (QT_SCHEDULE[k] === undefined) added++;
+        QT_SCHEDULE[k] = j.days[k];      // 매일성경이 본문을 고치면 그쪽을 따른다
+      });
+      if (added) _renderCurrentPage();   // 없던 달이 생겼으면 화면을 다시 그린다
+    })
+    .catch(() => {});
+}
 // '2026-11' → '11월' (올해가 아니면 '2026년 11월')
 function qtMonthLabel(ym) {
   const [yy, mm] = ym.split('-');
@@ -5091,6 +5115,7 @@ function qtMedal(count) {
 
 function renderQTSubmit() {
   loadQTDownloads();      // 새 달 PDF가 올라왔는지 한 번 확인(배포 없이 목록이 늘어난다)
+  loadQTSchedule();       // 내년 본문 일정도 함께
   if (qtOpenDay) { renderQTDayView(); return; }
 
   const qtMonth = getQTMonthStr();
@@ -9871,7 +9896,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-10-23.1';
+const APP_BUILD = '2026-10-23.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
