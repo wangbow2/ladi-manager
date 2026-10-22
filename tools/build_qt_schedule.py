@@ -22,7 +22,12 @@ HEAD = {'Content-Type': 'application/json; charset=utf-8',
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 START = '2026-06'     # index.html의 QT_SCHEDULE이 시작하는 달. 그 앞은 만들지 않는다.
 KST = datetime.timezone(datetime.timedelta(hours=9))
-TRIES = 3
+TRIES = 4
+TIMEOUT = 90       # 해외(깃허브 러너)에서 부르면 유난히 느리다
+
+
+class ApiUnreachable(Exception):
+    """매일성경 쪽에 못 닿았다. 있던 파일을 그대로 두고 조용히 물러난다."""
 
 
 def month_rows(ym):
@@ -31,14 +36,14 @@ def month_rows(ym):
     last = None
     for i in range(TRIES):
         try:
-            with urllib.request.urlopen(urllib.request.Request(API, data=body, headers=HEAD), timeout=40) as r:
+            with urllib.request.urlopen(urllib.request.Request(API, data=body, headers=HEAD), timeout=TIMEOUT) as r:
                 rows = json.loads(r.read().decode('utf-8'))
             break
         except Exception as e:
             last = e
-            time.sleep(1.5 * (i + 1))
+            time.sleep(2 * (i + 1))
     else:
-        raise RuntimeError(f'{ym} 일정표를 못 받았습니다: {last}')
+        raise ApiUnreachable(f'{ym}: {last}')
 
     out = {}
     for r in rows:
@@ -78,15 +83,22 @@ def months_wanted():
 
 def main():
     days = {}
-    for ym in months_wanted():
-        got = month_rows(ym)
-        if not got:
-            print(f'{ym}: 아직 없음 — 건너뜀')
-            continue
-        days.update(got)
-        print(f'{ym}: {len(got)}일')
+    try:
+        for ym in months_wanted():
+            got = month_rows(ym)
+            if not got:
+                print(f'{ym}: 아직 없음 — 건너뜀')
+                continue
+            days.update(got)
+            print(f'{ym}: {len(got)}일')
+    except ApiUnreachable as e:
+        # 매일성경 쪽이 조용할 때가 있다(깃허브 러너에서 특히). 여기서 멈춰 세우면
+        # 큐티 PDF까지 같이 못 만들게 된다. 반쪽 일정표를 쓰느니 있던 파일을 그대로 둔다.
+        print(f'일정표를 못 받았습니다 ({e}) — 있던 파일을 그대로 둡니다')
+        return
     if not days:
-        sys.exit('일정표를 하나도 못 받았습니다 — 파일은 그대로 둡니다')
+        print('받은 일정이 없습니다 — 파일은 그대로 둡니다')
+        return
 
     out = os.path.join(ROOT, 'files', 'qt-schedule.json')
     os.makedirs(os.path.dirname(out), exist_ok=True)
