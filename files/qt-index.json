@@ -1,6 +1,11 @@
 {
- "updatedAt": "2026-10-22T21:04:00+00:00",
+ "updatedAt": "2026-10-22T21:08:55+00:00",
  "months": {
+  "2026-06": {
+   "label": "6월 청소년 큐티 PDF",
+   "href": "files/2026-06/youth-qt-2026-06.pdf",
+   "size": "8MB"
+  },
   "2026-07": {
    "label": "7월 청소년 큐티 PDF",
    "href": "files/2026-07/youth-qt-2026-07.pdf",
