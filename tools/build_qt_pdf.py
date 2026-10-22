@@ -114,6 +114,14 @@ def write_index():
                       'href': rel,
                       'size': human(os.path.getsize(full))}
     out = os.path.join(files_dir, 'qt-index.json')
+    # 달 목록이 그대로면 손대지 않는다. 시각만 바꿔 쓰면 하루 두 번 빈 커밋이 쌓인다.
+    if os.path.exists(out):
+        try:
+            if json.load(open(out, encoding='utf-8')).get('months') == months:
+                print(f'목록 그대로: {len(months)}개월 — {", ".join(months) or "없음"}')
+                return
+        except Exception:
+            pass
     json.dump({'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
                'months': months},
               open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
