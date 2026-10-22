@@ -1,0 +1,49 @@
+name: 청소년 큐티 PDF 갱신
+
+# 매일성경은 PDF를 안 준다. 날짜별 지면 JPEG만 올라온다.
+# 그래서 한 달치가 다 올라오면 여기서 묶어 files/<YYYY-MM>/youth-qt-<YYYY-MM>.pdf 로 만든다.
+#
+# ⚠️ 매일성경은 달 단위로 한 번에 올린다(하루씩 늘지 않는다).
+#    그래서 '그 달 마지막 날'이 떠야 비로소 묶는다. 안 떴으면 그냥 내일 다시 본다.
+#    이번 달·다음 달만 보므로 12월에는 내년 1월을 보게 되고, 해가 바뀌어도 손댈 게 없다.
+on:
+  schedule:
+    - cron: '0 22 * * *'   # 매일 07:00 (KST)
+    - cron: '0 10 * * *'   # 매일 19:00 (KST)
+  workflow_dispatch:
+    inputs:
+      months:
+        description: '과월호를 받고 싶으면 YYYY-MM (여러 개면 쉼표). 비우면 이번 달·다음 달.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+# 두 번이 겹쳐 돌면 같은 파일을 두고 밀치게 된다.
+concurrency:
+  group: qt-pdf
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet pillow
+      - name: 지면 받아 PDF로 묶기
+        run: python3 tools/build_qt_pdf.py ${{ inputs.months }}
+      - name: 새로 생겼으면 올리기
+        run: |
+          if git diff --quiet && git diff --cached --quiet && [ -z "$(git status --porcelain)" ]; then
+            echo "새 큐티 없음"
+          else
+            git config user.name 'github-actions'
+            git config user.email 'github-actions@users.noreply.github.com'
+            git add files
+            git commit -m "청소년 큐티 PDF 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
+            git push
+          fi
