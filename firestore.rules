@@ -126,8 +126,14 @@ service cloud.firestore {
       allow read, create, update: if true;
       allow delete: if false;
     }
-    // 가테 1위 한마디 — 문서 하나(current)를 그때그때 1위가 갈아 쓴다.
+    // 가테 1위 한마디 — 콘티마다 문서 하나(문서 이름이 콘티 날짜)를 그때그때 1위가 갈아 쓴다.
     match /radiGateCrown/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+    // 가테 콘티 — 팀장이 올리는 한 벌(문서 이름이 콘티 날짜, 예: 261025).
+    // 누가 팀장인지는 PIN 로그인이라 규칙으로 가릴 수 없다 — 화면에서 막는다.
+    match /radiGateContis/{document} {
       allow read, create, update: if true;
       allow delete: if false;
     }

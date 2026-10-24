@@ -5611,11 +5611,13 @@ function renderQTDayView() {
 // 가테 — 가사 시험. 곡을 고르고, 파트를 고르고, 외운 대로 적은 뒤 맞춰 본다.
 // 띄어쓰기와 문장부호는 보지 않는다. 글자만 맞으면 맞은 것으로 친다.
 // 콘티: 261011(주일) 고등부 예배 — 악보에서 그대로 옮겨 적었다.
-// ⚠️ 콘티를 갈 때는 곡 id도 새로 준다. 기록이 id로만 묶여 있어서(radi_gate_{사람}_{곡id},
-//    radiGateLog의 song), id를 재사용하면 지난 콘티에 통과한 아이가 새 곡도 통과한 것으로 뜬다.
+// ⚠️ 이제 콘티는 팀장이 앱 안에서 올린다(가테 시작 화면 → '+ 새 콘티').
+//    여기 박아 둔 한 벌은 인터넷이 없을 때를 위한 바탕일 뿐이니 손댈 일이 없다.
+//    곡 id 뒤에 콘티 날짜가 붙어 기록이 콘티별로 갈린다 — id를 재사용하면
+//    지난 콘티에 통과한 아이가 새 곡도 통과한 것으로 뜨므로 절대 겹쳐 쓰지 않는다.
 //    물러난 곡 이름은 GATE_PAST_TITLES에 남겨 기록실에서 계속 제목으로 보이게 한다.
 // ==========================================
-const GATE_SONGS = [
+const GATE_BUILTIN_SONGS = [
   { id:'bef-261011', title:'나는 보기 원하네', sub:'BEF · 이성균 사/곡 · GIFTED 편곡 · 1절', sections:[
     { id:'v1', label:'1절', lines:[
       '나는 보기 원하네 하나님의 어린 양',
@@ -5715,14 +5717,266 @@ const GATE_PASS = 95;                    // 이 점수부터 '통과'로 친다
 // ⚠️ 콘티를 갈 때 여기 한 줄만 새 날짜로 바꾸면 랭킹이 통째로 새로 시작된다.
 //    (전체 랭킹 · 곡별 랭킹 · 타수 랭킹 · 1위 한마디가 모두 이 이름으로 갈린다.
 //     지난 기록은 지워지지 않고 기록실에 그대로 남는다.)
-const GATE_SET = '261011';
-const GATE_ALL = 'all-' + GATE_SET;
+const GATE_BUILTIN_SET = '261011';
+
+// 지금 보고 있는 콘티. 팀장이 새 콘티를 올리면 이 셋이 통째로 바뀐다.
+// 곡 id 뒤에 콘티 날짜가 붙어 있어서(s1-261025), 콘티가 바뀌면 기록을 묶는 이름도
+// 통째로 달라진다 — 랭킹·타수·1위 한마디가 저절로 처음부터 다시 시작한다.
+// 지난 기록은 지워지지 않고 기록실에 그대로 남는다.
+let GATE_SONGS = GATE_BUILTIN_SONGS;
+let GATE_SET = GATE_BUILTIN_SET;
+let GATE_ALL = 'all-' + GATE_SET;
 // 곡 수를 우리말로 — '네 곡' '다섯 곡'. 콘티마다 곡 수가 달라서 화면 문구를 여기서 만든다.
 function gateCountKo() { return (['','한','두','세','네','다섯','여섯','일곱','여덟'][GATE_SONGS.length] || GATE_SONGS.length) + ' 곡'; }
 // 이번 콘티의 기록인가 — 랭킹은 이번 콘티 것만 센다
 function gateIsCurrentSet(songId) {
   return typeof songId === 'string' && songId.endsWith('-' + GATE_SET);
 }
+
+// ==========================================
+// 콘티 — 가테 한 벌. 팀장이 가사를 넣으면 새 콘티가 생기고 랭킹이 저절로 새로 시작된다.
+// 서버에는 radiGateContis/{콘티날짜} 문서 하나로 들어간다.
+// 코드에 박아 둔 한 벌(GATE_BUILTIN_SET)은 인터넷이 없을 때를 위해 그대로 남겨 둔다.
+// ==========================================
+let _gateContis = {};          // '261011' → {set,date,label,songs,by,byName,at}
+let _gateContisLoaded = false;
+let _gateContiOpen = false;    // 콘티 목록을 펼쳤는지 (평소엔 접혀 있다)
+
+function gateSetToDate(set) {  // '261025' → '2026-10-25'
+  return /^\d{6}$/.test(set) ? `20${set.slice(0,2)}-${set.slice(2,4)}-${set.slice(4,6)}` : '';
+}
+function gateDateToSet(date) { // '2026-10-25' → '261025'
+  return String(date).replace(/-/g, '').slice(2);
+}
+function gateContiLabelFor(date) {
+  const [, m, d] = String(date).split('-');
+  return `${Number(m)}/${Number(d)} 콘티`;
+}
+function gateContiOf(set) { return _gateContis[set] || null; }
+function gateContiList() {
+  return Object.values(_gateContis).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+function gateSetLabel(set) {
+  const c = gateContiOf(set);
+  if (c) return c.label;
+  return GATE_PAST_TITLES['all-' + set] || (gateSetToDate(set) ? gateContiLabelFor(gateSetToDate(set)) : set);
+}
+
+// 코드에 박아 둔 한 벌도 목록에 올려 둔다 — 서버가 비어 있어도 고를 것이 하나는 있도록.
+_gateContis[GATE_BUILTIN_SET] = {
+  set: GATE_BUILTIN_SET,
+  date: gateSetToDate(GATE_BUILTIN_SET),
+  label: gateContiLabelFor(gateSetToDate(GATE_BUILTIN_SET)),
+  songs: GATE_BUILTIN_SONGS,
+  builtin: true
+};
+
+// 콘티를 갈아 끼운다. 랭킹을 따로 비울 필요가 없다 — 곡 id가 통째로 달라지기 때문이다.
+function gateUseConti(set) {
+  const c = gateContiOf(set);
+  if (!c || !Array.isArray(c.songs) || !c.songs.length) return;
+  GATE_SET = set;
+  GATE_ALL = 'all-' + set;
+  GATE_SONGS = c.songs;
+  gateMode = GATE_ALL;
+  gateIdx = 0;
+  gateStep = 'intro';
+  gateResult = null;
+  gateWord = null;
+  gateRankOpen = false;
+  gateSongRankOpen = false;
+  _gateContiOpen = false;
+  _gateCrown = undefined;        // 1위 한마디도 콘티마다 따로 — 새로 불러온다
+  loadGateCrown();
+  if (state.page === 'gate') renderGate();
+}
+
+function loadGateContis() {
+  if (!_FS_OK || _gateContisLoaded) return;
+  _gateContisLoaded = true;
+  _db.collection('radiGateContis').get()
+    .then(snap => {
+      let newest = null;
+      snap.docs.forEach(d => {
+        const c = d.data();
+        if (!c || c.hidden || !Array.isArray(c.songs) || !c.songs.length) return;
+        _gateContis[d.id] = Object.assign({ set: d.id }, c);
+        if (!newest || String(c.date) > String(newest.date)) newest = _gateContis[d.id];
+      });
+      // 박아 둔 것보다 새 콘티가 서버에 있으면 그쪽으로 간다.
+      // 단, 아이가 시험을 쓰고 있는 중이면 건드리지 않는다 — 쓰던 글이 날아가므로.
+      if (newest && GATE_SET === GATE_BUILTIN_SET && gateStep === 'intro'
+          && String(newest.date) > String(gateSetToDate(GATE_BUILTIN_SET))) {
+        gateUseConti(newest.set);
+      } else if (state.page === 'gate') {
+        renderGate();
+      }
+    })
+    .catch(e => { console.warn('콘티 목록 불러오기 실패:', e); _gateContisLoaded = false; });
+}
+
+// ── 시작 화면 머리 밑 한 줄. 일부러 흐리게 둔다 — 아이들 눈에 먼저 들어올 것이 아니다. ──
+function gateContiBarHtml() {
+  const list = gateContiList();
+  const more = list.length > 1 || isLeader();
+  return `
+    <div class="flex items-center justify-between px-0.5 -mt-1">
+      <button onclick="${more ? '_gateContiOpen=!_gateContiOpen;renderGate()' : ''}" style="min-height:unset"
+        class="text-[11px] text-gray-400 font-semibold ${more ? '' : 'pointer-events-none'}">
+        ${_gEsc(gateSetLabel(GATE_SET))}${more ? (_gateContiOpen ? ' ▴' : ' ▾') : ''}
+      </button>
+      ${isLeader() ? `<button onclick="gateNewConti()" style="min-height:unset"
+        class="text-[11px] text-gray-300 font-semibold active:text-gray-600">+ 새 콘티</button>` : ''}
+    </div>
+    ${_gateContiOpen ? gateContiPickerHtml() : ''}`;
+}
+
+function gateContiPickerHtml() {
+  const list = gateContiList();
+  return `<div class="bg-white rounded-xl p-2 shadow-sm space-y-1">
+    ${list.map(c => {
+      const on = c.set === GATE_SET;
+      return `<button onclick="gateUseConti('${_gEsc(c.set)}')" style="min-height:unset"
+        class="w-full text-left px-2.5 py-1.5 rounded-lg text-[12px] ${on ? 'bg-gray-900 text-white font-bold' : 'text-gray-600 active:bg-gray-50'}">
+        ${_gEsc(c.label)}<span class="${on ? 'text-white/60' : 'text-gray-300'} ml-1 font-normal">· ${(c.songs || []).length}곡</span>
+      </button>`;
+    }).join('')}
+    <p class="text-[10px] text-gray-300 px-2.5 pt-0.5 leading-relaxed">지난 콘티도 눌러서 다시 볼 수 있어요.<br>랭킹은 콘티마다 따로 셉니다.</p>
+  </div>`;
+}
+
+// ── 새 콘티 만들기 (팀장) ──
+let _gateEdit = null;      // { date, songs:[{title, sub, lyrics}] }
+
+function gateNewConti() {
+  if (!isLeader()) { showToast('팀장만 만들 수 있어요'); return; }
+  _gateEdit = { date: TODAY_STR, songs: [{ title: '', sub: '', lyrics: '' }] };
+  gateStep = 'edit';
+  renderGate();
+}
+function gateCancelConti() { _gateEdit = null; gateStep = 'intro'; renderGate(); }
+
+// 화면에 쳐 둔 것을 담아 둔다 — 곡을 더하거나 뺄 때 다시 그려도 날아가지 않게.
+function gateEditSync() {
+  if (!_gateEdit) return;
+  const d = document.getElementById('gc-date');
+  if (d && d.value) _gateEdit.date = d.value;
+  _gateEdit.songs.forEach((sg, i) => {
+    const t = document.getElementById(`gc-title-${i}`);
+    const b = document.getElementById(`gc-sub-${i}`);
+    const l = document.getElementById(`gc-lyrics-${i}`);
+    if (t) sg.title = t.value;
+    if (b) sg.sub = b.value;
+    if (l) sg.lyrics = l.value;
+  });
+}
+function gateEditAddSong() {
+  gateEditSync();
+  if (_gateEdit.songs.length >= 8) { showToast('한 콘티에 여덟 곡까지예요'); return; }
+  _gateEdit.songs.push({ title: '', sub: '', lyrics: '' });
+  renderGate();
+}
+function gateEditDropSong(i) {
+  gateEditSync();
+  if (_gateEdit.songs.length <= 1) { showToast('곡이 하나는 있어야 해요'); return; }
+  _gateEdit.songs.splice(i, 1);
+  renderGate();
+}
+
+// 가사 한 덩이를 구간으로 나눈다. [1절] [후렴] 처럼 대괄호로 적은 줄이 구간 이름이 된다.
+// 대괄호가 하나도 없으면 통째로 한 구간으로 친다.
+function gateParseLyrics(text) {
+  const out = [];
+  let cur = null;
+  String(text || '').split('\n').forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    const m = line.match(/^\[(.{1,12})\]$/);
+    if (m) { cur = { label: m[1].trim(), lines: [] }; out.push(cur); return; }
+    if (!cur) { cur = { label: '전체', lines: [] }; out.push(cur); }
+    cur.lines.push(line);
+  });
+  return out.filter(x => x.lines.length);
+}
+
+async function gateSaveConti() {
+  if (!isLeader() || !_gateEdit) return;
+  gateEditSync();
+  const date = _gateEdit.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showToast('날짜를 골라주세요'); return; }
+
+  const set = gateDateToSet(date);
+  const songs = [];
+  _gateEdit.songs.forEach((sg, i) => {
+    const title = String(sg.title || '').trim();
+    const sections = gateParseLyrics(sg.lyrics);
+    if (!title || !sections.length) return;
+    songs.push({ id: `s${i + 1}-${set}`, title: title.slice(0, 40),
+                 sub: String(sg.sub || '').trim().slice(0, 60), sections });
+  });
+  if (!songs.length) { showToast('곡 제목과 가사를 적어주세요'); return; }
+
+  const had = gateContiOf(set);
+  if (had && !had.builtin &&
+      !confirm(`${gateContiLabelFor(date)}가 이미 올라와 있어요. 덮어쓸까요?\n(이미 본 기록은 지워지지 않고 그대로 남습니다)`)) return;
+
+  const me = getCurrentUser();
+  const conti = { set, date, label: gateContiLabelFor(date), songs,
+                  by: state.currentUser, byName: (me && me.name) || '',
+                  at: new Date().toISOString() };
+  _gateContis[set] = conti;
+  _gateEdit = null;
+  gateUseConti(set);
+  showToast(`${conti.label} 올렸어요 — 랭킹도 새로 시작합니다`);
+  if (!_FS_OK) return;
+  try {
+    await _db.collection('radiGateContis').doc(set).set(conti);
+  } catch (e) {
+    console.warn('콘티 저장 실패:', e);
+    showToast('서버에 올리지 못했어요 — 이 기기에서만 보입니다');
+  }
+}
+
+function renderGateContiEdit(el) {
+  const e = _gateEdit || { date: TODAY_STR, songs: [{ title: '', sub: '', lyrics: '' }] };
+  el.innerHTML = `
+    <div class="flex items-center justify-between">
+      <h2 class="font-bold text-gray-900">새 콘티 만들기</h2>
+      <button onclick="gateCancelConti()" style="min-height:30px" class="text-xs text-gray-500">취소</button>
+    </div>
+    <div class="bg-white rounded-2xl p-3 shadow-sm">
+      <p class="text-xs font-bold text-gray-700 mb-1.5">콘티 날짜</p>
+      <input id="gc-date" type="date" value="${_gEsc(e.date)}"
+        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm">
+      <p class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">이 날짜가 콘티 이름이 됩니다.
+        날짜가 바뀌면 랭킹·타수·1위 한마디가 모두 처음부터 새로 시작합니다.</p>
+    </div>
+    ${e.songs.map((sg, i) => `
+      <div class="bg-white rounded-2xl p-3 shadow-sm space-y-2">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold text-gray-700">${i + 1}번 곡</p>
+          ${e.songs.length > 1 ? `<button onclick="gateEditDropSong(${i})" style="min-height:unset"
+            class="text-[11px] text-red-400 font-semibold">빼기</button>` : ''}
+        </div>
+        <input id="gc-title-${i}" type="text" maxlength="40" placeholder="곡 제목"
+          value="${_gEsc(sg.title)}" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold">
+        <input id="gc-sub-${i}" type="text" maxlength="60" placeholder="부제 — 안 적어도 됩니다 (예: 제이어스 · F key · 3절만)"
+          value="${_gEsc(sg.sub)}" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px]">
+        <textarea id="gc-lyrics-${i}" rows="9" placeholder="[1절]&#10;가사를 한 줄씩&#10;&#10;[후렴]&#10;여기에 후렴"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] leading-relaxed" style="white-space:pre">${_gEsc(sg.lyrics)}</textarea>
+      </div>`).join('')}
+    <button onclick="gateEditAddSong()" style="min-height:unset"
+      class="w-full border-2 border-dashed border-gray-200 rounded-xl py-2.5 text-xs font-semibold text-gray-400 active:bg-gray-50">+ 곡 추가</button>
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+      <p class="text-[11px] font-bold text-amber-700 mb-1">가사 적는 법</p>
+      <p class="text-[11px] text-amber-800 leading-relaxed">구간 이름은 <b>[1절]</b> <b>[후렴]</b> <b>[브릿지]</b> 처럼
+        대괄호로 한 줄에 적어주세요. 그 아래로 가사를 한 줄씩 적으면 됩니다.<br>
+        대괄호를 하나도 안 적으면 통째로 한 구간이 됩니다. 빈 줄은 알아서 지워집니다.</p>
+    </div>
+    <button onclick="gateSaveConti()" class="w-full bg-gray-900 text-white rounded-xl py-3 font-bold text-sm active:bg-black">올리기</button>
+    <div class="h-4"></div>`;
+}
+
 let gateMode = GATE_ALL;
 let gateStep = 'intro';                  // intro | study | test | result | log
 let gateIdx = 0;                         // 각개 시험에서 고른 곡
@@ -6040,7 +6294,14 @@ function gateLogTitle(songId) {
   if (songId === GATE_ALL) return `전체 시험 (${gateCountKo()})`;
   const s = GATE_SONGS.find(x => x.id === songId);
   if (s) return s.title;
-  return GATE_PAST_TITLES[songId] || songId;   // 지난 콘티 곡
+  // 다른 콘티의 곡 — 올라와 있는 콘티들을 뒤져 제목을 찾는다
+  const contis = Object.keys(_gateContis);
+  for (let i = 0; i < contis.length; i++) {
+    const f = (_gateContis[contis[i]].songs || []).find(x => x.id === songId);
+    if (f) return f.title;
+  }
+  if (/^all-/.test(songId)) return `전체 시험 (${gateSetLabel(songId.slice(4))})`;
+  return GATE_PAST_TITLES[songId] || songId;   // 더 옛날 콘티 곡
 }
 function gateLogWhen(iso) {
   const d = new Date(iso);
@@ -6446,7 +6707,10 @@ function renderGate() {
   const isAll = gateMode === GATE_ALL;
   const stepLabel = isAll ? gateCountKo() : `${gateIdx + 1} / ${GATE_SONGS.length}`;
 
+  loadGateContis();   // 올라와 있는 콘티를 한 번 받아 둔다(한 번만 돈다)
+
   if (gateStep === 'log') { renderGateLog(el); return; }
+  if (gateStep === 'edit') { renderGateContiEdit(el); return; }
 
   // ① 시작 화면
   if (gateStep === 'intro') {
@@ -6461,6 +6725,7 @@ function renderGate() {
           <button onclick="navigate('dashboard')" style="min-height:30px" class="text-xs text-gray-500">닫기</button>
         </div>
       </div>
+      ${gateContiBarHtml()}
       ${gateRestoreCard()}
       <button onclick="gateStartAll()" class="gate-card w-full text-left px-4 py-3.5 active:opacity-90">
         <span class="flex items-center gap-3">
@@ -6488,7 +6753,10 @@ function renderGate() {
       <p class="text-[11px] text-gray-400 text-center -mt-1">가사를 먼저 보여드리고, 다 외우면 그대로 적으시면 됩니다 · ${GATE_PASS}% 이상이면 통과</p>
       ${rank.top}
       ${rank.songs}
-      <p class="text-[11px] text-gray-400 text-center">${GATE_SET}(주일) 고등부 예배 콘티</p>`;
+      <p class="text-[11px] text-gray-400 text-center">${_gEsc(gateSetLabel(GATE_SET))} 고등부 예배${(() => {
+        const c = gateContiOf(GATE_SET);
+        return c && c.byName ? ` · ${_gEsc(c.byName)} 올림` : '';
+      })()}</p>`;
     return;
   }
 
@@ -9298,7 +9566,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-10-24.1';
+const APP_BUILD = '2026-10-24.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
