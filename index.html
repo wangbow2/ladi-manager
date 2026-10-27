@@ -1410,7 +1410,7 @@ let _fsHasPendingChanges = false;
 
 const _FS_MAP_FIELDS = new Set([
   'checks', 'lineups', 'memos', 'pins', 'qtComments', 'qtCommentsReadAt',
-  'qtDayChecks', 'pastoralApprovals', 'adminRestrictions', 'loveMeetingRecords',
+  'pastoralApprovals', 'adminRestrictions', 'loveMeetingRecords',
   'qrUsage', 'lineupConfirmed', 'qtPassageTexts', 'weeklyFiles', 'worshipClips'
 ]);
 const _FS_ARRAY_FIELDS = new Set(['students', 'qtPosts', 'editLogs', 'loveMeetings', 'feedbacks']);
@@ -1573,7 +1573,6 @@ function _getFsData() {
     qtPosts: state.qtPosts,
     qtComments: state.qtComments,
     qtCommentsReadAt: state.qtCommentsReadAt,
-    qtDayChecks: state.qtDayChecks,
     _gateMigrated: state._gateMigrated,
     _roleMigrated: state._roleMigrated,
     _adminLevelMigrated: state._adminLevelMigrated,
@@ -1672,6 +1671,10 @@ function _createDailyStateSnapshot(fsData) {
 }
 
 function _applyFsData(fsData) {
+  // QT 기록은 용량 제한을 피하기 위해 qtSubmissions 컬렉션에서 따로 읽는다.
+  // 이전 버전의 radi/state에 남아 있는 묶음 필드는 메모리 상태를 덮지 않게 무시한다.
+  fsData = { ...fsData };
+  delete fsData.qtDayChecks;
   const localUser = state.currentUser;
   const localMonth = state.month;
   const localPage = state.page;
@@ -1722,14 +1725,6 @@ function _recoverJuneDataFromLocal(fsData) {
       }
     });
   });
-  const localQT = state.qtDayChecks || {};
-  const serverQT = fsData.qtDayChecks || (fsData.qtDayChecks = {});
-  Object.entries(localQT).forEach(([key, value]) => {
-    if (key.includes('_2026-06-') && !serverQT[key] && value?.done) {
-      serverQT[key] = _cloneData(value);
-      changed = true;
-    }
-  });
   localStorage.setItem('radi_recovery_20260610_done', '1');
   return changed;
 }
@@ -1752,6 +1747,50 @@ function _renderCurrentPage() {
 
 let _fsInitDone = false;
 let _fsInitTries = 0;
+let _qtSubmissionsUnsubscribe = null;
+
+function _qtSubmissionAsDayEntry(data) {
+  if (!data || data.deleted || !data.date) return null;
+  const createdAt = data.createdAt && typeof data.createdAt.toMillis === 'function'
+    ? data.createdAt.toMillis() : (data.createdAt || Date.now());
+  return {
+    done: true,
+    content: data.content || '',
+    imageKey: data.imageKey || null,
+    createdAt,
+  };
+}
+
+// QT는 한 문서에 몰아넣지 않고 한 제출당 한 문서로 실시간 동기화한다.
+// 이렇게 하면 radi/state의 1MiB 제한과 동시 저장 충돌을 함께 피할 수 있다.
+function _listenQTSubmissions() {
+  if (!_FS_OK || _qtSubmissionsUnsubscribe) return;
+  let initialized = false;
+  _qtSubmissionsUnsubscribe = _db.collection('qtSubmissions').onSnapshot(snap => {
+    if (!initialized) {
+      const all = {};
+      snap.forEach(doc => {
+        const entry = _qtSubmissionAsDayEntry(doc.data());
+        if (entry) all[doc.id] = entry;
+      });
+      state.qtDayChecks = all;
+      initialized = true;
+    } else {
+      if (!state.qtDayChecks) state.qtDayChecks = {};
+      snap.docChanges().forEach(change => {
+        const entry = _qtSubmissionAsDayEntry(change.doc.data());
+        if (change.type === 'removed' || !entry) delete state.qtDayChecks[change.doc.id];
+        else state.qtDayChecks[change.doc.id] = entry;
+      });
+    }
+    try { localStorage.setItem('radi_v4', JSON.stringify(state)); } catch (e) {}
+    if (state.currentUser) {
+      const qtTextarea = document.getElementById('qt-day-text');
+      if (!(qtTextarea && (qtTextarea.value.trim() || _qtDayPendingImg))) _renderSoon();
+      updateNotificationBadge();
+    }
+  }, e => console.warn('QT 개별 기록 동기화 실패:', e));
+}
 
 function initFirestore() {
   if (!_FS_OK) return; // 로컬 전용 모드 — 서버 동기화 생략
@@ -1833,12 +1872,12 @@ function initFirestore() {
       }
     });
 
+    _listenQTSubmissions();
+
     // 기존 로컬 QT 이미지를 Firestore로 마이그레이션 (학생 기기에서만 의미 있음)
     setTimeout(() => _migrateLocalQTImages(), 3000);
     // 사랑모임 사진 — 서버에 누락된 로컬 사진 재업로드
     setTimeout(() => _syncLocalLoveImages(), 3000);
-    // 안전사본과 대조해 서버에서 빠진 큐티를 되살린다
-    setTimeout(() => _recoverMissingQTFromBackup(), 4000);
   }).catch(e => {
     // 여기서 포기하면 그 세션 내내 큐티가 서버에 안 올라간다. 될 때까지 재시도한다.
     _fsInitTries++;
@@ -9566,7 +9605,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-10-24.2';
+const APP_BUILD = '2026-10-27.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;

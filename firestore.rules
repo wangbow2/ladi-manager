@@ -4,8 +4,10 @@ service cloud.firestore {
     match /radi/state {
       allow read: if true;
       // schemaVersion이 없는 구버전 클라이언트의 전체 덮어쓰기를 차단한다.
-      allow create: if request.resource.data.schemaVersion >= 3;
-      allow update: if request.resource.data.schemaVersion >= 3;
+      allow create: if request.resource.data.schemaVersion >= 3
+                    && !('qtDayChecks' in request.resource.data);
+      allow update: if request.resource.data.schemaVersion >= 3
+                    && !('qtDayChecks' in request.resource.data);
       allow delete: if false;
     }
     // 신입생 수료 관리(newcomer/) — 본 앱 radi/state와 완전히 분리된 문서.
@@ -84,7 +86,7 @@ service cloud.firestore {
       allow read, create: if true;
       allow update, delete: if false;
     }
-    // 큐티 안전사본 — 본 기록이 유실돼도 여기서 되살린다.
+    // 큐티 본 기록 — 한 제출당 한 문서로 나눠 radi/state의 1MiB 한도를 피한다.
     match /qtSubmissions/{document} {
       allow read, create, update: if true;
       allow delete: if false;
