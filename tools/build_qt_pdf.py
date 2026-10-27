@@ -129,10 +129,11 @@ def write_index():
 
 
 def targets_from_today():
-    """이번 달과 다음 달. 12월엔 다음 달이 내년 1월이 되므로 해가 바뀌어도 그냥 돈다."""
+    """이번 달부터 다다음 달까지. 새 호가 일찍 나오면 바로 홈페이지에 올린다."""
     t = datetime.datetime.now(KST).date()
     nxt = (t.replace(day=1) + datetime.timedelta(days=32)).replace(day=1)
-    return [f'{t.year:04d}-{t.month:02d}', f'{nxt.year:04d}-{nxt.month:02d}']
+    after_next = (nxt + datetime.timedelta(days=32)).replace(day=1)
+    return [f'{d.year:04d}-{d.month:02d}' for d in (t, nxt, after_next)]
 
 
 def main(argv):
