@@ -1,0 +1,120 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "qtDayChecks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "checks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "lineups",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "loveMeetingRecords",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "exams",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "editLogs",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "worshipClips",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "qtCommentsReadAt",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "students",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "qtComments",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "qtPosts",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "feedbacks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "memos",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "qtPassageTexts",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "weeklyFiles",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "pins",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "pastoralApprovals",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "loveMeetings",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "adminRestrictions",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "lineupConfirmed",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "radi",
+      "fieldPath": "qrUsage",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stateSnapshots",
+      "fieldPath": "state",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stateBackups",
+      "fieldPath": "changes",
+      "indexes": []
+    }
+  ]
+}
