@@ -482,19 +482,9 @@
         <label class="text-xs text-gray-500 font-semibold mb-1 block">보호자 전화번호</label>
         <input type="text" id="inp-parent-phone" placeholder="010-0000-0000">
       </div>
-      <div class="flex gap-2">
-        <div class="flex-1">
-          <label class="text-xs text-gray-500 font-semibold mb-1 block">악기</label>
-          <input type="text" id="inp-instrument" placeholder="드럼, 건반, 기타...">
-        </div>
-        <div class="flex-1">
-          <label class="text-xs text-gray-500 font-semibold mb-1 block">라인업 예배</label>
-          <select id="inp-lineup-service">
-            <option value="1부">1부</option>
-            <option value="2부">2부</option>
-            <option value="둘다">둘 다</option>
-          </select>
-        </div>
+      <div>
+        <label class="text-xs text-gray-500 font-semibold mb-1 block">악기</label>
+        <input type="text" id="inp-instrument" placeholder="드럼, 건반, 기타...">
       </div>
       <div>
         <label class="text-xs text-gray-500 font-semibold mb-1 block">담당 교사</label>
@@ -871,6 +861,12 @@ const INITIAL_STUDENTS = [
   { id:'s9', name:'김예원', group:'솔라디', birthDate:'2010-05-06', gender:'여', grade:'고1', lineupService:'2부', phone:'010-7317-9410', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'s10', name:'유소영', group:'솔라디', birthDate:'2010-02-03', gender:'여', grade:'고1', lineupService:'1부', phone:'010-4796-5038', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'s11', name:'최하람', group:'솔라디', birthDate:'2010-11-04', gender:'여', grade:'고1', lineupService:'2부', phone:'010-5365-3968', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  // 26년 가을 신입생 편입 (2026-11-01)
+  { id:'s12', name:'최유주', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-2256-6435', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s13', name:'남예진', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-2044-6234', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s14', name:'이태관', group:'솔라디', birthDate:'', gender:'남', grade:'', phone:'010-9206-3132', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s15', name:'배은채', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-3546-8681', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s16', name:'구예림', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-9382-1215', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   // 라디스 (손예서 추가)
   { id:'r1', name:'이다은', group:'라디스', birthDate:'2008-04-07', gender:'여', grade:'고3', lineupService:'1부', phone:'010-3474-7511', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'r2', name:'이하연', group:'라디스', birthDate:'2008-04-13', gender:'여', grade:'고3', lineupService:'2부', phone:'010-4827-1052', parentPhone:'', teacher:'', status:'활동중', memo:'' },
@@ -4505,7 +4501,6 @@ function renderDetail(id) {
             <span class="text-xs ${s.status==='활동중'?'bg-green-100 text-green-700':s.status==='군복무'?'bg-green-200 text-green-800':'bg-gray-100 text-gray-600'} px-2 py-0.5 rounded-full">${s.status==='군복무'?'🪖 군복무':s.status}</span>
             ${s.role ? s.role.split(' / ').map(r=>roleBadge(r)).join('') : ''}
             ${s.instrument ? `<span class="text-xs bg-gray-900 text-white px-2 py-0.5 rounded-full">🎸 ${s.instrument}</span>` : ''}
-            ${s.lineupService ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">라인업 ${s.lineupService}</span>` : ''}
           </div>
         </div>
       </div>
@@ -9153,7 +9148,6 @@ function openAddStudent() {
   document.getElementById('inp-grade').value = '';
   document.getElementById('inp-class').value = '';
   document.getElementById('inp-status').value = '활동중';
-  document.getElementById('inp-lineup-service').value = '1부';
   document.getElementById('inp-admin-level').value = 'member';
   openModal('modal-student');
 }
@@ -9175,7 +9169,6 @@ function openEditStudent(id) {
   document.getElementById('inp-status').value = s.status||'활동중';
   document.getElementById('inp-memo').value = s.memo||'';
   document.getElementById('inp-instrument').value = s.instrument||'';
-  document.getElementById('inp-lineup-service').value = s.lineupService||'1부';
   document.getElementById('inp-admin-level').value = s.adminLevel||'member';
   openModal('modal-student');
 }
@@ -9199,7 +9192,6 @@ function saveStudent() {
     status: document.getElementById('inp-status').value,
     memo: document.getElementById('inp-memo').value,
     instrument: document.getElementById('inp-instrument').value,
-    lineupService: document.getElementById('inp-lineup-service').value,
     adminLevel: document.getElementById('inp-admin-level').value,
   };
 
@@ -9605,7 +9597,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-10-27.1';
+const APP_BUILD = '2026-11-01.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
