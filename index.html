@@ -862,11 +862,11 @@ const INITIAL_STUDENTS = [
   { id:'s10', name:'유소영', group:'솔라디', birthDate:'2010-02-03', gender:'여', grade:'고1', lineupService:'1부', phone:'010-4796-5038', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'s11', name:'최하람', group:'솔라디', birthDate:'2010-11-04', gender:'여', grade:'고1', lineupService:'2부', phone:'010-5365-3968', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   // 26년 가을 신입생 편입 (2026-11-01)
-  { id:'s12', name:'최유주', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-2256-6435', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'s13', name:'남예진', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-2044-6234', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'s14', name:'이태관', group:'솔라디', birthDate:'', gender:'남', grade:'', phone:'010-9206-3132', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'s15', name:'배은채', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-3546-8681', parentPhone:'', teacher:'', status:'활동중', memo:'' },
-  { id:'s16', name:'구예림', group:'솔라디', birthDate:'', gender:'여', grade:'', phone:'010-9382-1215', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s12', name:'최유주', group:'솔라디', birthDate:'2010-11-03', gender:'여', grade:'고1', phone:'010-2256-6435', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s13', name:'남예진', group:'솔라디', birthDate:'2010-04-19', gender:'여', grade:'고1', phone:'010-2044-6234', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s14', name:'이태관', group:'솔라디', birthDate:'2010-11-25', gender:'남', grade:'고1', phone:'010-9206-3132', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s15', name:'배은채', group:'솔라디', birthDate:'2010-12-11', gender:'여', grade:'고1', phone:'010-3546-8681', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'s16', name:'구예림', group:'솔라디', birthDate:'2010-12-19', gender:'여', grade:'고1', phone:'010-9382-1215', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   // 라디스 (손예서 추가)
   { id:'r1', name:'이다은', group:'라디스', birthDate:'2008-04-07', gender:'여', grade:'고3', lineupService:'1부', phone:'010-3474-7511', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'r2', name:'이하연', group:'라디스', birthDate:'2008-04-13', gender:'여', grade:'고3', lineupService:'2부', phone:'010-4827-1052', parentPhone:'', teacher:'', status:'활동중', memo:'' },
@@ -1362,6 +1362,7 @@ function saveState() {
       _may2026Attendance: state._may2026Attendance,
       _phoneMigrated2026: state._phoneMigrated2026,
       _fall2026Intake: state._fall2026Intake,
+      _fall2026Profile: state._fall2026Profile,
       _birthMigrated2026: state._birthMigrated2026,
       _r11BirthFixed: state._r11BirthFixed,
       _r11BirthFixed2: state._r11BirthFixed2,
@@ -1596,6 +1597,7 @@ function _getFsData() {
     _may2026Attendance: state._may2026Attendance,
     _phoneMigrated2026: state._phoneMigrated2026,
     _fall2026Intake: state._fall2026Intake,
+    _fall2026Profile: state._fall2026Profile,
     _birthMigrated2026: state._birthMigrated2026,
     _r11BirthFixed: state._r11BirthFixed,
     _r11BirthFixed2: state._r11BirthFixed2,
@@ -1831,6 +1833,19 @@ function initFirestore() {
         state._r11BirthFixed = true;
         state._r11BirthFixed2 = true;
         state._birthMigrated2026 = true;
+        saveState();
+      }
+
+      // 26년 가을 편입생 생일·학년 — 서버에 공란으로 올라간 것을 교적부 값으로 채운다.
+      if (!state._fall2026Profile) {
+        ['s12','s13','s14','s15','s16'].forEach(id => {
+          const cur = state.students.find(x => x.id === id);
+          const seed = INITIAL_STUDENTS.find(x => x.id === id);
+          if (!cur || !seed) return;
+          if (!cur.birthDate) cur.birthDate = seed.birthDate;
+          if (!cur.grade) cur.grade = seed.grade;
+        });
+        state._fall2026Profile = true;
         saveState();
       }
 
@@ -9608,7 +9623,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-01.2';
+const APP_BUILD = '2026-11-01.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
