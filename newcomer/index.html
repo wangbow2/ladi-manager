@@ -328,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-02.3';
+const APP_BUILD = '2026-11-02.4';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -710,6 +710,19 @@ function initFirestore() {
     renderAll();
   }).catch(e => {
     _fsTries++;
+    // 할당량 초과(429)는 다음 날 태평양 자정에나 풀린다. 20초마다 계속 찔러 대면
+    // 풀린 할당량을 접속한 기기 수만큼 곱해서 다시 태운다 — 그래서 길게 쉰다.
+    const quota = e && (e.code === 'resource-exhausted' || /RESOURCE_EXHAUSTED|exhaust/i.test(e.message || ''));
+    if (quota) {
+      console.warn('Firestore 할당량 초과 — 10분 뒤에 다시 확인합니다:', e);
+      // 보관함에 둔 큐티는 그대로 있다. 풀리는 대로 올라간다.
+      setTimeout(initFirestore, 600000);
+      return;
+    }
+    if (_fsTries > 12) {   // 4분쯤 해 보고 접는다. 이 앱은 기기에 저장한 것으로도 돈다.
+      console.warn('Firestore 연결을 포기합니다 — 이 기기에 저장하며 씁니다:', e);
+      return;
+    }
     console.warn(`Firestore 연결 실패 — ${_fsTries}번째 재시도 예정:`, e);
     setTimeout(initFirestore, Math.min(2000 * _fsTries, 20000));
   });
