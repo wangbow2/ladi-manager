@@ -328,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-02.2';
+const APP_BUILD = '2026-11-02.3';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -1170,6 +1170,47 @@ const _qtDocs = {};            // `${id}_${date}` → {text, image} | null
 const _qtLoading = {};
 let _qtPendingImg = null;      // 아직 안 올린 사진(미리보기용)
 
+// ── 큐티 보관함 — 서버가 막혀도 쓴 글을 잃지 않는다 ──
+// _FS_OK은 SDK가 떴는지만 본다. 서버가 할당량 초과(429)로 막혀 있어도 true다.
+// 그래서 저장이 실패할 수 있는데 글은 메모리에만 있었다 — 앱을 닫으면 사라졌다.
+// 올릴 것을 먼저 이 보관함(localStorage)에 적고, 서버가 받아 준 뒤에 지운다.
+const QT_OUTBOX_KEY = 'ladi_newcomer_qt_outbox';
+let _qtOutbox = {};
+try { _qtOutbox = JSON.parse(localStorage.getItem(QT_OUTBOX_KEY) || '{}') || {}; } catch (_) {}
+let _qtFlushTimer = null, _qtFlushTries = 0;
+
+function _qtOutboxSave() {
+  // 시크릿 모드나 저장 공간이 꽉 찬 기기에서는 적지 못한다. 그때는 false를 돌려
+  // 부르는 쪽이 초안을 지우지 않도록 한다 — 둘 다 없어지는 일을 막는다.
+  try { localStorage.setItem(QT_OUTBOX_KEY, JSON.stringify(_qtOutbox)); return true; }
+  catch (_) { return false; }
+}
+function qtQueue(k, doc) { _qtOutbox[k] = doc; return _qtOutboxSave(); }
+function qtQueueDone(k) { if (_qtOutbox[k]) { delete _qtOutbox[k]; _qtOutboxSave(); } }
+function scheduleQtFlush() {
+  // 할당량 초과는 몇 시간 뒤에 풀린다. 1분에서 10분까지 벌리며 기다린다 —
+  // 조급하게 다시 찔러서 남은 할당량을 더 태우지 않기 위해서다.
+  clearTimeout(_qtFlushTimer);
+  _qtFlushTries++;
+  _qtFlushTimer = setTimeout(flushQtOutbox, Math.min(60000 * _qtFlushTries, 600000));
+}
+function flushQtOutbox() {
+  clearTimeout(_qtFlushTimer);
+  if (!_FS_OK) return;
+  const keys = Object.keys(_qtOutbox);
+  if (!keys.length) { _qtFlushTries = 0; return; }
+  Promise.all(keys.map(k =>
+    _db.collection('newcomerQT').doc(k).set(_qtOutbox[k])
+      .then(() => { delete _qtOutbox[k]; return true; })
+      .catch(() => false)
+  )).then(oks => {
+    _qtOutboxSave();
+    if (oks.every(Boolean)) { _qtFlushTries = 0; toast('못 올렸던 큐티가 올라갔어요!'); }
+    else scheduleQtFlush();
+    renderAll();
+  });
+}
+
 function qtKey(id, date) { return `${id}_${date}`; }
 function esc(s) {
   return String(s == null ? '' : s)
@@ -1180,6 +1221,8 @@ function esc(s) {
 function loadQtDoc(id, date) {
   const k = qtKey(id, date);
   if (_qtDocs[k] !== undefined || _qtLoading[k]) return;
+  // 아직 서버에 못 올린 것이 있으면 그것이 가장 최신이다. 앱을 다시 켜도 글이 보이게 한다.
+  if (_qtOutbox[k]) { _qtDocs[k] = _qtOutbox[k]; return; }
   if (!_FS_OK) { _qtDocs[k] = null; return; }
   _qtLoading[k] = true;
   _db.collection('newcomerQT').doc(k).get()
@@ -1287,21 +1330,25 @@ function submitQT(id, n, i, date) {
   if (!text && !image) { toast('묵상한 내용을 적거나 사진을 올려주세요'); return; }
   const doc = { studentId: id, date, text, image, updatedAt: new Date().toISOString() };
 
-  _qtDocs[qtKey(id, date)] = doc;
+  const k = qtKey(id, date);
+  _qtDocs[k] = doc;
   _qtPendingImg = null;
-  clearQtDraft(date);
   // 체크는 제출과 함께 켠다 — 올렸는데 체크가 안 되는 일이 없도록.
   const arr = qtOf(id, n).slice();
   arr[i] = true;
   pushPatch({ qt: { [weekKey(id, n)]: arr } });
+  // 보관함에 먼저 적고, 적힌 뒤에야 초안을 지운다.
+  const queued = qtQueue(k, doc);
+  if (queued) clearQtDraft(date);
   renderAll();
 
-  if (!_FS_OK) { toast('저장했어요 (인터넷이 없어 이 기기에만)'); return; }
-  _db.collection('newcomerQT').doc(qtKey(id, date)).set(doc)
-    .then(() => toast('큐티를 올렸어요!'))
+  if (!_FS_OK) { toast('적어 뒀어요 — 연결되면 자동으로 올라가요'); return; }
+  _db.collection('newcomerQT').doc(k).set(doc)
+    .then(() => { qtQueueDone(k); clearQtDraft(date); toast('큐티를 올렸어요!'); renderAll(); })
     .catch(e => {
-      console.warn('큐티 저장 실패:', e);
-      toast('저장이 안 됐어요. 잠시 뒤 다시 눌러주세요');
+      console.warn('큐티 저장 실패 — 보관함에 두고 다시 시도합니다:', e);
+      if (queued) { toast('적어 뒀어요 — 연결되면 자동으로 올라가요'); scheduleQtFlush(); }
+      else toast('저장이 안 됐어요. 잠시 뒤 다시 눌러주세요');
     });
 }
 
@@ -1623,10 +1670,12 @@ function saveEditQT(id) {
   _qtDocs[qtKey(id, qtDate)] = doc;
   _qtEditing = null;
   renderAll();
-  if (!_FS_OK) { toast('고쳤어요 (인터넷이 없어 이 기기에만)'); return; }
-  _db.collection('newcomerQT').doc(qtKey(id, qtDate)).set(doc)
-    .then(() => toast(`${findUser(id).name} 큐티를 고쳤어요`))
-    .catch(e => { console.warn('큐티 수정 실패:', e); toast('저장이 안 됐어요. 잠시 뒤 다시 해주세요'); });
+  const k = qtKey(id, qtDate);
+  qtQueue(k, doc);
+  if (!_FS_OK) { toast('고쳤어요 — 연결되면 자동으로 올라가요'); return; }
+  _db.collection('newcomerQT').doc(k).set(doc)
+    .then(() => { qtQueueDone(k); toast(`${findUser(id).name} 큐티를 고쳤어요`); })
+    .catch(e => { console.warn('큐티 수정 실패 — 보관함에 둡니다:', e); toast('적어 뒀어요 — 연결되면 자동으로 올라가요'); scheduleQtFlush(); });
 }
 
 // 한 번 더 누르게 해서 실수로 지우는 일을 막는다(브라우저 확인창은 쓰지 않는다).
@@ -1646,10 +1695,12 @@ function doDeleteQT(id) {
   arr[i] = false;
   pushPatch({ qt: { [weekKey(id, n)]: arr } });
   renderAll();
-  if (!_FS_OK) { toast('지웠어요 (인터넷이 없어 이 기기에만)'); return; }
-  _db.collection('newcomerQT').doc(qtKey(id, qtDate)).set(doc)
-    .then(() => toast(`${findUser(id).name} 큐티를 지웠어요`))
-    .catch(e => { console.warn('큐티 삭제 실패:', e); toast('지우지 못했어요. 잠시 뒤 다시 해주세요'); });
+  const k = qtKey(id, qtDate);
+  qtQueue(k, doc);
+  if (!_FS_OK) { toast('지웠어요 — 연결되면 자동으로 반영돼요'); return; }
+  _db.collection('newcomerQT').doc(k).set(doc)
+    .then(() => { qtQueueDone(k); toast(`${findUser(id).name} 큐티를 지웠어요`); })
+    .catch(e => { console.warn('큐티 삭제 실패 — 보관함에 둡니다:', e); toast('지운 것을 적어 뒀어요 — 연결되면 반영돼요'); scheduleQtFlush(); });
 }
 
 function rotateEditImage(id) {
@@ -1794,6 +1845,11 @@ function renderQT() {
             class="mt-3 px-4 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm">오늘 큐티로 가기</button>` : ''}
         </div>`}`
       : `
+      ${_qtOutbox[qtKey(writerId, qtDate)] ? `
+      <div class="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+        <p class="text-[11px] text-amber-800 font-semibold">올린 큐티를 보관해 뒀어요</p>
+        <p class="text-[11px] text-amber-700 mt-0.5">서버가 지금 붐벼서 아직 못 보냈어요. 글은 안 없어지니 그냥 두면 자동으로 올라가요.</p>
+      </div>` : ''}
       <div class="flex justify-end mb-1"><span data-qt-autosave class="text-[10px] text-gray-400">입력 자동 저장</span></div>
       <textarea id="qt-text" rows="6" oninput="saveQtDraft('${qtDate}',this.value)"
         placeholder="오늘 말씀을 읽고 마음에 남은 것, 하나님이 어떤 분으로 보였는지, 내 삶에 어떻게 적용할지 자유롭게 적어보세요."
@@ -2511,6 +2567,10 @@ try {
 
 initFirestore();
 loadQtPdfIndex();   // 새 달 PDF가 올라왔는지 확인 — 배포 없이 목록이 늘어난다
+flushQtOutbox();    // 지난번에 못 올린 큐티가 있으면 지금 올린다
+// 앱으로 돌아왔을 때도 한 번 더 — 할당량이 풀린 뒤 아이가 앱을 켜면 그때 올라간다.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) flushQtOutbox(); });
+window.addEventListener('online', flushQtOutbox);
 
 // ==========================================
 // 앱 자동 업데이트 (본 앱과 같은 방식 — 새로고침 루프 차단 포함)
