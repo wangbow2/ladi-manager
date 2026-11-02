@@ -328,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-02.1';
+const APP_BUILD = '2026-11-02.2';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -546,7 +546,25 @@ function suYouthImgUrl(dateStr, slot) {
   return `https://sum.su.or.kr:8888/Bible_Attach/QT2/J${dateStr.replace(/-/g,'')}-${slot+1}.jpg`;
 }
 // 월별 큐티 PDF — 본 앱의 files/ 아래 실물을 그대로 쓴다.
-const QT_PDF = { '2026-08':'8월', '2026-09':'9월', '2026-10':'10월' };
+// 깃허브 액션이 매달 PDF를 만들고 files/qt-index.json을 다시 적는다. 본 앱과 같이
+// 그 파일을 런타임에 읽어 덧씌운다 — 새 달이 생겨도 이 앱을 다시 배포할 일이 없다.
+// (못 읽으면 아래 박아 둔 목록으로 그대로 돈다.)
+const QT_PDF = { '2026-08':'8월', '2026-09':'9월', '2026-10':'10월', '2026-11':'11월', '2026-12':'12월' };
+let _qtPdfLive = null, _qtPdfTried = false;
+function qtPdfMonths() {
+  const out = Object.assign({}, QT_PDF);
+  Object.keys(_qtPdfLive || {}).forEach(ym => { out[ym] = `${Number(ym.slice(5, 7))}월`; });
+  // 최근 달이 앞에 오게 — 지금 쓰는 달을 먼저 누르도록.
+  return Object.keys(out).sort().reverse().reduce((o, k) => (o[k] = out[k], o), {});
+}
+function loadQtPdfIndex() {
+  if (_qtPdfTried) return;
+  _qtPdfTried = true;
+  fetch('../files/qt-index.json?d=' + iso(today0()))
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j && j.months) { _qtPdfLive = j.months; renderAll(); } })
+    .catch(() => {});   // 파일이 없거나 인터넷이 없으면 박아 둔 목록을 쓴다
+}
 
 const ATT_CYCLE = ['', '출석', '지각', '무단지각', '결석', '무단결석'];
 const ATT_SHORT = { '':'·', '출석':'O', '지각':'지', '무단지각':'무지', '결석':'결', '무단결석':'무결' };
@@ -1878,11 +1896,11 @@ function renderQT() {
 
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-2">월별 큐티 PDF</h3>
-      <div class="flex gap-2">
-        ${Object.keys(QT_PDF).map(ym => `
+      <div class="grid grid-cols-3 gap-2">
+        ${(() => { const m = qtPdfMonths(); return Object.keys(m).map(ym => `
           <a href="../files/${ym}/youth-qt-${ym}.pdf" target="_blank" rel="noopener"
-             class="flex-1 text-center bg-gray-50 border rounded-xl py-3 text-sm font-semibold text-gray-700">
-            📕 ${QT_PDF[ym]}</a>`).join('')}
+             class="text-center bg-gray-50 border rounded-xl py-3 text-sm font-semibold text-gray-700">
+            📕 ${m[ym]}</a>`).join(''); })()}
       </div>
       <p class="text-[11px] text-gray-400 mt-2">한 달치를 통째로 받아 인쇄할 수 있어요 (20MB 남짓)</p>
     </div>`;
@@ -2492,6 +2510,7 @@ try {
 } catch (_) {}
 
 initFirestore();
+loadQtPdfIndex();   // 새 달 PDF가 올라왔는지 확인 — 배포 없이 목록이 늘어난다
 
 // ==========================================
 // 앱 자동 업데이트 (본 앱과 같은 방식 — 새로고침 루프 차단 포함)
