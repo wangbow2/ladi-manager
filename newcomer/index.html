@@ -328,7 +328,7 @@
 // 기본 정보
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-10-10.1';
+const APP_BUILD = '2026-11-02.1';
 const WEEKS = 8;
 // 과정 시작 전 '준비 주간' — 큐티만 미리 하는 주. 수료 판정에는 넣지 않는다.
 const PRE_WEEKS = 1;
@@ -372,6 +372,11 @@ const PROGRAM = [
 // 2026-09-01(목사님 확인): 서찬영(n11)은 YIP 수료라 넣었다.
 const EDU_EXEMPT_DEFAULT = { n03:true, n04:true, n11:true }; // 남예진, 배은채, 서찬영
 
+// 2026-11-02 목사님 지시 — 세 명만 한 주(9주차) 더 두어 큐티를 마저 올리게 하고,
+// 나머지 다섯은 8주로 수료 확정한다. 연장 주차는 큐티만 세고 출석·가테·교육은 묻지 않는다.
+const EXTRA_WEEKS_DEFAULT = { n11:1, n12:1, n13:1 };  // 서찬영, 김윤서, 이은수
+const COMPLETED_DEFAULT = { n03:true, n04:true, n05:true, n07:true, n09:true };  // 남예진, 배은채, 이태관, 최유주, 구예림
+
 function programOf(n) { return PROGRAM.find(p => n >= p.from && n <= p.to) || PROGRAM[PROGRAM.length-1]; }
 function isEduExempt(id, n) {
   return programOf(n).name === 'YIP 교육' && !!(state.eduExempt || {})[id];
@@ -383,6 +388,17 @@ function toggleEduExempt(id) {
   renderAll();
   toast(`${findUser(id).name} — YIP 교육 ${!cur ? '면제로 표시했습니다' : '면제를 풀었습니다'}`);
 }
+
+// 연장 — 사람마다 과정 길이가 다를 수 있다. 판정도 큐티도 그 사람 주차 수를 따른다.
+function extraWeeksOf(id) { return Math.max(0, (state.extraWeeks || {})[id] | 0); }
+function weeksFor(id) {
+  if (LEADERS.some(l => l.id === id)) return maxWeeks();  // 팀장은 과정 대상이 아니라 막지 않는다
+  return WEEKS + extraWeeksOf(id);
+}
+// 화면 공통(머리말·주차 버튼·달력)은 가장 긴 사람에 맞춘다.
+function maxWeeks() { return WEEKS + Math.max(0, ...Object.values(state.extraWeeks || {}).map(v => Math.max(0, v | 0))); }
+// 리더가 손으로 확정한 수료. 켜지면 그 아이 판정은 '수료'로 굳는다.
+function isCompleted(id) { return !!(state.completed || {})[id]; }
 
 // 수료 기준 — 이 표 하나가 판정의 유일한 근거다.
 const LIMITS = {
@@ -567,6 +583,8 @@ let state = {
   students: ROSTER.map(s => ({ ...s })),
   pins: {},
   eduExempt: Object.assign({}, EDU_EXEMPT_DEFAULT), // 신입생 교육 면제(표시 전용)
+  extraWeeks: Object.assign({}, EXTRA_WEEKS_DEFAULT), // id → 연장 주차 수
+  completed: Object.assign({}, COMPLETED_DEFAULT),    // id → 수료 확정
   att: {},   // `${id}_w${n}_sat` | `_sun`  → 출석/지각/무단지각/결석/무단결석
   qt: {},    // weekKey(id,n) → [bool x5] (월~금). 준비 주간은 `${id}_pre1`
   gate: {},  // `${id}_w${n}` → 'O' | 'X'
@@ -679,7 +697,7 @@ function initFirestore() {
   });
 }
 function applyRemote(data) {
-  ['startDate','pins','eduExempt','att','qt','gate','edu','memos'].forEach(k => {
+  ['startDate','pins','eduExempt','extraWeeks','completed','att','qt','gate','edu','memos'].forEach(k => {
     if (data[k] !== undefined) state[k] = data[k];
   });
   if (Array.isArray(data.students) && data.students.length) {
@@ -711,8 +729,8 @@ function weekLabel(n) { return n < 0 ? '준비 주간' : `${n+1}주차`; }
 function weekStarted(n) { return today0() >= weekInfo(n).sat; }
 function weekEnded(n) { return today0() > weekInfo(n).fri; }
 function currentWeek() {
-  for (let n = 0; n < WEEKS; n++) if (!weekEnded(n)) return n;
-  return WEEKS - 1;
+  for (let n = 0; n < maxWeeks(); n++) if (!weekEnded(n)) return n;
+  return maxWeeks() - 1;
 }
 
 // ==========================================
@@ -737,24 +755,29 @@ function eduOf(id, n) { return (state.edu || {})[`${id}_w${n}`] || ''; }
 function tally(id) {
   const t = { 지각:0, 무단지각:0, 결석:0, 무단결석:0, 큐티미달:0, 가테미통과:0,
               출석:0, 미입력출석:0, 큐티미입력:0, 가테미입력:0, 교육불참:0, 교육미입력:0 };
-  for (let n = 0; n < WEEKS; n++) {
-    ['sat','sun'].forEach(day => {
-      const v = attOf(id, n, day);
-      if (v) t[v]++;
-      else if (weekStarted(n)) t.미입력출석++;
-    });
-    // 가테는 리더가 O/X를 직접 넣은 순간 이미 판정이 끝난 것이라, 주차가 끝나기를
-    // 기다리지 않고 바로 센다. 체크하면 그 주에 곧장 숫자가 올라간다.
-    // (큐티는 주 중에 더 채울 수 있으니 주차가 끝난 뒤에 센다 — 아래.)
-    const g = gateOf(id, n);
-    if (g === 'X') t.가테미통과++;
-    else if (!g && weekEnded(n)) t.가테미입력++;
+  for (let n = 0; n < weeksFor(id); n++) {
+    // 연장 주차는 큐티를 마저 채우라고 준 주다. 그 주의 토·주일 모임은 과정 밖이므로
+    // 출석·가테·교육은 묻지 않는다 — 안 와도 되는 날을 미입력으로 쌓지 않기 위해서다.
+    const qtOnly = n >= WEEKS;
+    if (!qtOnly) {
+      ['sat','sun'].forEach(day => {
+        const v = attOf(id, n, day);
+        if (v) t[v]++;
+        else if (weekStarted(n)) t.미입력출석++;
+      });
+      // 가테는 리더가 O/X를 직접 넣은 순간 이미 판정이 끝난 것이라, 주차가 끝나기를
+      // 기다리지 않고 바로 센다. 체크하면 그 주에 곧장 숫자가 올라간다.
+      // (큐티는 주 중에 더 채울 수 있으니 주차가 끝난 뒤에 센다 — 아래.)
+      const g = gateOf(id, n);
+      if (g === 'X') t.가테미통과++;
+      else if (!g && weekEnded(n)) t.가테미입력++;
+    }
     // 끝난 주차만 판정한다. 기록이 아예 없는 주차는 '미입력'으로 따로 세고 판정에서 뺀다
     // — 리더가 아직 못 넣은 것을 아이 잘못으로 만들지 않기 위해서다.
     if (weekEnded(n)) {
       if (qtHasEntry(id, n)) { if (qtCount(id, n) < 4) t.큐티미달++; }
       else t.큐티미입력++;
-      if (!isEduExempt(id, n)) {
+      if (!qtOnly && !isEduExempt(id, n)) {
         const e = eduOf(id, n);
         if (e === 'X') t.교육불참++;
         else if (!e) t.교육미입력++;
@@ -767,6 +790,8 @@ function tally(id) {
 // 신호등: red = 수료 불가, yellow = 수료 연기 또는 한 번 남음, green = 이상 없음
 function verdict(id) {
   const t = tally(id);
+  // 리더가 수료로 확정했으면 거기서 끝이다 — 남은 경고를 띄워 혼란 주지 않는다.
+  if (isCompleted(id)) return { level:'green', label:'수료', done:true, tally:t, fails:[], warns:[] };
   const fails = [], warns = [];
   Object.keys(LIMITS).forEach(k => {
     const lim = LIMITS[k], c = t[k];
@@ -942,7 +967,7 @@ function renderAll() {
 }
 
 function sigChip(v, big) {
-  const dot = { green:'🟢', yellow:'🟡', red:'🔴' }[v.level];
+  const dot = v.done ? '🎓' : { green:'🟢', yellow:'🟡', red:'🔴' }[v.level];
   return `<span class="sig-${v.level} rounded-full font-bold ${big?'px-4 py-2 text-sm':'px-2.5 py-1 text-xs'}">${dot} ${v.label}</span>`;
 }
 function partBadge(s) {
@@ -965,11 +990,11 @@ function renderHome() {
           ${!isLeader() && isEduExempt(currentUser, cw) ? `<p class="text-[11px] text-gray-400 mt-1">YIP 교육은 이미 받아서 안 나와도 됩니다</p>` : ''}
         </div>
         <div class="text-right">
-          <p class="text-3xl font-bold text-gray-700">${cw+1}<span class="text-base text-gray-400">/${WEEKS}</span></p>
+          <p class="text-3xl font-bold text-gray-700">${cw+1}<span class="text-base text-gray-400">/${maxWeeks()}</span></p>
         </div>
       </div>
       <div class="flex gap-1 mt-3">
-        ${Array.from({length:WEEKS}, (_,n) =>
+        ${Array.from({length:maxWeeks()}, (_,n) =>
           `<div class="flex-1 h-2 rounded-full ${weekEnded(n) ? 'bg-gray-900' : (weekStarted(n) ? 'bg-gray-300' : 'bg-gray-200')}"></div>`).join('')}
       </div>
     </div>
@@ -1029,7 +1054,8 @@ function renderHome() {
       <div class="my-3">${sigChip(v, true)}</div>
       ${v.fails.length ? `<ul class="text-left space-y-1 mt-2">${v.fails.map(f=>`<li class="text-xs text-red-600">· ${f}</li>`).join('')}</ul>` : ''}
       ${v.warns.length ? `<ul class="text-left space-y-1 mt-2">${v.warns.map(w=>`<li class="text-xs text-amber-600">· ${w}</li>`).join('')}</ul>` : ''}
-      ${v.level === 'green' ? `<p class="text-xs text-gray-400 mt-1">지금까지 걸린 것이 하나도 없습니다.</p>` : ''}
+      ${v.done ? `<p class="text-xs text-gray-500 mt-1">8주 과정을 수료했습니다. 수고 많았어요!</p>`
+        : v.level === 'green' ? `<p class="text-xs text-gray-400 mt-1">지금까지 걸린 것이 하나도 없습니다.</p>` : ''}
     </div>
     <div class="card">
       <h3 class="font-bold text-gray-800 text-sm mb-1">남은 여유</h3>
@@ -1053,7 +1079,9 @@ function renderHome() {
           <div class="qt-dot ${qtOf(id,qw)[i]?'on':''}" style="cursor:default">${qtOf(id,qw)[i]?'✓':''}</div>
         </div>`).join('')}
       </div>
-      <p class="text-xs mt-2 ${qw<0?'text-gray-400':(qtCount(id,qw)>=4?'text-blue-600':'text-gray-400')}">이번 주 ${qtCount(id,qw)}일 / 5일 ${qw<0?'— 준비 주간이라 수료 판정에는 안 들어가요':'— 4일 이상이면 통과입니다'}</p>
+      <p class="text-xs mt-2 ${qw>=weeksFor(id)||qw<0?'text-gray-400':(qtCount(id,qw)>=4?'text-blue-600':'text-gray-400')}">${
+        qw>=weeksFor(id) ? '과정을 마쳤어요 — 이 주 큐티는 세지 않습니다'
+        : `이번 주 ${qtCount(id,qw)}일 / 5일 ${qw<0?'— 준비 주간이라 수료 판정에는 안 들어가요':'— 4일 이상이면 통과입니다'}`}</p>
     </div>`;
 }
 
@@ -1062,7 +1090,7 @@ function qtSlotOf(dateISO) {
   const diff = Math.round((parseDate(dateISO) - parseDate(state.startDate || DEFAULT_START)) / 86400000);
   // 준비 주간은 diff가 음수다. %가 음수를 내놓으므로 보정해서 요일을 뽑는다.
   const n = Math.floor(diff / 7), i = ((diff % 7) + 7) % 7 - 2; // 0=토, 1=주일, 2~6=월~금
-  if (n < -PRE_WEEKS || n >= WEEKS || i < 0) return null;
+  if (n < -PRE_WEEKS || n >= maxWeeks() || i < 0) return null;
   return { n, i };
 }
 // 오늘이 속한 큐티 주차(토·주일이면 진행 주차).
@@ -1075,7 +1103,7 @@ function qtDateOf(n, i) { return iso(addDays(weekInfo(n).sat, 2 + i)); }
 // 8주 과정이 걸쳐 있는 달들만 오간다.
 function qtAvailMonths() {
   const out = [];
-  let d = parseDate(qtDateOf(-PRE_WEEKS, 0)), end = parseDate(qtDateOf(WEEKS - 1, 4));
+  let d = parseDate(qtDateOf(-PRE_WEEKS, 0)), end = parseDate(qtDateOf(maxWeeks() - 1, 4));
   d = new Date(d.getFullYear(), d.getMonth(), 1);
   while (d <= end) {
     out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
@@ -1109,7 +1137,7 @@ function shiftQtDate(step) {
   let n = s.n, i = s.i + step;
   if (i > 4) { n++; i = 0; }
   if (i < 0) { n--; i = 4; }
-  if (n < -PRE_WEEKS || n >= WEEKS) return;
+  if (n < -PRE_WEEKS || n >= maxWeeks()) return;
   qtDate = qtDateOf(n, i);
   renderAll();
 }
@@ -1232,6 +1260,8 @@ function rotateQtImage() {
 function submitQT(id, n, i, date) {
   // 자정이 지나면 그날은 닫힌다. 화면을 켜 둔 채 날이 바뀐 경우까지 여기서 막는다.
   if (qtLocked(date)) { toast('그날 큐티는 닫혔어요 — 오늘 것만 올릴 수 있어요'); renderAll(); return; }
+  // 화면을 켜 둔 채 과정이 끝난 경우까지 여기서 막는다.
+  if (n >= weeksFor(id)) { toast('과정을 마쳐서 더 올리지 않아도 돼요'); renderAll(); return; }
   const ta = document.getElementById('qt-text');
   const text = (ta ? ta.value : '').trim();
   const prev = _qtDocs[qtKey(id, date)] || {};
@@ -1716,6 +1746,13 @@ function renderQT() {
     </div>
 
     ${writerId ? (() => {
+      // 수료했거나 연장 주차까지 끝난 사람은 이 주 큐티를 올리지 않는다.
+      if (n >= weeksFor(writerId)) return `
+    <div class="card text-center py-6">
+      <p class="text-2xl">🎓</p>
+      <p class="text-sm text-gray-700 mt-1 font-semibold">과정을 마쳤어요</p>
+      <p class="text-xs text-gray-400 mt-1">수료한 뒤라 이 주 큐티는 올리지 않아도 됩니다.</p>
+    </div>`;
       loadQtDoc(writerId, qtDate);
       const saved = _qtDocs[qtKey(writerId, qtDate)];
       const loading = saved === undefined;
@@ -1855,7 +1892,7 @@ function renderCheck() {
   const el = document.getElementById('page-check');
   const n = checkWeek, wi = weekInfo(n);
   const tabs = `<div class="scroll-table -mx-1 px-1"><div class="flex gap-1.5 pb-1">
-    ${Array.from({length:WEEKS}, (_,i) => `<button onclick="checkWeek=${i};renderAll()"
+    ${Array.from({length:maxWeeks()}, (_,i) => `<button onclick="checkWeek=${i};renderAll()"
       class="px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 ${i===n?'bg-gray-900 text-white':'bg-white text-gray-600 border'}">${i+1}주</button>`).join('')}
   </div></div>`;
 
@@ -1932,7 +1969,7 @@ function renderStatus() {
                 const cls = c >= lim.fail ? 'text-red-600' : (c > 0 && c === lim.fail-1 ? 'text-amber-600' : (c > 0 ? 'text-gray-700' : 'text-gray-300'));
                 return `<td class="px-1 py-2 text-center whitespace-nowrap"><span class="${cls} font-bold">${c}</span><span class="text-gray-300 text-[10px]">/${lim.fail}</span></td>`;
               };
-              const short = v.label === '수료 연기' ? '연기' : SHORT[v.level];
+              const short = v.done ? '수료' : (v.label === '수료 연기' ? '연기' : SHORT[v.level]);
               return `<tr class="border-t">
                 <td class="px-2 py-2 font-semibold text-gray-800">${s.name}</td>
                 <td class="px-1 py-2 text-center"><span class="sig-${v.level} px-2 py-1 rounded-full font-bold text-[11px]">${short}</span></td>
