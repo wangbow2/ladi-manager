@@ -1894,7 +1894,9 @@ function _qtLoadWeek(wk) {
   if (!_FS_OK || !wk || _qtWeekLoaded[wk] || wk === _qtWeekListening) return;
   _qtWeekLoaded[wk] = true;
   _db.collection('qtWeeks').doc(wk).get().then(doc => {
-    if (doc.exists && _qtApplyWeekDoc(doc.data())) _qtAfterApply();
+    // 칸이 있기만 하면 그 주는 이미 묶인 것으로 본다. 내용이 비어 있다고
+    // 되돌림을 또 돌리면, 아무도 큐티를 안 쓴 주는 영영 예전 자리를 읽는다.
+    if (doc.exists) { if (_qtApplyWeekDoc(doc.data())) _qtAfterApply(); }
     else _qtFallbackWeek(wk);
   }).catch(e => {
     console.warn(wk + ' 주 큐티 받기 실패:', e);
@@ -1914,13 +1916,31 @@ function _qtFallbackWeek(wk) {
     .get().then(snap => {
       if (!state.qtDayChecks) state.qtDayChecks = {};
       let n = 0;
+      const entries = {};
       snap.forEach(doc => {
-        const entry = _qtSubmissionAsDayEntry(doc.data());
-        if (entry) { state.qtDayChecks[doc.id] = entry; n++; }
+        const d = doc.data();
+        const entry = _qtSubmissionAsDayEntry(d);
+        if (!entry) return;
+        state.qtDayChecks[doc.id] = entry;
+        entries[doc.id] = { c: entry.content, i: entry.imageKey, t: entry.createdAt };
+        n++;
       });
       if (n) _qtAfterApply();
+      // 읽어 온 한 주를 그 자리에서 묶어 둔다 — 지난 기록을 옮기는 일을
+      // 따로 돌릴 필요가 없다. 그 주를 처음 펴 본 사람이 묶어 주고, 다음
+      // 사람부터는 읽기 한 번으로 끝난다. 아무도 안 쓴 주도 빈 칸을 남겨
+      // '묶었다'고 표시해 둔다(안 그러면 그 주는 영영 예전 자리를 읽는다).
+      _qtWriteWeekRollup(wk, entries);
     })
     .catch(e => { _qtFellBack[wk] = false; console.warn(wk + ' 주 안전사본 받기 실패:', e); });
+}
+
+function _qtWriteWeekRollup(wk, entries) {
+  if (!_FS_OK) return;
+  try {
+    _db.collection('qtWeeks').doc(wk).set({ week: wk, entries: entries || {} }, { merge: true })
+      .catch(e => console.warn(wk + ' 주 묶기 실패:', e));
+  } catch (e) { console.warn(wk + ' 주 묶기 실패:', e); }
 }
 
 function initFirestore() {
@@ -2066,6 +2086,20 @@ async function _recoverMissingQTFromBackup() {
       console.log(`큐티 ${restored}건 자동 복구됨`);
       if (typeof showToast === 'function') showToast(`빠져 있던 큐티 ${restored}개를 되살렸어요.`);
     }
+    // 옛 버전 앱에 갇힌 폰은 안전사본에만 적고 주간 묶음에는 못 적는다.
+    // 그러면 새 버전으로 보는 사람에게 그 아이 큐티가 안 보인다. 여기서
+    // 내 최근 보름치를 묶음 칸에 채워 메운다 — 읽기는 이미 한 것이라 덤이다.
+    const since = (() => { const d = new Date(TODAY); d.setDate(d.getDate() - 14);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+    const byWeek = {};
+    snap.forEach(doc => {
+      const d = doc.data();
+      if (!d || !d.date || d.deleted || d.date < since) return;
+      const wk = _qtWeekKeyOf(d.date);
+      (byWeek[wk] = byWeek[wk] || {})[`${uid}_${d.date}`] =
+        { c: d.content || '', i: d.imageKey || null, t: d.createdAt || Date.now() };
+    });
+    Object.keys(byWeek).forEach(wk => _qtWriteWeekRollup(wk, byWeek[wk]));
   } catch (e) {
     console.warn('큐티 안전사본 대조 실패:', e);
   }
@@ -9862,7 +9896,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-07.2';
+const APP_BUILD = '2026-11-07.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
