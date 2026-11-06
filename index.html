@@ -1845,7 +1845,10 @@ function _listenQTSubmissions() {
 const _qtFetchedMonths = {};
 function loadQTMonthEntries(ym) {
   if (!_FS_OK || !ym || _qtFetchedMonths[ym]) return;
-  if (ym >= _qtListenFromStr().slice(0, 7)) return;   // 이미 듣고 있는 구간
+  // 그 달 첫날이 이미 듣고 있는 구간 안이면 따로 받을 것이 없다. 달 이름만
+  // 견주면 안 된다 — 한 주가 달을 걸치는 달 초에는 듣는 구간이 '지난 달 말'
+  // 부터여서, 달 이름이 같다고 건너뛰면 그 달 앞부분을 영영 못 받는다.
+  if (ym + '-01' >= _qtListenFromStr()) return;
   _qtFetchedMonths[ym] = true;
   _db.collection('qtSubmissions')
     .where('date', '>=', ym + '-01').where('date', '<=', ym + '-31')
@@ -9766,7 +9769,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-06.2';
+const APP_BUILD = '2026-11-06.3';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
