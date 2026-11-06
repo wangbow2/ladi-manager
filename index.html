@@ -1830,9 +1830,11 @@ function _listenQTSubmissions() {
   const from = _qtListenFromStr();
   const attach = (q, narrowed) => q.onSnapshot(_qtMergeSnap, e => {
     console.warn('QT 개별 기록 동기화 실패:', e);
-    // 날짜로 좁힌 조회가 막히면(색인 문제 등) 예전처럼 통째로라도 받아 둔다.
-    if (narrowed) {
-      _qtSubmissionsUnsubscribe = null;
+    // 날짜로 좁힌 조회 자체가 막힌 때에만(색인이 없다는 등) 예전처럼 통째로
+    // 받아 둔다. 할당량 초과나 네트워크 끊김에도 통째로 다시 받으면, 바로
+    // 그 '수천 번 읽기'를 또 하게 되어 고치려던 문제를 되살린다.
+    const code = (e && e.code) || '';
+    if (narrowed && (code === 'failed-precondition' || code === 'invalid-argument')) {
       _qtSubmissionsUnsubscribe = attach(_db.collection('qtSubmissions'), false);
     }
   });
@@ -9764,7 +9766,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-06.1';
+const APP_BUILD = '2026-11-06.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
