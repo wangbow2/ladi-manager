@@ -87,7 +87,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     // 큐티 본 기록 — 한 제출당 한 문서로 나눠 radi/state의 1MiB 한도를 피한다.
+    // 이제 '읽기'는 여기서 하지 않는다(아래 qtWeeks). 안전사본으로만 남긴다.
     match /qtSubmissions/{document} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+    // 큐티 주간 묶음 — qtWeeks/{그 주 토요일} 한 칸에 그 주 전원의 큐티가 들어간다.
+    // 제출 한 건마다 문서 하나를 두고 그 모음을 통째로 읽던 때에는, 앱을 한 번
+    // 열 때마다 수천 번 읽기를 써서 하루 무료 몫(5만)이 오전에 바닥났다
+    // (2026-11-06). 한 주가 한 칸이면 달력 한 달을 펴도 대여섯 번이면 된다.
+    // 지움은 칸을 없애지 않고 {del:true} 표시를 남긴다 — 이미 받아 둔 다른
+    // 기기도 지워진 것을 알아야 하므로.
+    match /qtWeeks/{document} {
       allow read, create, update: if true;
       allow delete: if false;
     }

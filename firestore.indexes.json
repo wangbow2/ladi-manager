@@ -115,6 +115,11 @@
       "collectionGroup": "stateBackups",
       "fieldPath": "changes",
       "indexes": []
+    },
+    {
+      "collectionGroup": "qtWeeks",
+      "fieldPath": "entries",
+      "indexes": []
     }
   ]
 }

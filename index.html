@@ -1777,7 +1777,10 @@ function _renderCurrentPage() {
 
 let _fsInitDone = false;
 let _fsInitTries = 0;
-let _qtSubmissionsUnsubscribe = null;
+let _qtWeekUnsub = null;        // 이번 주 묶음 칸을 듣고 있는 중인가
+let _qtWeekListening = null;   // 듣고 있는 주(토요일)
+const _qtWeekLoaded = {};      // 이미 받아 온 주
+const _qtFellBack = {};        // 묶음 칸이 없어 예전 자리에서 받은 주
 
 function _qtSubmissionAsDayEntry(data) {
   if (!data || data.deleted || !data.date) return null;
@@ -1791,67 +1794,123 @@ function _qtSubmissionAsDayEntry(data) {
   };
 }
 
-// QT는 한 문서에 몰아넣지 않고 한 제출당 한 문서로 실시간 동기화한다.
-// 이렇게 하면 radi/state의 1MiB 제한과 동시 저장 충돌을 함께 피할 수 있다.
+// ── 큐티는 '한 주 한 칸'으로 묶어 읽는다 ───────────────────────────────
+// qtWeeks/{그 주 토요일} 한 문서에 그 주 전원의 큐티가 들어 있다.
+//   { week:'2026-11-07', entries:{ 's1_2026-11-02': {c:'묵상글', i:'사진키', t:1762…} } }
 //
-// ── 서버에서 '최근 것만' 듣는다 ────────────────────────────────────────
-// qtSubmissions는 아이 한 명이 하루 큐티를 올릴 때마다 한 칸씩 늘어나서, 48명이
-// 반 년을 쓴 지금은 수천 칸이다. 예전에는 앱을 열 때마다 이 모음을 통째로
-// 읽어 갔다. 파이어스토어 무료 몫은 하루 '5만 번 읽기'인데 한 번 열 때 수천
-// 번을 써 버리니, 하루 몫이 아침에 바닥났고 그 뒤로는 어느 기기에서도 서버
-// 기록을 못 받아왔다(2026-11-06 실제로 그랬다). 지금은 이번 달만 듣고, 지난
-// 달은 달력을 그 달로 넘길 때 한 번만 따로 받아 온다.
-function _qtListenFromStr() {
-  const first = TODAY_STR.slice(0, 7) + '-01';             // 이번 달 1일
-  const sun = new Date(TODAY); sun.setDate(TODAY.getDate() - TODAY.getDay());
-  const sunStr = `${sun.getFullYear()}-${String(sun.getMonth()+1).padStart(2,'0')}-${String(sun.getDate()).padStart(2,'0')}`;
-  return sunStr < first ? sunStr : first;  // 한 주가 달을 걸치면 그 주 주일부터
+// 왜 이렇게 바꿨나 — 예전에는 제출 한 건마다 문서 하나(qtSubmissions)를 두고
+// 그 모음을 통째로 들었다. 48명이 반 년을 쓰면 수천 칸이라, 앱을 한 번 열
+// 때마다 수천 번 읽기를 썼다. 파이어스토어 무료 몫은 하루 5만 번인데
+// 대여섯 번만 열면 바닥난다 — 2026-11-06에 실제로 바닥나서, 그날 저녁부터
+// 어느 기기도 서버 기록을 못 받아왔다. 이제 한 주가 한 칸이니 달력 한 달을
+// 펴도 대여섯 번만 읽는다.
+//
+// qtSubmissions는 '안전사본'으로 계속 쓴다. 큰 칸 쓰기가 실패해도 한 건은
+// 남아야 하고(2026-08-01 큐티 24건 유실 사고), 묶기 전에 쓴 지난 기록도
+// 거기에만 있다 — 묶음 칸이 없는 주는 그 자리에서 받아 온다.
+// 지움은 칸을 없애지 않고 {del:true} 표시를 남긴다. 없애 버리면, 이미 받아
+// 둔 다른 기기는 그 큐티가 지워진 줄 모르고 계속 보여 준다.
+
+function _qtWeekKeyOf(dateStr) { return getQTWeekSatStr(dateStr); }
+
+// 그 주 주일(묶음 칸이 없을 때 예전 자리에서 받아 올 범위의 시작)
+function _qtWeekStartOf(satStr) {
+  const d = new Date(satStr + 'T00:00:00'); d.setDate(d.getDate() - 6);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// 받아 온 것을 '덮지 않고 겹쳐' 넣는다. 통째로 바꿔 끼우면, 서버에서 이번
-// 달만 받은 순간 폰에 남아 있던 지난 달 기록이 전부 사라진다.
-function _qtMergeSnap(snap) {
+// 그 달 달력에 걸리는 주들(토요일). 달력을 그리는 기준과 같아야 한다 —
+// 달 첫날이 든 주의 주일부터 이레씩 걸으며 달 마지막 날을 지날 때까지.
+function _qtMonthWeekKeys(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const keys = [];
+  const cur = new Date(y, m - 1, 1);
+  cur.setDate(cur.getDate() - cur.getDay());          // 그 주 주일로
+  const endOfMonth = new Date(y, m, 0);
+  while (cur <= endOfMonth) {
+    const sat = new Date(cur); sat.setDate(cur.getDate() + 6);
+    keys.push(`${sat.getFullYear()}-${String(sat.getMonth()+1).padStart(2,'0')}-${String(sat.getDate()).padStart(2,'0')}`);
+    cur.setDate(cur.getDate() + 7);
+  }
+  return keys;
+}
+
+function _qtEntryFromRollup(v) {
+  if (!v || v.del) return null;
+  return { done: true, content: v.c || '', imageKey: v.i || null, createdAt: v.t || Date.now() };
+}
+
+// 받아 온 것을 '덮지 않고 겹쳐' 넣는다. 통째로 바꿔 끼우면 폰에 남아 있던
+// 다른 주 기록이 그 순간 전부 사라진다.
+function _qtApplyWeekDoc(data) {
+  if (!data || !_isPlainObject(data.entries)) return 0;
   if (!state.qtDayChecks) state.qtDayChecks = {};
-  snap.docChanges().forEach(change => {
-    const entry = _qtSubmissionAsDayEntry(change.doc.data());
-    if (change.type === 'removed' || !entry) delete state.qtDayChecks[change.doc.id];
-    else state.qtDayChecks[change.doc.id] = entry;
+  let n = 0;
+  Object.keys(data.entries).forEach(k => {
+    const entry = _qtEntryFromRollup(data.entries[k]);
+    if (entry) { state.qtDayChecks[k] = entry; n++; }
+    else delete state.qtDayChecks[k];          // 지움 표시
   });
+  return n;
+}
+
+function _qtAfterApply() {
   try { localStorage.setItem('radi_v4', JSON.stringify(state)); } catch (e) {}
   if (state.currentUser) {
     const qtTextarea = document.getElementById('qt-day-text');
+    // 아이가 지금 큐티를 쓰고 있으면 화면을 다시 그리지 않는다 — 쓰던 글이 날아간다.
     if (!(qtTextarea && (qtTextarea.value.trim() || _qtDayPendingImg))) _renderSoon();
     updateNotificationBadge();
   }
 }
 
+// 이번 주 한 칸만 계속 듣는다(읽기 1회 + 바뀔 때마다 1회).
 function _listenQTSubmissions() {
-  if (!_FS_OK || _qtSubmissionsUnsubscribe) return;
-  const from = _qtListenFromStr();
-  const attach = (q, narrowed) => q.onSnapshot(_qtMergeSnap, e => {
-    console.warn('QT 개별 기록 동기화 실패:', e);
-    // 날짜로 좁힌 조회 자체가 막힌 때에만(색인이 없다는 등) 예전처럼 통째로
-    // 받아 둔다. 할당량 초과나 네트워크 끊김에도 통째로 다시 받으면, 바로
-    // 그 '수천 번 읽기'를 또 하게 되어 고치려던 문제를 되살린다.
-    const code = (e && e.code) || '';
-    if (narrowed && (code === 'failed-precondition' || code === 'invalid-argument')) {
-      _qtSubmissionsUnsubscribe = attach(_db.collection('qtSubmissions'), false);
-    }
+  if (!_FS_OK) return;
+  const wk = _qtWeekKeyOf(TODAY_STR);
+  if (_qtWeekListening === wk) return;
+  if (_qtWeekUnsub) { try { _qtWeekUnsub(); } catch (_) {} _qtWeekUnsub = null; }
+  _qtWeekListening = wk;
+  _qtWeekUnsub = _db.collection('qtWeeks').doc(wk).onSnapshot(doc => {
+    _qtWeekLoaded[wk] = true;
+    if (doc.exists) { _qtApplyWeekDoc(doc.data()); _qtAfterApply(); }
+    else _qtFallbackWeek(wk);          // 이번 주 첫 큐티가 올라오기 전
+  }, e => {
+    console.warn('이번 주 큐티 동기화 실패:', e);
+    _qtWeekListening = null;           // 다음 기회에 다시 걸어 본다
+    // 묶음 칸을 못 읽는 상황(규칙이 아직 안 올라갔거나 권한 거부)에서도 큐티
+    // 화면이 비어 보이면 안 된다 — 예전 자리에서 이번 주만 받아 둔다.
+    _qtFallbackWeek(wk);
   });
-  _qtSubmissionsUnsubscribe = attach(_db.collection('qtSubmissions').where('date', '>=', from), true);
 }
 
-// 달력을 지난 달로 넘겼을 때, 그 달 기록만 한 번 받아 온다(세션당 한 번).
-const _qtFetchedMonths = {};
+// 달력에 띄울 달의 주들을 받아 온다(세션당 주마다 한 번).
 function loadQTMonthEntries(ym) {
-  if (!_FS_OK || !ym || _qtFetchedMonths[ym]) return;
-  // 그 달 첫날이 이미 듣고 있는 구간 안이면 따로 받을 것이 없다. 달 이름만
-  // 견주면 안 된다 — 한 주가 달을 걸치는 달 초에는 듣는 구간이 '지난 달 말'
-  // 부터여서, 달 이름이 같다고 건너뛰면 그 달 앞부분을 영영 못 받는다.
-  if (ym + '-01' >= _qtListenFromStr()) return;
-  _qtFetchedMonths[ym] = true;
+  if (!_FS_OK || !ym) return;
+  _qtMonthWeekKeys(ym).forEach(_qtLoadWeek);
+}
+
+function _qtLoadWeek(wk) {
+  if (!_FS_OK || !wk || _qtWeekLoaded[wk] || wk === _qtWeekListening) return;
+  _qtWeekLoaded[wk] = true;
+  _db.collection('qtWeeks').doc(wk).get().then(doc => {
+    if (doc.exists && _qtApplyWeekDoc(doc.data())) _qtAfterApply();
+    else _qtFallbackWeek(wk);
+  }).catch(e => {
+    console.warn(wk + ' 주 큐티 받기 실패:', e);
+    _qtWeekLoaded[wk] = false;        // 다음에 다시 받아 본다
+    _qtFallbackWeek(wk);              // 그 사이에도 화면이 비지 않게 예전 자리에서
+  });
+}
+
+// 묶음 칸이 없는 주 — 예전 자리(qtSubmissions)에서 그 한 주만 받아 온다.
+// 묶기 전에 쓴 기록이 여기에만 있는 동안의 다리다. 한 주치(48명×7일)뿐이라
+// 모음을 통째로 읽던 예전과는 자릿수가 다르다.
+function _qtFallbackWeek(wk) {
+  if (!_FS_OK || _qtFellBack[wk]) return;
+  _qtFellBack[wk] = true;
   _db.collection('qtSubmissions')
-    .where('date', '>=', ym + '-01').where('date', '<=', ym + '-31')
+    .where('date', '>=', _qtWeekStartOf(wk)).where('date', '<=', wk)
     .get().then(snap => {
       if (!state.qtDayChecks) state.qtDayChecks = {};
       let n = 0;
@@ -1859,12 +1918,9 @@ function loadQTMonthEntries(ym) {
         const entry = _qtSubmissionAsDayEntry(doc.data());
         if (entry) { state.qtDayChecks[doc.id] = entry; n++; }
       });
-      if (n) {
-        try { localStorage.setItem('radi_v4', JSON.stringify(state)); } catch (e) {}
-        _renderSoon();
-      }
+      if (n) _qtAfterApply();
     })
-    .catch(e => { _qtFetchedMonths[ym] = false; console.warn(ym + ' 큐티 받기 실패:', e); });
+    .catch(e => { _qtFellBack[wk] = false; console.warn(wk + ' 주 안전사본 받기 실패:', e); });
 }
 
 function initFirestore() {
@@ -1979,8 +2035,14 @@ function initFirestore() {
 async function _recoverMissingQTFromBackup() {
   const uid = state.currentUser;
   if (!uid || !_FS_OK) return;
+  // 이 대조는 그 아이의 제출 전부(이백 건쯤)를 읽어 온다. 접속할 때마다 돌리면
+  // 그것만으로 하루 읽기 몫을 상당히 먹는다 — 기기마다 하루 한 번으로 줄인다.
+  // 유실은 드문 사고이고, 하루 안에 되살아나면 아이는 눈치채지 못한다.
+  const mark = 'radi_qt_recover_' + uid;
+  try { if (localStorage.getItem(mark) === TODAY_STR) return; } catch (e) {}
   try {
     const snap = await _db.collection('qtSubmissions').where('studentId', '==', uid).get();
+    try { localStorage.setItem(mark, TODAY_STR); } catch (e) {}
     let restored = 0;
     const days = [];
     snap.forEach(doc => {
@@ -5650,6 +5712,8 @@ function renderQTSubmit() {
 function openQTDay(dateStr) {
   qtOpenDay = dateStr;
   qtEditMode = false;
+  _qtLoadWeek(_qtWeekKeyOf(dateStr));   // 그 주 기록이 아직 없으면 받아 온다
+
   history.pushState({ page: 'qt', qtDay: dateStr }, '', location.pathname + location.search);
   renderQTDayView();
 }
@@ -8016,6 +8080,33 @@ function _saveQTSubmissionBackup(key, dateStr, content, imageKey, createdAt) {
       deleted: false,
     }).catch(e => console.warn('큐티 안전사본 저장 실패:', e));
   } catch (e) { console.warn('큐티 안전사본 저장 실패:', e); }
+  _saveQTWeekRollup(key, dateStr, content, imageKey, createdAt);
+}
+
+// 모두가 함께 읽는 '한 주 한 칸'에도 같은 내용을 적는다.
+// merge로 적으므로 그 주 다른 아이들 기록은 건드리지 않는다.
+function _saveQTWeekRollup(key, dateStr, content, imageKey, createdAt) {
+  if (!_FS_OK) return;
+  const wk = _qtWeekKeyOf(dateStr);
+  try {
+    _db.collection('qtWeeks').doc(wk).set({
+      week: wk,
+      entries: { [key]: { c: content || '', i: imageKey || null, t: createdAt || Date.now() } },
+    }, { merge: true }).catch(e => console.warn('주간 묶음 저장 실패:', e));
+  } catch (e) { console.warn('주간 묶음 저장 실패:', e); }
+}
+
+// 지움은 칸을 없애지 않고 표시를 남긴다 — 없애면 이미 받아 둔 다른 기기가
+// 지워진 줄 모르고 계속 보여 준다.
+function _deleteQTWeekRollup(key, dateStr) {
+  if (!_FS_OK) return;
+  const wk = _qtWeekKeyOf(dateStr);
+  try {
+    _db.collection('qtWeeks').doc(wk).set({
+      week: wk,
+      entries: { [key]: { del: true, t: Date.now() } },
+    }, { merge: true }).catch(e => console.warn('주간 묶음 지움표시 실패:', e));
+  } catch (e) { console.warn('주간 묶음 지움표시 실패:', e); }
 }
 
 // 옆으로 누워 올라간 사진을 손으로 돌린다. 누를 때마다 시계 방향 90도.
@@ -8132,6 +8223,7 @@ function deleteQTDay(dateStr) {
       _db.collection('qtSubmissions').doc(key).set({ deleted: true }, { merge: true })
         .catch(e => console.warn('큐티 안전사본 삭제표시 실패:', e));
     } catch (e) {}
+    _deleteQTWeekRollup(key, dateStr);
   }
   updateWeekQTCount(dateStr);
   saveState();
@@ -9770,7 +9862,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-07.1';
+const APP_BUILD = '2026-11-07.2';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
