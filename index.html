@@ -879,6 +879,10 @@ const INITIAL_STUDENTS = [
   { id:'r9', name:'박한솔', group:'라디스', birthDate:'2010-02-11', gender:'여', grade:'고1', lineupService:'1부', phone:'010-2825-4244', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'r10', name:'장윤서', group:'라디스', birthDate:'2010-03-22', gender:'여', grade:'고1', lineupService:'2부', phone:'010-8253-0434', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'r11', name:'손예서', group:'라디스', birthDate:'2010-01-05', gender:'여', grade:'고1', lineupService:'1부', phone:'010-5455-7720', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  // 26년 가을 신입생 편입 2차 (2026-11-09) — 워십(라디스)으로 올라온 두 사람.
+  // 서찬영은 재입학생이지만 빠진 번호를 물려주지 않고 새 번호를 준다.
+  { id:'r12', name:'서찬영', group:'라디스', birthDate:'2008-01-14', gender:'남', grade:'고3', phone:'010-3159-8114', parentPhone:'', teacher:'', status:'활동중', memo:'' },
+  { id:'r13', name:'김윤서', group:'라디스', birthDate:'2010-03-13', gender:'여', grade:'고1', phone:'010-3690-7303', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   // 액기스 (박하영·장주환 제외, 악기 추가)
   { id:'a1', name:'김유찬', group:'액기스', birthDate:'2008-05-14', gender:'남', grade:'고3', lineupService:'1부', instrument:'드럼', phone:'010-8246-3209', parentPhone:'', teacher:'', status:'활동중', memo:'' },
   { id:'a2', name:'정하연', group:'액기스', birthDate:'2008-11-21', gender:'여', grade:'고3', lineupService:'2부', instrument:'건반', phone:'010-5719-2830', parentPhone:'', teacher:'', status:'활동중', memo:'' },
@@ -1319,6 +1323,15 @@ function loadState() {
       if (seed) state.students.push(JSON.parse(JSON.stringify(seed)));
     });
     state._fall2026Intake = true;
+  }
+  // 26년 가을 신입생 편입 2차(워십) — 위와 같은 이유로 코드에서도 한 번 채워 둔다.
+  if (!state._fall2026Intake2) {
+    ['r12','r13'].forEach(id => {
+      if (state.students.some(x => x.id === id)) return;
+      const seed = INITIAL_STUDENTS.find(x => x.id === id);
+      if (seed) state.students.push(JSON.parse(JSON.stringify(seed)));
+    });
+    state._fall2026Intake2 = true;
   }
   // gate '.' and '' → 'O' for weeks with existing data
   if (!state._gateMigrated) {
@@ -1988,6 +2001,20 @@ function initFirestore() {
           if (!cur.grade) cur.grade = seed.grade;
         });
         state._fall2026Profile = true;
+        saveState();
+      }
+
+      // 2차 편입생(서찬영·김윤서) 생일·학년도 같은 방식으로 채운다.
+      if (!state._fall2026Profile2) {
+        ['r12','r13'].forEach(id => {
+          const cur = state.students.find(x => x.id === id);
+          const seed = INITIAL_STUDENTS.find(x => x.id === id);
+          if (!cur || !seed) return;
+          if (!cur.birthDate) cur.birthDate = seed.birthDate;
+          if (!cur.grade) cur.grade = seed.grade;
+          if (!cur.phone) cur.phone = seed.phone;
+        });
+        state._fall2026Profile2 = true;
         saveState();
       }
 
@@ -9896,7 +9923,7 @@ try {
 // 앱 자동 업데이트
 // ==========================================
 // sw.js의 APP_BUILD와 반드시 같은 값이어야 한다. 배포할 때 둘 다 올린다.
-const APP_BUILD = '2026-11-07.3';
+const APP_BUILD = '2026-11-09.1';
 try {
   const _badge = document.getElementById('build-badge');
   if (_badge) _badge.textContent = 'v' + APP_BUILD;
